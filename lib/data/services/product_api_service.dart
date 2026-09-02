@@ -1,0 +1,17 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../core/api/api_config.dart';
+
+class ProductApiService {
+  Future<List<dynamic>> fetchProducts({int limit = 10}) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/products?limit=$limit');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['products'] as List<dynamic>;
+    } else {
+      throw Exception('Failed to load products (${response.statusCode})');
+    }
+  }
+}
