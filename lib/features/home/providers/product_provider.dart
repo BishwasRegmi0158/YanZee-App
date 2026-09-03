@@ -10,3 +10,7 @@ final newArrivalsProvider = FutureProvider<List<Product>>((ref) async {
   final productRepository = ref.watch(productRepositoryProvider);
   return productRepository.getNewArrivals();
 });
+final allNewArrivalsProvider = FutureProvider<List<Product>>((ref) {
+  final repository = ref.watch(productRepositoryProvider);
+  return repository.getNewArrivals(limit: 50);
+});

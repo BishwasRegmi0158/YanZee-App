@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_text_styles.dart';
 import 'package:yanzee_app/features/home/providers/product_provider.dart';
 import 'package:yanzee_app/features/home/screens/widgets/category_grid_item.dart';
 import 'package:yanzee_app/features/home/screens/widgets/category_pill.dart';
-import 'package:yanzee_app/features/home/screens/widgets/hero_banner.dart';
+import 'package:yanzee_app/features/home/screens/widgets/hero_carousel.dart';
 import 'package:yanzee_app/features/home/screens/widgets/product_section.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -35,6 +35,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     {'emoji': '🧸', 'label': 'Kids'},
     {'emoji': '🏃', 'label': 'Sports'},
   ];
+  final Map<String, String> _categorySlugMap = const {
+    'Fashion': 'tops',
+    'Beauty': 'beauty',
+    'Sports': 'sports-accessories',
+    'Just In': 'tops',
+    'K-Beauty': 'skin-care',
+    'Gifts': 'fragrances',
+    'Home': 'home-decoration',
+    'kids': 'Kids Items',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -57,22 +67,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.search, color: Colors.grey, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              'Search products, brands...',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ],
+                      child: GestureDetector(
+                        onTap: () => context.push('/search'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F5F5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.search, color: Colors.grey, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Search products, brands...',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -109,7 +122,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     return CategoryPill(
                       label: _categories[index],
                       isSelected: _selectedCategory == index,
-                      onTap: () => setState(() => _selectedCategory = index),
+                      onTap: () {
+                        setState(() => _selectedCategory = index);
+                        final label = _categories[index];
+
+                        if (label == 'All') return;
+
+                        final slug = _categorySlugMap[label];
+                        if (slug != null) {
+                          context.push('/home/category/$slug', extra: label);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('$label category coming soon'),
+                            ),
+                          );
+                        }
+                      },
                     );
                   },
                 ),
@@ -118,16 +147,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-            // ---------------- Hero banner ----------------
+            // ---------------- Hero carousel ----------------
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: HeroBanner(
-                  imageUrl: 'assets/images/hero_mountain.png',
-                  badgeText: 'NEW ARRIVALS',
-                  title: 'Made by Nepali,\nMade in Nepal',
-                  subtitle: 'Handcrafted heritage, modern style.',
-                ),
+                child: HeroCarousel(),
               ),
             ),
 
@@ -179,7 +203,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   itemBuilder: (context, index) => CategoryGridItem(
                     emoji: _categoryGrid[index]['emoji']!,
                     label: _categoryGrid[index]['label']!,
-                    onTap: () {},
+                    onTap: () {
+                      final label = _categoryGrid[index]['label']!;
+                      final slug = _categorySlugMap[label];
+                      if (slug != null) {
+                        context.push('/home/category/$slug', extra: label);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Kids category coming soon'),
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ),
               ),
@@ -194,7 +230,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 subtitle: 'The latest additions',
                 value: newArrivals,
                 provider: newArrivalsProvider,
-                onSeeAll: () {},
+                onSeeAll: () => context.push('/home/new-arrivals'),
               ),
             ),
 

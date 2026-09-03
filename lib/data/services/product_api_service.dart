@@ -14,4 +14,25 @@ class ProductApiService {
       throw Exception('Failed to load products (${response.statusCode})');
     }
   }
+  Future<List<dynamic>> fetchProductsByCategory(String categorySlug) async {
+  final url = Uri.parse('${ApiConfig.baseUrl}/products/category/$categorySlug');
+  final response = await http.get(url);
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    return data['products'] as List<dynamic>;
+  } else {
+    throw Exception('Failed to load category products (${response.statusCode})');
+  }
+}
+Future<List<dynamic>> searchProducts(String query) async {
+  final url = Uri.parse('${ApiConfig.baseUrl}/products/search?q=$query');
+  final response = await http.get(url);
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    return data['products'] as List<dynamic>;
+  } else {
+    throw Exception('Search failed (${response.statusCode})');
+  }
+}
 }
