@@ -9,6 +9,7 @@ import 'package:yanzee_app/features/home/screens/home_screen.dart';
 import 'package:yanzee_app/features/home/screens/new_arrivals_screen.dart';
 import 'package:yanzee_app/features/home/screens/product_detail_screen.dart';
 import 'package:yanzee_app/features/home/screens/search_screen.dart';
+import 'package:yanzee_app/features/home/screens/widgets/categories_screen.dart';
 import 'package:yanzee_app/features/shop/screens/shop_screen.dart';
 import 'package:yanzee_app/features/splash/screens/splash_screen.dart';
 import 'package:yanzee_app/features/wishlist/screens/wishlist_screen.dart';
@@ -32,8 +33,7 @@ final appRouter = GoRouter(
               builder: (context, state) => const HomeScreen(),
               routes: [
                 GoRoute(
-                  path:
-                      'category/:slug', // full path becomes /home/category/:slug
+                  path: 'category/:slug',
                   builder: (context, state) {
                     final slug = state.pathParameters['slug']!;
                     final displayName = state.extra as String? ?? slug;
@@ -43,10 +43,13 @@ final appRouter = GoRouter(
                     );
                   },
                 ),
-
                 GoRoute(
                   path: 'new-arrivals',
                   builder: (context, state) => const NewArrivalsScreen(),
+                ),
+                GoRoute(
+                  path: 'categories',
+                  builder: (context, state) => const CategoriesScreen(),
                 ),
               ],
             ),
@@ -84,6 +87,8 @@ final appRouter = GoRouter(
             ),
           ],
         ),
+        // duplicate '/shop' branch removed — was causing a 6th branch
+        // against a 5-tab bottom nav
       ],
     ),
     GoRoute(

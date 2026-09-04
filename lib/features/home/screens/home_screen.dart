@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/core/constants/categories.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/features/home/providers/product_provider.dart';
 import 'package:yanzee_app/features/home/screens/widgets/category_grid_item.dart';
@@ -17,13 +18,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedCategory = 0;
-  final List<String> _categories = [
-    'All',
-    'Fashion',
-    'Beauty',
-    'Sports',
-    'Kids',
-  ];
+  final List<String> _categories = ['All', ...categoryLabels];
 
   final List<Map<String, String>> _categoryGrid = const [
     {'emoji': '✨', 'label': 'Just In'},
@@ -35,16 +30,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     {'emoji': '🧸', 'label': 'Kids'},
     {'emoji': '🏃', 'label': 'Sports'},
   ];
-  final Map<String, String> _categorySlugMap = const {
-    'Fashion': 'tops',
-    'Beauty': 'beauty',
-    'Sports': 'sports-accessories',
-    'Just In': 'tops',
-    'K-Beauty': 'skin-care',
-    'Gifts': 'fragrances',
-    'Home': 'home-decoration',
-    'kids': 'Kids Items',
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -90,17 +75,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Container(
-                      height: 46,
-                      width: 46,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.tune,
-                        color: Colors.white,
-                        size: 20,
+                    GestureDetector(
+                      onTap: () => context.push('/shop'),
+                      child: Container(
+                        height: 46,
+                        width: 46,
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.tune,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
@@ -128,7 +116,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                         if (label == 'All') return;
 
-                        final slug = _categorySlugMap[label];
+                        final slug = categorySlugMap[label];
                         if (slug != null) {
                           context.push('/home/category/$slug', extra: label);
                         } else {
@@ -172,7 +160,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () {},
+                      onTap: () => context.push('/home/categories'),
                       child: const Text(
                         'See all',
                         style: TextStyle(
@@ -205,13 +193,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     label: _categoryGrid[index]['label']!,
                     onTap: () {
                       final label = _categoryGrid[index]['label']!;
-                      final slug = _categorySlugMap[label];
+                      final slug = categorySlugMap[label];
                       if (slug != null) {
                         context.push('/home/category/$slug', extra: label);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Kids category coming soon'),
+                          SnackBar(
+                            content: Text('$label category coming soon'),
                           ),
                         );
                       }

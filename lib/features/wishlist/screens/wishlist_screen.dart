@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/features/home/providers/product_provider.dart';
 import 'package:yanzee_app/features/home/screens/widgets/product_card.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
@@ -11,7 +12,6 @@ class WishlistScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wishlistIds = ref.watch(wishlistProvider);
-    final newArrivalsAsync = ref.watch(newArrivalsProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -24,35 +24,56 @@ class WishlistScreen extends ConsumerWidget {
         ),
         centerTitle: false,
       ),
-      body: newArrivalsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) =>
-            Center(child: Text('Something went wrong: $err')),
-        data: (allProducts) {
-          final wishlistedProducts = allProducts
-              .where((product) => wishlistIds.contains(product.id))
-              .toList();
+      body: wishlistIds.isEmpty
+          ? _EmptyWishlist()
+          : _WishlistBody(wishlistIds: wishlistIds),
+    );
+  }
+}
 
-          if (wishlistedProducts.isEmpty) {
-            return _EmptyWishlist();
-          }
+class _WishlistBody extends ConsumerWidget {
+  final Iterable<int> wishlistIds;
 
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 14,
-                crossAxisSpacing: 14,
-                mainAxisExtent:
-                    240, // match whatever your home ProductGrid uses
-              ),
-              itemCount: wishlistedProducts.length,
-              itemBuilder: (context, index) {
-                return ProductCard(product: wishlistedProducts[index]);
-              },
-            ),
-          );
+  const _WishlistBody({required this.wishlistIds});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final productAsyncs = wishlistIds
+        .map((id) => ref.watch(productByIdProvider(id)))
+        .toList();
+
+    final anyLoading = productAsyncs.any((p) => p.isLoading);
+    final firstError = productAsyncs
+        .firstWhere((p) => p.hasError, orElse: () => productAsyncs.first);
+
+    if (anyLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (firstError.hasError) {
+      return Center(child: Text('Something went wrong: ${firstError.error}'));
+    }
+
+    final wishlistedProducts = productAsyncs
+        .map((p) => p.value)
+        .whereType<Product>()
+        .toList();
+
+    if (wishlistedProducts.isEmpty) {
+      return _EmptyWishlist();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          mainAxisExtent: 240,
+        ),
+        itemCount: wishlistedProducts.length,
+        itemBuilder: (context, index) {
+          return ProductCard(product: wishlistedProducts[index]);
         },
       ),
     );

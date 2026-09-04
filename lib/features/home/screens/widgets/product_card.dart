@@ -13,7 +13,7 @@ class ProductCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isWishlisted = ref.watch(wishlistProvider).contains(product.id);
-    final isInCart = ref.watch(cartProvider).contains(product.id);
+    final isInCart = ref.watch(cartProvider).containsKey(product.id);
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),

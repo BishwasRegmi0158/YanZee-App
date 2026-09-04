@@ -1,29 +1,45 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yanzee_app/data/repositories/cart_repository.dart';
-import 'package:yanzee_app/data/repositories/cart_repository_impl.dart';
 
-final cartRepositoryProvider = Provider<CartRepository>((ref) {
-  return InMemoryCartRepository(); // swap this one line when the real API arrives
-});
-
-class CartNotifier extends Notifier<Set<int>> {
+/// State is now productId -> quantity, instead of just a Set<int>.
+class CartNotifier extends Notifier<Map<int, int>> {
   @override
-  Set<int> build() => {};
+  Map<int, int> build() => {};
 
-  Future<void> toggle(int productId) async {
-    final repo = ref.read(cartRepositoryProvider);
-    if (state.contains(productId)) {
-      await repo.remove(productId);
-      state = {...state}..remove(productId);
+  /// Used by ProductCard's quick-add icon and Product Detail's Add/Remove button.
+  void toggle(int productId) {
+    final updated = Map<int, int>.from(state);
+    if (updated.containsKey(productId)) {
+      updated.remove(productId);
     } else {
-      await repo.add(productId);
-      state = {...state, productId};
+      updated[productId] = 1;
     }
+    state = updated;
   }
 
-  bool isInCart(int productId) => state.contains(productId);
+  void increment(int productId) {
+    final updated = Map<int, int>.from(state);
+    updated[productId] = (updated[productId] ?? 0) + 1;
+    state = updated;
+  }
+
+  void decrement(int productId) {
+    final updated = Map<int, int>.from(state);
+    final current = updated[productId] ?? 0;
+    if (current <= 1) {
+      updated.remove(productId);
+    } else {
+      updated[productId] = current - 1;
+    }
+    state = updated;
+  }
+
+  void removeIds(Iterable<int> productIds) {
+    final updated = Map<int, int>.from(state);
+    for (final id in productIds) {
+      updated.remove(id);
+    }
+    state = updated;
+  }
 }
 
-final cartProvider = NotifierProvider<CartNotifier, Set<int>>(
-  CartNotifier.new,
-);
+final cartProvider = NotifierProvider<CartNotifier, Map<int, int>>(CartNotifier.new);

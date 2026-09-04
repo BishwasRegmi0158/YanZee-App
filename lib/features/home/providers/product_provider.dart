@@ -14,3 +14,9 @@ final allNewArrivalsProvider = FutureProvider<List<Product>>((ref) {
   final repository = ref.watch(productRepositoryProvider);
   return repository.getNewArrivals(limit: 50);
 });
+
+
+final productByIdProvider = FutureProvider.family<Product, int>((ref, id) async {
+  final repo = ref.watch(productRepositoryProvider);
+  return repo.getProductById(id);
+});

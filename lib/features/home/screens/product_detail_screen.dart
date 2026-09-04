@@ -22,7 +22,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
     setState(() => _isProcessingCart = true);
 
-    await ref.read(cartProvider.notifier).toggle(widget.product.id);
+    ref.read(cartProvider.notifier).toggle(widget.product.id);
 
     if (mounted) {
       ScaffoldMessenger.of(context)
@@ -45,7 +45,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final product = widget.product;
     final isWishlisted = ref.watch(wishlistProvider).contains(product.id);
-    final isInCart = ref.watch(cartProvider).contains(product.id);
+    final isInCart = ref.watch(cartProvider).containsKey(product.id);
     final hasDiscount = product.discountPercentage > 0;
 
     return Scaffold(
@@ -222,7 +222,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     ),
                   ),
                   onPressed: _isProcessingCart
-                      ? null // disables the button while a request is in flight
+                      ? null
                       : () => _handleCartTap(isInCart),
                   icon: _isProcessingCart
                       ? const SizedBox(
