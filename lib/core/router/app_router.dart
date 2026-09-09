@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/core/widgets/main_shell.dart';
 import 'package:yanzee_app/data/models/product.dart';
-import 'package:yanzee_app/features/auth/screens/account_screen.dart';
+import 'package:yanzee_app/features/auth/screens/account/screens/account_screen.dart';
 import 'package:yanzee_app/features/auth/screens/login_screen.dart';
 import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
 import 'package:yanzee_app/features/cart/screens/cart_screen.dart';
@@ -22,14 +22,24 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
- 
-  refreshListenable: AuthState.instance,
+
+  // NOTE: refreshListenable: AuthState.instance was removed on purpose.
+  // With it enabled, GoRouter re-ran `redirect` (and rebuilt matched
+  // routes) every time AuthState fired notifyListeners() — including
+  // mid-way through our push(LoginScreen)/pop(true) "resume action after
+  // login" flow. That caused two crashes:
+  //   1. A duplicate-page-key navigator assertion, from the auto-redirect
+  //      and our manual pop(true) both mutating the stack at once.
+  //   2. `/product/:id` getting rebuilt from its URL alone (losing the
+  //      `extra: product` it was pushed with), causing the `as Product`
+  //      cast to throw on a null extra.
+  // Without refreshListenable, `redirect` still runs on every real
+  // navigation event (push/pop/go) — which is all this callback needs.
   redirect: (context, state) {
     final loggedIn = AuthState.instance.isLoggedIn;
     final goingToAuth = state.matchedLocation == LoginScreen.routeName ||
         state.matchedLocation == SignupScreen.routeName;
 
-  
     if (loggedIn && goingToAuth) {
       return '/my-profile';
     }
@@ -115,7 +125,15 @@ final appRouter = GoRouter(
       path: '/product/:id',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
-        final product = state.extra as Product;
+        // Null-safe: if this route is ever rebuilt without `extra`
+        // (e.g. deep link, hot restart), show a fallback instead of
+        // crashing on a failed cast.
+        final product = state.extra as Product?;
+        if (product == null) {
+          return const Scaffold(
+            body: Center(child: Text('Product not found')),
+          );
+        }
         return ProductDetailScreen(product: product);
       },
     ),

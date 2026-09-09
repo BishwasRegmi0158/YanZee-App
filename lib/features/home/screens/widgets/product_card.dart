@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/product.dart';
+import 'package:yanzee_app/features/auth/screens/login_screen.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
 
@@ -30,6 +32,24 @@ class _ProductCardState extends ConsumerState<ProductCard> {
 
   void _openProductDetail() {
     context.push('/product/${widget.product.id}', extra: widget.product);
+  }
+
+  /// If the user is logged in, runs [onSuccess] immediately.
+  /// Otherwise pushes the login screen and, if login succeeds, runs
+  /// [onSuccess] once we're back here — so the original action
+  /// (add to cart / wishlist) completes automatically.
+  Future<void> _requireLogin(
+    BuildContext context,
+    VoidCallback onSuccess,
+  ) async {
+    if (AuthState.instance.isLoggedIn) {
+      onSuccess();
+      return;
+    }
+    final loggedIn = await context.push<bool>(LoginScreen.routeName);
+    if (loggedIn == true && mounted) {
+      onSuccess();
+    }
   }
 
   @override
@@ -61,10 +81,16 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                     product: product,
                     isWishlisted: isWishlisted,
                     isInCart: isInCart,
-                    onToggleWishlist: () =>
-                        ref.read(wishlistProvider.notifier).toggle(product.id),
-                    onToggleCart: () =>
-                        ref.read(cartProvider.notifier).toggle(product.id),
+                    onToggleWishlist: () => _requireLogin(
+                      context,
+                      () => ref
+                          .read(wishlistProvider.notifier)
+                          .toggle(product.id),
+                    ),
+                    onToggleCart: () => _requireLogin(
+                      context,
+                      () => ref.read(cartProvider.notifier).toggle(product.id),
+                    ),
                   ),
                 ),
                 _ProductInfo(product: product),

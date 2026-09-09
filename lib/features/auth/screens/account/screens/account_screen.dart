@@ -1,14 +1,19 @@
-// Place at: lib/features/account/screens/account_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
-import 'package:yanzee_app/features/auth/screens/order_screen.dart';
-import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart';
+import 'package:yanzee_app/data/models/auth_state.dart';
+import 'package:yanzee_app/features/auth/screens/account/screens/my_address_screen.dart';
+import 'package:yanzee_app/features/auth/screens/account/screens/my_cards_screen.dart';
+import 'package:yanzee_app/features/auth/screens/account/screens/my_orders_screen.dart';
+import 'package:yanzee_app/features/auth/screens/account/screens/my_profile_screen.dart';
+import 'package:yanzee_app/features/auth/screens/account/screens/settings_screen.dart';
 import 'package:yanzee_app/features/auth/screens/login_screen.dart';
 import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
+import 'package:yanzee_app/features/auth/screens/order_screen.dart';
+import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart';
 
+/// Merges the original Account tab (Hello header + order-progress icons)
+/// with the new My Profile/Address/Orders/Cards/Settings/Log Out list.
 class AccountScreen extends StatefulWidget {
   static const routeName = '/account';
 
@@ -41,23 +46,22 @@ class _AccountScreenState extends State<AccountScreen> {
 
   void _onAuthChanged() => setState(() {});
 
-  Future<void> _openOrders({int initialTab = 0}) async {
+  Future<void> _openOrderStages({int initialTab = 0}) async {
     final ok = await requireLogin(context);
     if (!ok || !mounted) return;
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => OrdersScreen(initialTabIndex: initialTab),
-      ),
+      MaterialPageRoute(builder: (_) => OrdersScreen(initialTabIndex: initialTab)),
     );
   }
 
-  Future<void> _openGatedSection(String label) async {
+  Future<void> _openScreen(Widget screen) async {
     final ok = await requireLogin(context);
     if (!ok || !mounted) return;
-    // TODO: navigate to the real screen for `label` (Wishlist, Addresses, ...).
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Open $label')));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
+  void _logout() {
+    AuthState.instance.logout();
   }
 
   @override
@@ -75,7 +79,7 @@ class _AccountScreenState extends State<AccountScreen> {
             const SizedBox(height: 16),
             _buildOrdersCard(),
             const SizedBox(height: 16),
-            _buildQuickLinks(),
+            _buildQuickLinks(isLoggedIn),
           ],
         ),
       ),
@@ -85,10 +89,7 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget _buildHeader(bool isLoggedIn, UserProfile? user) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
           Expanded(
@@ -96,63 +97,41 @@ class _AccountScreenState extends State<AccountScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isLoggedIn
-                      ? 'Hello, ${user!.name}!'
-                      : 'Hello, Welcome to YanZee!',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: AuthColors.textDark,
-                  ),
+                  isLoggedIn ? 'Hello, ${user!.name}!' : 'Hello, Welcome to YanZee!',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AuthColors.textDark),
                 ),
                 if (isLoggedIn) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    user!.email,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF6B6B6B),
-                    ),
-                  ),
+                  Text(user!.email, style: const TextStyle(fontSize: 13, color: Color(0xFF6B6B6B))),
                 ],
               ],
             ),
           ),
           if (!isLoggedIn) ...[
             OutlinedButton(
-              // Direct navigation to the real login screen — NOT requireLogin(),
-              // which is reserved for gating actions like Orders/Wishlist.
               onPressed: () => context.push(LoginScreen.routeName),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AuthColors.textDark,
                 side: const BorderSide(color: AuthColors.borderDefault),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: const Text('Login'),
             ),
             const SizedBox(width: 8),
             ElevatedButton(
-              // Direct navigation to the real signup screen — same reasoning.
               onPressed: () => context.push(SignupScreen.routeName),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AuthColors.submitButton,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 elevation: 0,
               ),
               child: const Text('Sign Up'),
             ),
           ] else
             IconButton(
-              icon: const Icon(
-                Icons.settings_outlined,
-                color: AuthColors.iconMuted,
-              ),
-              onPressed: () {},
+              icon: const Icon(Icons.settings_outlined, color: AuthColors.iconMuted),
+              onPressed: () => _openScreen(const SettingsScreen()),
             ),
         ],
       ),
@@ -162,30 +141,17 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget _buildOrdersCard() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'My Orders',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AuthColors.textDark,
-                ),
-              ),
+              const Text('My Orders', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AuthColors.textDark)),
               TextButton(
-                onPressed: () => _openOrders(),
-                child: const Text(
-                  'View All Orders',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF6B6B6B)),
-                ),
+                onPressed: () => _openScreen(const MyOrdersScreen()),
+                child: const Text('View All Orders', style: TextStyle(fontSize: 13, color: Color(0xFF6B6B6B))),
               ),
             ],
           ),
@@ -194,24 +160,15 @@ class _AccountScreenState extends State<AccountScreen> {
             children: List.generate(_orderStages.length, (i) {
               final (label, icon) = _orderStages[i];
               return InkWell(
-                onTap: () => _openOrders(initialTab: i),
+                onTap: () => _openOrderStages(initialTab: i),
                 borderRadius: BorderRadius.circular(10),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                   child: Column(
                     children: [
                       Icon(icon, color: AuthColors.textDark),
                       const SizedBox(height: 6),
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AuthColors.textDark,
-                        ),
-                      ),
+                      Text(label, style: const TextStyle(fontSize: 11, color: AuthColors.textDark)),
                     ],
                   ),
                 ),
@@ -223,33 +180,38 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  Widget _buildQuickLinks() {
-    const links = ['Orders', 'Wishlist', 'Addresses', 'Payment methods'];
+  Widget _buildQuickLinks(bool isLoggedIn) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
       child: Column(
         children: [
-          for (final link in links)
-            ListTile(
-              title: Text(
-                link,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AuthColors.textDark,
-                ),
-              ),
-              trailing: const Icon(
-                Icons.chevron_right,
-                color: AuthColors.iconMuted,
-              ),
-              onTap: () =>
-                  link == 'Orders' ? _openOrders() : _openGatedSection(link),
-            ),
+          _linkTile(Icons.person_outline, 'My Profile', () => _openScreen(const MyProfileScreen())),
+          _divider(),
+          _linkTile(Icons.place_outlined, 'My Address', () => _openScreen(const MyAddressScreen())),
+          _divider(),
+          _linkTile(Icons.local_shipping_outlined, 'My Orders', () => _openScreen(const MyOrdersScreen())),
+          _divider(),
+          _linkTile(Icons.credit_card_outlined, 'My Cards', () => _openScreen(const MyCardsScreen())),
+          _divider(),
+          _linkTile(Icons.settings_outlined, 'Settings', () => _openScreen(const SettingsScreen())),
+          if (isLoggedIn) ...[
+            _divider(),
+            _linkTile(Icons.logout, 'Log Out', _logout, color: const Color(0xFFE05A47)),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _divider() => const Divider(height: 1, color: Color(0xFFEDEBE7), indent: 16, endIndent: 16);
+
+  Widget _linkTile(IconData icon, String label, VoidCallback onTap, {Color? color}) {
+    final tint = color ?? AuthColors.textDark;
+    return ListTile(
+      leading: Icon(icon, color: tint, size: 21),
+      title: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: tint)),
+      trailing: Icon(Icons.chevron_right, color: AuthColors.iconMuted),
+      onTap: onTap,
     );
   }
 }

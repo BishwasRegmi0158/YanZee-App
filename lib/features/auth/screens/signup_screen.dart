@@ -26,9 +26,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _confirmPasswordController = TextEditingController();
 
   String? _gender;
-
-  // Country is stored as its ISO2 code internally; the picker shows the
-  // human-readable country name.
   String? _countryCode;
   String? _province;
   String? _district;
@@ -162,29 +159,17 @@ class _SignupScreenState extends State<SignupScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth > 850;
-
             if (!isWide) {
-              // Mobile: the form IS the screen — no floating card, no
-              // visible background peeking around it. Centered vertically
-              // when the form is short enough to fit without scrolling;
-              // scrolls normally once fields exceed the screen height.
-              return Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.only(top: 56, bottom: 24),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: IntrinsicHeight(
-                        child: Center(
-                          child: _buildFormPanel(showMobileBrand: true),
-                        ),
-                      ),
+              return SingleChildScrollView(
+                padding: const EdgeInsets.only(top: 4, bottom: 24),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Center(
+                      child: _buildFormPanel(showMobileBrand: true),
                     ),
                   ),
-                  Positioned(top: 12, left: 16, child: _buildBackButton()),
-                ],
+                ),
               );
             }
 
@@ -230,7 +215,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Widget _buildFormPanel({required bool showMobileBrand}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+      padding: const EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 8,
+        bottom: 30,
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 500),
@@ -240,10 +230,9 @@ class _SignupScreenState extends State<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!showMobileBrand) ...[
-                  _buildBackButton(),
-                  const SizedBox(height: 12),
-                ],
+                _buildBackButton(),
+                const SizedBox(height: 12),
+
                 if (showMobileBrand) ...[
                   Center(
                     child: Row(

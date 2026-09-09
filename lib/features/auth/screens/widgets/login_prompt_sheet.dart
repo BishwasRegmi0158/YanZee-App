@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 
 import 'package:yanzee_app/core/theme/auth_theme.dart';
+import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
 
 /// Shows the login sheet if the user isn't logged in yet.
@@ -63,14 +64,18 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
 
     setState(() => _isLoading = true);
 
-    // TODO: replace with your real authentication call.
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      await AuthService.login(email, password);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = e is AuthException ? e.message : 'Something went wrong. Please try again.';
+      });
+      return;
+    }
+
     if (!mounted) return;
-
-    AuthState.instance.login(
-      UserProfile(name: email.split('@').first, email: email),
-    );
-
     setState(() => _isLoading = false);
     Navigator.of(context).pop(true);
   }
@@ -105,10 +110,7 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
               const SizedBox(height: 20),
               const Text('Login required', style: AuthTextStyles.heading),
               const SizedBox(height: 6),
-              const Text(
-                'Sign in to view this section',
-                style: AuthTextStyles.subheading,
-              ),
+              const Text('Sign in to view this section', style: AuthTextStyles.subheading),
               const SizedBox(height: 20),
               if (_error != null) ...[
                 Container(

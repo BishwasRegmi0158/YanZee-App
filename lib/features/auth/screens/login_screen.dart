@@ -2,7 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
-import 'package:yanzee_app/data/models/auth_state.dart';
+import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/auth_visual_panel.dart';
 import 'signup_screen.dart';
 
@@ -50,16 +50,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: replace with your real authentication call.
-    debugPrint('Login data: {email: $email, password: $password}');
-    await Future.delayed(const Duration(milliseconds: 1000));
+    try {
+      await AuthService.login(email, password);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = e is AuthException ? e.message : 'Something went wrong. Please try again.';
+      });
+      return;
+    }
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    AuthState.instance.login(
-      UserProfile(name: email.split('@').first, email: email),
-    );
     if (context.canPop()) {
       context.pop();
     } else {
@@ -89,30 +93,18 @@ class _LoginScreenState extends State<LoginScreen> {
             final isWide = constraints.maxWidth > 850;
 
             if (!isWide) {
-              // Mobile: the form IS the screen — no floating card, no
-              // visible background peeking around it. Centered vertically
-              // so tall phones don't leave a dead gap below the content.
-              return Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.only(top: 56, bottom: 24),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: IntrinsicHeight(
-                        child: Center(
-                          child: _buildFormPanel(showMobileBrand: true),
-                        ),
-                      ),
-                    ),
+              return SingleChildScrollView(
+                padding: const EdgeInsets.only(top: 4, bottom: 24),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: _buildFormPanel(showMobileBrand: true),
                   ),
-                  Positioned(top: 12, left: 16, child: _buildBackButton()),
-                ],
+                ),
               );
             }
 
-            // Wide/desktop: keep the centered split-panel card.
             return Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(22),
@@ -154,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildFormPanel({required bool showMobileBrand}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+      padding: const EdgeInsets.only(left: 24, right: 24, top: 8, bottom: 30),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
@@ -162,10 +154,8 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!showMobileBrand) ...[
-                _buildBackButton(),
-                const SizedBox(height: 12),
-              ],
+              _buildBackButton(),
+              const SizedBox(height: 12),
               if (showMobileBrand) ...[
                 Center(
                   child: Row(
@@ -235,10 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        child: const Text(
-                          'Login',
-                          style: AuthTextStyles.tabActive,
-                        ),
+                        child: const Text('Login', style: AuthTextStyles.tabActive),
                       ),
                     ),
                     Expanded(
@@ -258,10 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
               if (_error != null) ...[
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: AuthColors.errorBackground,
                     border: Border.all(color: AuthColors.errorBorder),
@@ -269,10 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Text(
                     '⚠ $_error',
-                    style: const TextStyle(
-                      color: AuthColors.errorText,
-                      fontSize: 13,
-                    ),
+                    style: const TextStyle(color: AuthColors.errorText, fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 15),
@@ -288,11 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onChanged: (_) => setState(() => _error = null),
                 decoration: authInputDecoration(
                   hint: 'Enter your email',
-                  prefixIcon: const Icon(
-                    Icons.mail_outline,
-                    size: 18,
-                    color: AuthColors.iconMuted,
-                  ),
+                  prefixIcon: const Icon(Icons.mail_outline, size: 18, color: AuthColors.iconMuted),
                 ),
               ),
               const SizedBox(height: 15),
@@ -307,19 +284,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 onChanged: (_) => setState(() => _error = null),
                 decoration: authInputDecoration(
                   hint: 'Enter your password',
-                  prefixIcon: const Icon(
-                    Icons.lock_outline,
-                    size: 18,
-                    color: AuthColors.iconMuted,
-                  ),
+                  prefixIcon: const Icon(Icons.lock_outline, size: 18, color: AuthColors.iconMuted),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _showPassword ? Icons.visibility : Icons.visibility_off,
                       size: 18,
                       color: AuthColors.iconMuted,
                     ),
-                    onPressed: () =>
-                        setState(() => _showPassword = !_showPassword),
+                    onPressed: () => setState(() => _showPassword = !_showPassword),
                   ),
                 ),
               ),
@@ -337,10 +309,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       // TODO: navigate to your forgot-password screen.
                     },
-                    child: const Text(
-                      'Forgot password?',
-                      style: AuthTextStyles.forgotLink,
-                    ),
+                    child: const Text('Forgot password?', style: AuthTextStyles.forgotLink),
                   ),
                 ),
               ),
@@ -352,11 +321,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _isLoading ? null : _handleSubmit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AuthColors.submitButton,
-                    disabledBackgroundColor: AuthColors.submitButton
-                        .withOpacity(0.65),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    disabledBackgroundColor: AuthColors.submitButton.withOpacity(0.65),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
                   child: Text(
@@ -412,10 +378,7 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Icon(Icons.arrow_back, size: 17, color: AuthColors.textDark),
             SizedBox(width: 6),
-            Text(
-              'Back',
-              style: TextStyle(fontSize: 14, color: AuthColors.textDark),
-            ),
+            Text('Back', style: TextStyle(fontSize: 14, color: AuthColors.textDark)),
           ],
         ),
       ),
