@@ -164,7 +164,10 @@ class _CartLineItem extends ConsumerWidget {
     return productAsync.when(
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
-        child: SizedBox(height: 90, child: Center(child: CircularProgressIndicator())),
+        child: SizedBox(
+          height: 90,
+          child: Center(child: CircularProgressIndicator()),
+        ),
       ),
       error: (e, _) => const SizedBox.shrink(),
       data: (product) => Container(
@@ -223,7 +226,10 @@ class _CartLineItem extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Text(
                             '\$${product.price.toStringAsFixed(2)} each',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
                         ],
                       ),
@@ -239,7 +245,10 @@ class _CartLineItem extends ConsumerWidget {
               children: [
                 Text(
                   '\$${(product.price * quantity).toStringAsFixed(2)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 _QuantityStepper(productId: productId, quantity: quantity),
@@ -268,7 +277,10 @@ class _QuantityStepper extends ConsumerWidget {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text('$quantity', style: const TextStyle(fontWeight: FontWeight.w600)),
+          child: Text(
+            '$quantity',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
         _StepperButton(
           icon: Icons.add,
@@ -320,7 +332,7 @@ class _CartCheckoutBar extends ConsumerWidget {
       if (quantity == null) continue;
       final productAsync = ref.watch(productByIdProvider(id));
       final product = productAsync.value;
-      if (product == null) continue; // still loading or errored — skip from total
+      if (product == null) continue;
       subtotal += product.price * quantity;
       itemCount += quantity;
     }
@@ -350,28 +362,40 @@ class _CartCheckoutBar extends ConsumerWidget {
                   ),
                   Text(
                     '\$${subtotal.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: selectedIds.isEmpty ? Colors.grey.shade300 : Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                backgroundColor: selectedIds.isEmpty
+                    ? Colors.grey.shade300
+                    : Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 14,
+                ),
               ),
               onPressed: selectedIds.isEmpty
                   ? null
                   : () {
-                      // TODO: wire to checkout flow when it's built
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Checkout coming soon')),
                       );
                     },
               child: const Text(
                 'Checkout',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -390,10 +414,16 @@ class _EmptyCart extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.shopping_bag_outlined, size: 64, color: Colors.grey.shade300),
+            Icon(
+              Icons.shopping_bag_outlined,
+              size: 64,
+              color: Colors.grey.shade300,
+            ),
             const SizedBox(height: 16),
-            const Text('Your cart is empty',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text(
+              'Your cart is empty',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             Text(
               'Add products to your cart to see them here.',
@@ -404,12 +434,17 @@ class _EmptyCart extends StatelessWidget {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              onPressed: () => context.go('/home'),
+              onPressed: () => context.go('/shop'),
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Text('Browse products', style: TextStyle(color: Colors.white)),
+                child: Text(
+                  'Browse products',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
           ],

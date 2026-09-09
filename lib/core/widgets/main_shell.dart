@@ -27,7 +27,7 @@ class MainShell extends StatelessWidget {
           BottomNavigationBarItem(icon: Icon(Icons.storefront_outlined), label: 'Shop'),
           BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'Wishlist'),
           BottomNavigationBarItem(icon: Icon(Icons.shopping_bag_outlined), label: 'Cart'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Account'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'My Profile'),
         ],
       ),
     );

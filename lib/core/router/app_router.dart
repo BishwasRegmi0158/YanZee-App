@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/core/widgets/main_shell.dart';
 import 'package:yanzee_app/data/models/product.dart';
-import 'package:yanzee_app/features/account/screens/account_screen.dart';
+import 'package:yanzee_app/features/auth/screens/account_screen.dart';
+import 'package:yanzee_app/features/auth/screens/login_screen.dart';
+import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
 import 'package:yanzee_app/features/cart/screens/cart_screen.dart';
 import 'package:yanzee_app/features/home/screens/category_products_screen.dart';
 import 'package:yanzee_app/features/home/screens/home_screen.dart';
@@ -19,6 +22,20 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
+ 
+  refreshListenable: AuthState.instance,
+  redirect: (context, state) {
+    final loggedIn = AuthState.instance.isLoggedIn;
+    final goingToAuth = state.matchedLocation == LoginScreen.routeName ||
+        state.matchedLocation == SignupScreen.routeName;
+
+  
+    if (loggedIn && goingToAuth) {
+      return '/my-profile';
+    }
+
+    return null; // no redirect needed
+  },
   routes: [
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
     StatefulShellRoute.indexedStack(
@@ -82,7 +99,10 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/account',
+              // Path stays URL-safe (no space/capital); the bottom-nav
+              // label shown to the user ("My Profile") lives in MainShell
+              // and is unaffected by this.
+              path: '/my-profile',
               builder: (context, state) => const AccountScreen(),
             ),
           ],
@@ -98,6 +118,16 @@ final appRouter = GoRouter(
         final product = state.extra as Product;
         return ProductDetailScreen(product: product);
       },
+    ),
+    GoRoute(
+      path: LoginScreen.routeName,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: SignupScreen.routeName,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const SignupScreen(),
     ),
     GoRoute(
       path: '/search',

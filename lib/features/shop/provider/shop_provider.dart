@@ -64,10 +64,6 @@ class ShopState {
 
   bool get hasMore => products.length < total;
 
-  /// category/sortBy/order are applied server-side by the repository.
-  /// minPrice/maxPrice/minRating are applied here, client-side, on
-  /// whatever page of products has already been fetched — DummyJSON's
-  /// /products endpoint has no price or rating query params.
   List<Product> get filteredProducts {
     return products.where((p) {
       if (filters.minPrice != null && p.price < filters.minPrice!) {
@@ -108,14 +104,17 @@ class ShopState {
 class ShopNotifier extends Notifier<ShopState> {
   @override
   ShopState build() {
-    _loadInitial();
+    // _loadInitial() reads `state.filters` and would throw if run
+    // synchronously here, before this method returns. Future.microtask
+    // defers it to run right after build() completes and the provider
+    // is fully mounted, so reading/writing `state` inside it is safe.
+    Future.microtask(_loadInitial);
     return const ShopState();
   }
 
   ProductRepository get _repo => ref.read(productRepositoryProvider);
 
   Future<void> _loadInitial() async {
-    state = state.copyWith(isInitialLoading: true, clearError: true);
     try {
       final page = await _repo.getProducts(
         limit: shopPageSize,
@@ -158,11 +157,20 @@ class ShopNotifier extends Notifier<ShopState> {
   }
 
   Future<void> updateFilters(ShopFilters filters) async {
-    state = state.copyWith(filters: filters, skip: 0, products: []);
+    state = state.copyWith(
+      filters: filters,
+      skip: 0,
+      products: [],
+      isInitialLoading: true,
+      clearError: true,
+    );
     await _loadInitial();
   }
 
-  Future<void> refresh() => _loadInitial();
+  Future<void> refresh() async {
+    state = state.copyWith(isInitialLoading: true, clearError: true);
+    await _loadInitial();
+  }
 }
 
 final shopProvider = NotifierProvider<ShopNotifier, ShopState>(ShopNotifier.new);

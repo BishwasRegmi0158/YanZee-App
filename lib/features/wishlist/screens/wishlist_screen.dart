@@ -43,8 +43,10 @@ class _WishlistBody extends ConsumerWidget {
         .toList();
 
     final anyLoading = productAsyncs.any((p) => p.isLoading);
-    final firstError = productAsyncs
-        .firstWhere((p) => p.hasError, orElse: () => productAsyncs.first);
+    final firstError = productAsyncs.firstWhere(
+      (p) => p.hasError,
+      orElse: () => productAsyncs.first,
+    );
 
     if (anyLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -109,7 +111,7 @@ class _EmptyWishlist extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () => context.go('/home'),
+              onPressed: () => context.go('/shop'),
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: Text(
