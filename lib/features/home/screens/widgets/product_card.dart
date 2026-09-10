@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/core/widgets/add_to_cart_animator.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/features/auth/screens/login_screen.dart';
+import 'package:yanzee_app/features/cart/provider/cart_icon_key_provider.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
+import 'package:yanzee_app/features/wishlist/provider/wishlist_icon_key_provider.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
-
 
 class ProductCard extends ConsumerStatefulWidget {
   const ProductCard({super.key, required this.product});
@@ -22,6 +24,9 @@ class _ProductCardState extends ConsumerState<ProductCard> {
   static const _borderRadius = 12.0;
   static const _hoverScale = 1.03;
 
+  final GlobalKey _imageKey = GlobalKey();
+  final GlobalKey _heartButtonKey = GlobalKey();
+
   bool _isHovered = false;
 
   void _setHovered(bool value) {
@@ -34,10 +39,6 @@ class _ProductCardState extends ConsumerState<ProductCard> {
     context.push('/product/${widget.product.id}', extra: widget.product);
   }
 
-  /// If the user is logged in, runs [onSuccess] immediately.
-  /// Otherwise pushes the login screen and, if login succeeds, runs
-  /// [onSuccess] once we're back here — so the original action
-  /// (add to cart / wishlist) completes automatically.
   Future<void> _requireLogin(
     BuildContext context,
     VoidCallback onSuccess,
@@ -50,6 +51,39 @@ class _ProductCardState extends ConsumerState<ProductCard> {
     if (loggedIn == true && mounted) {
       onSuccess();
     }
+  }
+
+  void _handleToggleCart(bool isInCart) {
+    _requireLogin(context, () {
+      if (!isInCart) {
+        FlyToTargetAnimator.fly(
+          context: context,
+          startKey: _imageKey,
+          endKey: ref.read(cartIconKeyProvider),
+          child: Image.network(widget.product.imageUrl, fit: BoxFit.cover),
+        );
+      }
+      ref.read(cartProvider.notifier).toggle(widget.product.id);
+    });
+  }
+
+  void _handleToggleWishlist(bool isWishlisted) {
+    _requireLogin(context, () {
+      if (!isWishlisted) {
+        FlyToTargetAnimator.fly(
+          context: context,
+          startKey: _heartButtonKey,
+          endKey: ref.read(wishlistIconKeyProvider),
+          size: 34,
+          child: Container(
+            color: Colors.white,
+            alignment: Alignment.center,
+            child: const Icon(Icons.favorite, color: Colors.red, size: 20),
+          ),
+        );
+      }
+      ref.read(wishlistProvider.notifier).toggle(widget.product.id);
+    });
   }
 
   @override
@@ -78,19 +112,13 @@ class _ProductCardState extends ConsumerState<ProductCard> {
               children: [
                 Expanded(
                   child: _ProductImage(
+                    imageKey: _imageKey,
+                    heartButtonKey: _heartButtonKey,
                     product: product,
                     isWishlisted: isWishlisted,
                     isInCart: isInCart,
-                    onToggleWishlist: () => _requireLogin(
-                      context,
-                      () => ref
-                          .read(wishlistProvider.notifier)
-                          .toggle(product.id),
-                    ),
-                    onToggleCart: () => _requireLogin(
-                      context,
-                      () => ref.read(cartProvider.notifier).toggle(product.id),
-                    ),
+                    onToggleWishlist: () => _handleToggleWishlist(isWishlisted),
+                    onToggleCart: () => _handleToggleCart(isInCart),
                   ),
                 ),
                 _ProductInfo(product: product),
@@ -117,9 +145,10 @@ class _ProductCardState extends ConsumerState<ProductCard> {
   }
 }
 
-/// Product image with overlaid wishlist and cart toggle buttons.
 class _ProductImage extends StatelessWidget {
   const _ProductImage({
+    required this.imageKey,
+    required this.heartButtonKey,
     required this.product,
     required this.isWishlisted,
     required this.isInCart,
@@ -127,6 +156,8 @@ class _ProductImage extends StatelessWidget {
     required this.onToggleCart,
   });
 
+  final GlobalKey imageKey;
+  final GlobalKey heartButtonKey;
   final Product product;
   final bool isWishlisted;
   final bool isInCart;
@@ -139,6 +170,7 @@ class _ProductImage extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         Image.network(
+          key: imageKey,
           product.imageUrl,
           width: double.infinity,
           fit: BoxFit.cover,
@@ -151,6 +183,7 @@ class _ProductImage extends StatelessWidget {
           top: 6,
           right: 6,
           child: _IconToggleButton(
+            key: heartButtonKey,
             icon: isWishlisted ? Icons.favorite : Icons.favorite_border,
             iconColor: isWishlisted ? Colors.red : Colors.grey,
             backgroundColor: Colors.white,
@@ -172,9 +205,9 @@ class _ProductImage extends StatelessWidget {
   }
 }
 
-/// Small circular icon button used for the wishlist/cart overlays.
 class _IconToggleButton extends StatelessWidget {
   const _IconToggleButton({
+    super.key,
     required this.icon,
     required this.iconColor,
     required this.backgroundColor,
@@ -199,7 +232,6 @@ class _IconToggleButton extends StatelessWidget {
   }
 }
 
-/// Brand, name, rating, and price block shown below the product image.
 class _ProductInfo extends StatelessWidget {
   const _ProductInfo({required this.product});
 
