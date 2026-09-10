@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
+import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 
@@ -16,6 +20,7 @@ class MyProfileScreen extends StatefulWidget {
 }
 
 class _MyProfileScreenState extends State<MyProfileScreen> {
+  final ImagePicker _imagePicker = ImagePicker();
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
@@ -26,11 +31,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   String? _emailError;
   String? _phoneError;
   String? _pendingImage; // null = unchanged, '' = removed, else new URL/path
-
-  static final _emailRegex = RegExp(r'^\S+@\S+\.\S+$');
-  // Digits only (spaces/dashes stripped before checking), 7–15 digits,
-  // optional leading +. Matches most real-world phone number lengths.
-  static final _phoneRegex = RegExp(r'^\+?\d{7,15}$');
 
   @override
   void initState() {
@@ -67,28 +67,17 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   bool _validate() {
     String? emailErr;
     String? phoneErr;
-
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      emailErr = 'Email is required.';
-    } else if (!_emailRegex.hasMatch(email)) {
-      emailErr = 'Enter a valid email address.';
-    }
-
-    final rawPhone = _phoneController.text.trim();
-    final digitsOnly = rawPhone.replaceAll(RegExp(r'[\s-]'), '');
-    if (rawPhone.isEmpty) {
-      phoneErr = 'Phone number is required.';
-    } else if (!_phoneRegex.hasMatch(digitsOnly)) {
-      phoneErr = 'Enter a valid phone number (7–15 digits).';
-    }
+    final nameErr = FormValidators.name(_nameController.text);
+    emailErr = FormValidators.email(_emailController.text);
+    phoneErr = FormValidators.phone(_phoneController.text);
 
     setState(() {
+      _error = nameErr;
       _emailError = emailErr;
       _phoneError = phoneErr;
     });
 
-    return emailErr == null && phoneErr == null;
+    return nameErr == null && emailErr == null && phoneErr == null;
   }
 
   Future<void> _showPhotoOptions() async {
@@ -110,7 +99,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             if (hasImage)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Remove photo', style: TextStyle(color: Colors.red)),
+                title: const Text(
+                  'Remove photo',
+                  style: TextStyle(color: Colors.red),
+                ),
                 onTap: () => Navigator.pop(context, 'remove'),
               ),
             ListTile(
@@ -131,11 +123,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-    // TODO: wire up the `image_picker` package (add to pubspec.yaml) so
-    // this actually opens the gallery/camera. For now it simulates
-    // picking a new image so the change-photo flow can be tested and
-    // saved end-to-end; swap this line for the real picker call.
-    setState(() => _pendingImage = 'https://i.pravatar.cc/300?u=${DateTime.now().millisecondsSinceEpoch}');
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _pendingImage = picked.path);
     await _persistImageChange();
   }
 
@@ -186,7 +179,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
-        image: _pendingImage == '' ? null : (_pendingImage ?? AuthState.instance.user?.image),
+        image: _pendingImage == ''
+            ? null
+            : (_pendingImage ?? AuthState.instance.user?.image),
       );
     } catch (e) {
       if (!mounted) return;
@@ -203,9 +198,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       _isEditing = false;
       _pendingImage = null;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile updated')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Profile updated')));
   }
 
   @override
@@ -220,7 +215,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         iconTheme: const IconThemeData(color: AuthColors.textDark),
         actions: [
           IconButton(
-            icon: Icon(_isEditing ? Icons.close : Icons.edit_outlined, color: AuthColors.textDark),
+            icon: Icon(
+              _isEditing ? Icons.close : Icons.edit_outlined,
+              color: AuthColors.textDark,
+            ),
             onPressed: _isSaving ? null : _toggleEdit,
           ),
         ],
@@ -235,11 +233,18 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   CircleAvatar(
                     radius: 44,
                     backgroundColor: const Color(0xFFF0EEEA),
-                    backgroundImage: (currentImage != null && currentImage.isNotEmpty)
-                        ? NetworkImage(currentImage)
+                    backgroundImage:
+                        currentImage != null && currentImage.isNotEmpty
+                        ? (currentImage.startsWith('http')
+                              ? NetworkImage(currentImage)
+                              : FileImage(File(currentImage)) as ImageProvider)
                         : null,
                     child: (currentImage == null || currentImage.isEmpty)
-                        ? const Icon(Icons.person, size: 42, color: AuthColors.iconMuted)
+                        ? const Icon(
+                            Icons.person,
+                            size: 42,
+                            color: AuthColors.iconMuted,
+                          )
                         : null,
                   ),
                   Positioned(
@@ -251,8 +256,15 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                       child: Container(
                         width: 30,
                         height: 30,
-                        decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
-                        child: const Icon(Icons.camera_alt_outlined, size: 15, color: Colors.white),
+                        decoration: const BoxDecoration(
+                          color: Colors.black,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_outlined,
+                          size: 15,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -263,17 +275,34 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             if (_error != null) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AuthColors.errorBackground,
                   border: Border.all(color: AuthColors.errorBorder),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('⚠ $_error', style: const TextStyle(color: AuthColors.errorText, fontSize: 13)),
+                child: Text(
+                  '⚠ $_error',
+                  style: const TextStyle(
+                    color: AuthColors.errorText,
+                    fontSize: 13,
+                  ),
+                ),
               ),
               const SizedBox(height: 15),
             ],
-            _field(icon: Icons.person_outline, label: 'Name', controller: _nameController),
+            _field(
+              icon: Icons.person_outline,
+              label: 'Name',
+              controller: _nameController,
+              errorText: _error,
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
+            ),
             const SizedBox(height: 18),
             _field(
               icon: Icons.mail_outline,
@@ -305,7 +334,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   onPressed: _isSaving ? null : _save,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AuthColors.submitButton,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     elevation: 0,
                   ),
                   child: Text(
@@ -338,25 +369,38 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF9A9A9A))),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF9A9A9A)),
+              ),
               const SizedBox(height: 4),
               _isEditing
                   ? TextField(
                       controller: controller,
                       keyboardType: keyboardType,
                       onChanged: onChanged,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AuthColors.textDark),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AuthColors.textDark,
+                      ),
                       decoration: InputDecoration(
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(vertical: 6),
                         border: const UnderlineInputBorder(),
                         errorText: errorText,
-                        errorBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.red)),
+                        errorBorder: const UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.red),
+                        ),
                       ),
                     )
                   : Text(
                       controller.text.isEmpty ? '—' : controller.text,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AuthColors.textDark),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AuthColors.textDark,
+                      ),
                     ),
               const SizedBox(height: 8),
               const Divider(height: 1, color: Color(0xFFEDEBE7)),

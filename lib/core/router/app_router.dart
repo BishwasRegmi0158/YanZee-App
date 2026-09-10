@@ -7,6 +7,7 @@ import 'package:yanzee_app/features/auth/screens/account/screens/account_screen.
 import 'package:yanzee_app/features/auth/screens/login_screen.dart';
 import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
 import 'package:yanzee_app/features/cart/screens/cart_screen.dart';
+import 'package:yanzee_app/features/checkout/screens/checkout_screen.dart';
 import 'package:yanzee_app/features/home/screens/category_products_screen.dart';
 import 'package:yanzee_app/features/home/screens/home_screen.dart';
 import 'package:yanzee_app/features/home/screens/new_arrivals_screen.dart';
@@ -37,7 +38,8 @@ final appRouter = GoRouter(
   // navigation event (push/pop/go) — which is all this callback needs.
   redirect: (context, state) {
     final loggedIn = AuthState.instance.isLoggedIn;
-    final goingToAuth = state.matchedLocation == LoginScreen.routeName ||
+    final goingToAuth =
+        state.matchedLocation == LoginScreen.routeName ||
         state.matchedLocation == SignupScreen.routeName;
 
     if (loggedIn && goingToAuth) {
@@ -130,11 +132,20 @@ final appRouter = GoRouter(
         // crashing on a failed cast.
         final product = state.extra as Product?;
         if (product == null) {
-          return const Scaffold(
-            body: Center(child: Text('Product not found')),
-          );
+          return const Scaffold(body: Center(child: Text('Product not found')));
         }
         return ProductDetailScreen(product: product);
+      },
+    ),
+    GoRoute(
+      path: CheckoutScreen.routeName,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extra = state.extra;
+        final items = extra is Map<String, dynamic>
+            ? extra['items'] as List<CheckoutItem>?
+            : null;
+        return CheckoutScreen(items: items ?? const []);
       },
     ),
     GoRoute(

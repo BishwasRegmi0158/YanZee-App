@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 
 import 'package:yanzee_app/core/theme/auth_theme.dart';
+import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
 
@@ -38,8 +39,6 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
   bool _isLoading = false;
   String? _error;
 
-  static final _emailRegex = RegExp(r'^\S+@\S+\.\S+$');
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -57,8 +56,9 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
       setState(() => _error = 'Please enter your email and password.');
       return;
     }
-    if (!_emailRegex.hasMatch(email)) {
-      setState(() => _error = 'Please enter a valid email address.');
+    final emailError = FormValidators.email(email);
+    if (emailError != null) {
+      setState(() => _error = emailError);
       return;
     }
 
@@ -70,7 +70,9 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = e is AuthException ? e.message : 'Something went wrong. Please try again.';
+        _error = e is AuthException
+            ? e.message
+            : 'Something went wrong. Please try again.';
       });
       return;
     }
@@ -89,7 +91,9 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -110,12 +114,18 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
               const SizedBox(height: 20),
               const Text('Login required', style: AuthTextStyles.heading),
               const SizedBox(height: 6),
-              const Text('Sign in to view this section', style: AuthTextStyles.subheading),
+              const Text(
+                'Sign in to view this section',
+                style: AuthTextStyles.subheading,
+              ),
               const SizedBox(height: 20),
               if (_error != null) ...[
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AuthColors.errorBackground,
                     border: Border.all(color: AuthColors.errorBorder),
@@ -123,7 +133,10 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
                   ),
                   child: Text(
                     '⚠ $_error',
-                    style: const TextStyle(color: AuthColors.errorText, fontSize: 13),
+                    style: const TextStyle(
+                      color: AuthColors.errorText,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 15),
@@ -136,7 +149,11 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
                 style: AuthTextStyles.inputText,
                 decoration: authInputDecoration(
                   hint: 'Enter your email',
-                  prefixIcon: const Icon(Icons.mail_outline, size: 18, color: AuthColors.iconMuted),
+                  prefixIcon: const Icon(
+                    Icons.mail_outline,
+                    size: 18,
+                    color: AuthColors.iconMuted,
+                  ),
                 ),
               ),
               const SizedBox(height: 15),
@@ -148,14 +165,19 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
                 style: AuthTextStyles.inputText,
                 decoration: authInputDecoration(
                   hint: 'Enter your password',
-                  prefixIcon: const Icon(Icons.lock_outline, size: 18, color: AuthColors.iconMuted),
+                  prefixIcon: const Icon(
+                    Icons.lock_outline,
+                    size: 18,
+                    color: AuthColors.iconMuted,
+                  ),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _showPassword ? Icons.visibility : Icons.visibility_off,
                       size: 18,
                       color: AuthColors.iconMuted,
                     ),
-                    onPressed: () => setState(() => _showPassword = !_showPassword),
+                    onPressed: () =>
+                        setState(() => _showPassword = !_showPassword),
                   ),
                 ),
               ),
@@ -167,7 +189,9 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
                   onPressed: _isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AuthColors.submitButton,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     elevation: 0,
                   ),
                   child: Text(

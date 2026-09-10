@@ -5,6 +5,7 @@ import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/features/auth/screens/login_screen.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
+import 'package:yanzee_app/features/checkout/screens/checkout_screen.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
@@ -276,11 +277,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
 
     if (confirmed == true && mounted) {
-      // TODO: adjust '/checkout' to match your actual checkout route name
-      // (e.g. CheckoutScreen.routeName) if it differs.
       context.push(
-        '/checkout',
-        extra: {'product': product, 'quantity': quantity},
+        CheckoutScreen.routeName,
+        extra: <String, dynamic>{
+          'items': [CheckoutItem(product: product, quantity: quantity)],
+        },
       );
     }
   }
@@ -459,8 +460,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   height: 50,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isInCart ? const Color(0xFFE53935) : Colors.white,
+                      backgroundColor: isInCart
+                          ? const Color(0xFFE53935)
+                          : Colors.white,
                       foregroundColor: isInCart ? Colors.white : Colors.black,
                       elevation: 0,
                       side: BorderSide(

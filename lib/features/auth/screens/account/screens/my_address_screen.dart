@@ -1,22 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:yanzee_app/core/theme/auth_theme.dart';
-
-/// No address API exists yet (DummyJSON has none) — this screen manages
-/// addresses in local state only. Swap `_addresses` for a real
-/// repository call once there's a backend endpoint for it.
-class Address {
-  Address({
-    required this.label,
-    required this.line,
-    required this.region,
-    this.isDefault = false,
-  });
-
-  final String label;
-  final String line;
-  final String region;
-  final bool isDefault;
-}
+import 'package:yanzee_app/data/models/auth_state.dart';
+import 'package:yanzee_app/features/auth/screens/account/screens/add_shipping_address_screen.dart';
 
 class MyAddressScreen extends StatefulWidget {
   const MyAddressScreen({super.key});
@@ -26,118 +10,112 @@ class MyAddressScreen extends StatefulWidget {
 }
 
 class _MyAddressScreenState extends State<MyAddressScreen> {
-  final List<Address> _addresses = [
-    Address(
-      label: 'Home',
-      line: 'House 24, Jhamsikhel, Lalitpur',
-      region: 'Bagmati, Nepal',
-      isDefault: true,
-    ),
-    Address(
-      label: 'Work',
-      line: 'YanZee HQ, Durbar Marg',
-      region: 'Kathmandu, Nepal',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    AuthState.instance.addListener(_refresh);
+  }
 
-  Future<void> _addAddress() async {
-    final labelController = TextEditingController();
-    final lineController = TextEditingController();
-    final regionController = TextEditingController();
+  @override
+  void dispose() {
+    AuthState.instance.removeListener(_refresh);
+    super.dispose();
+  }
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add new address'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: labelController, decoration: const InputDecoration(labelText: 'Label (e.g. Home)')),
-            TextField(controller: lineController, decoration: const InputDecoration(labelText: 'Address')),
-            TextField(controller: regionController, decoration: const InputDecoration(labelText: 'City / Province')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add')),
-        ],
+  void _refresh() => setState(() {});
+
+  Future<void> _openEditor({ShippingAddress? address, int? index}) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            AddShippingAddressScreen(address: address, index: index),
       ),
     );
-
-    if (result == true && lineController.text.trim().isNotEmpty) {
-      setState(() {
-        _addresses.add(Address(
-          label: labelController.text.trim().isEmpty ? 'Address' : labelController.text.trim(),
-          line: lineController.text.trim(),
-          region: regionController.text.trim(),
-        ));
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final addresses = AuthState.instance.addresses;
     return Scaffold(
-      backgroundColor: AuthColors.pageBackground,
+      backgroundColor: const Color(0xFFF8F7F5),
       appBar: AppBar(
-        backgroundColor: AuthColors.pageBackground,
+        title: const Text('My Address'),
+        backgroundColor: const Color(0xFFF8F7F5),
+        foregroundColor: Colors.black,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AuthColors.textDark),
-        title: const Text('My Address', style: TextStyle(color: AuthColors.textDark)),
       ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            for (final address in _addresses) _addressCard(address),
-            InkWell(
-              onTap: _addAddress,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AuthColors.borderDefault, style: BorderStyle.solid),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (addresses.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 70),
+              child: Center(
+                child: Text(
+                  'No saved shipping address yet.',
+                  style: TextStyle(color: Colors.black54),
                 ),
-                alignment: Alignment.center,
-                child: const Text('+ Add new address', style: TextStyle(fontWeight: FontWeight.w600, color: AuthColors.textDark)),
               ),
             ),
-          ],
-        ),
+          for (var i = 0; i < addresses.length; i++)
+            _addressCard(addresses[i], i),
+          OutlinedButton.icon(
+            onPressed: () => _openEditor(),
+            icon: const Icon(Icons.add),
+            label: const Text('Add new address'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              side: const BorderSide(color: Colors.black26),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _addressCard(Address address) {
+  Widget _addressCard(ShippingAddress address, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEDEBE7)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE3E0DC)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(address.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AuthColors.textDark)),
-              if (address.isDefault) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(4)),
-                  child: const Text('DEFAULT', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+              Expanded(
+                child: Text(
+                  address.fullName,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ],
+              ),
+              if (address.isDefault)
+                const Chip(
+                  label: Text(
+                    'DEFAULT',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              IconButton(
+                onPressed: () => _openEditor(address: address, index: index),
+                icon: const Icon(Icons.edit_outlined, size: 19),
+              ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(address.line, style: const TextStyle(fontSize: 13, color: AuthColors.textDark)),
-          const SizedBox(height: 2),
-          Text(address.region, style: const TextStyle(fontSize: 12, color: Color(0xFF9A9A9A))),
+          Text(address.phone, style: const TextStyle(color: Colors.black54)),
+          const SizedBox(height: 8),
+          Text(address.summary),
         ],
       ),
     );

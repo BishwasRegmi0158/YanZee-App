@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
+import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/location_data.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/auth_visual_panel.dart';
@@ -33,8 +34,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
   bool _showPassword = false;
   bool _showConfirmPassword = false;
-
-  static final _emailRegex = RegExp(r'^\S+@\S+\.\S+$');
 
   List<String> get _countryNames =>
       allowedCountries.map((code) => locationData[code]!.name).toList();
@@ -107,11 +106,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
     if (_passwordController.text != _confirmPasswordController.text) {
       _showMessage('Passwords do not match');
-      return;
-    }
-
-    if (!_emailRegex.hasMatch(_emailController.text.trim())) {
-      _showMessage('Please enter a valid email address.');
       return;
     }
 
@@ -215,12 +209,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Widget _buildFormPanel({required bool showMobileBrand}) {
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 8,
-        bottom: 30,
-      ),
+      padding: const EdgeInsets.only(left: 24, right: 24, top: 8, bottom: 30),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 500),
@@ -343,9 +332,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   controller: _nameController,
                   style: AuthTextStyles.inputText,
                   decoration: authInputDecoration(hint: 'Enter your full name'),
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Full name is required'
-                      : null,
+                  validator: FormValidators.name,
                 ),
                 const SizedBox(height: 15),
 
@@ -367,9 +354,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   keyboardType: TextInputType.emailAddress,
                   style: AuthTextStyles.inputText,
                   decoration: authInputDecoration(hint: 'Enter your email'),
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Email is required'
-                      : null,
+                  validator: FormValidators.email,
                 ),
                 const SizedBox(height: 15),
 
@@ -474,8 +459,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           setState(() => _showPassword = !_showPassword),
                     ),
                   ),
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Password is required' : null,
+                  validator: FormValidators.password,
                 ),
                 const SizedBox(height: 15),
 
@@ -511,9 +495,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                   ),
-                  validator: (v) => (v == null || v.isEmpty)
-                      ? 'Please confirm your password'
-                      : null,
+                  validator: FormValidators.confirmPassword,
                 ),
                 const SizedBox(height: 23),
 

@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/auth_visual_panel.dart';
@@ -23,8 +24,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _error;
 
-  static final _emailRegex = RegExp(r'^\S+@\S+\.\S+$');
-
   @override
   void dispose() {
     _emailController.dispose();
@@ -43,8 +42,9 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if (!_emailRegex.hasMatch(email)) {
-      setState(() => _error = 'Please enter a valid email address.');
+    final emailError = FormValidators.email(email);
+    if (emailError != null) {
+      setState(() => _error = emailError);
       return;
     }
 
@@ -56,7 +56,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = e is AuthException ? e.message : 'Something went wrong. Please try again.';
+        _error = e is AuthException
+            ? e.message
+            : 'Something went wrong. Please try again.';
       });
       return;
     }
@@ -225,7 +227,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        child: const Text('Login', style: AuthTextStyles.tabActive),
+                        child: const Text(
+                          'Login',
+                          style: AuthTextStyles.tabActive,
+                        ),
                       ),
                     ),
                     Expanded(
@@ -245,7 +250,10 @@ class _LoginScreenState extends State<LoginScreen> {
               if (_error != null) ...[
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AuthColors.errorBackground,
                     border: Border.all(color: AuthColors.errorBorder),
@@ -253,7 +261,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Text(
                     '⚠ $_error',
-                    style: const TextStyle(color: AuthColors.errorText, fontSize: 13),
+                    style: const TextStyle(
+                      color: AuthColors.errorText,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 15),
@@ -269,7 +280,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 onChanged: (_) => setState(() => _error = null),
                 decoration: authInputDecoration(
                   hint: 'Enter your email',
-                  prefixIcon: const Icon(Icons.mail_outline, size: 18, color: AuthColors.iconMuted),
+                  prefixIcon: const Icon(
+                    Icons.mail_outline,
+                    size: 18,
+                    color: AuthColors.iconMuted,
+                  ),
                 ),
               ),
               const SizedBox(height: 15),
@@ -284,14 +299,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 onChanged: (_) => setState(() => _error = null),
                 decoration: authInputDecoration(
                   hint: 'Enter your password',
-                  prefixIcon: const Icon(Icons.lock_outline, size: 18, color: AuthColors.iconMuted),
+                  prefixIcon: const Icon(
+                    Icons.lock_outline,
+                    size: 18,
+                    color: AuthColors.iconMuted,
+                  ),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _showPassword ? Icons.visibility : Icons.visibility_off,
                       size: 18,
                       color: AuthColors.iconMuted,
                     ),
-                    onPressed: () => setState(() => _showPassword = !_showPassword),
+                    onPressed: () =>
+                        setState(() => _showPassword = !_showPassword),
                   ),
                 ),
               ),
@@ -309,7 +329,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       // TODO: navigate to your forgot-password screen.
                     },
-                    child: const Text('Forgot password?', style: AuthTextStyles.forgotLink),
+                    child: const Text(
+                      'Forgot password?',
+                      style: AuthTextStyles.forgotLink,
+                    ),
                   ),
                 ),
               ),
@@ -321,8 +344,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _isLoading ? null : _handleSubmit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AuthColors.submitButton,
-                    disabledBackgroundColor: AuthColors.submitButton.withOpacity(0.65),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    disabledBackgroundColor: AuthColors.submitButton
+                        .withOpacity(0.65),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     elevation: 0,
                   ),
                   child: Text(
@@ -378,7 +404,10 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Icon(Icons.arrow_back, size: 17, color: AuthColors.textDark),
             SizedBox(width: 6),
-            Text('Back', style: TextStyle(fontSize: 14, color: AuthColors.textDark)),
+            Text(
+              'Back',
+              style: TextStyle(fontSize: 14, color: AuthColors.textDark),
+            ),
           ],
         ),
       ),

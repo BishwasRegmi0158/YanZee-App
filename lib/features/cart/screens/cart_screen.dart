@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
+import 'package:yanzee_app/features/checkout/screens/checkout_screen.dart';
 import 'package:yanzee_app/features/home/providers/product_provider.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
@@ -386,9 +387,22 @@ class _CartCheckoutBar extends ConsumerWidget {
               onPressed: selectedIds.isEmpty
                   ? null
                   : () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Checkout coming soon')),
-                      );
+                      final items = <CheckoutItem>[];
+                      for (final id in selectedIds) {
+                        final product = ref.read(productByIdProvider(id)).value;
+                        final quantity = cartMap[id];
+                        if (product != null && quantity != null) {
+                          items.add(
+                            CheckoutItem(product: product, quantity: quantity),
+                          );
+                        }
+                      }
+                      if (items.isNotEmpty) {
+                        context.push(
+                          CheckoutScreen.routeName,
+                          extra: <String, dynamic>{'items': items},
+                        );
+                      }
                     },
               child: const Text(
                 'Checkout',
