@@ -72,8 +72,10 @@ class ShopState {
       if (filters.maxPrice != null && p.price > filters.maxPrice!) {
         return false;
       }
-      if (filters.minRating != null && p.rating < filters.minRating!) {
-        return false;
+      if (filters.minRating != null) {
+       
+        final displayedRating = double.parse(p.rating.toStringAsFixed(1));
+        if (displayedRating < filters.minRating!) return false;
       }
       return true;
     }).toList();
@@ -104,10 +106,6 @@ class ShopState {
 class ShopNotifier extends Notifier<ShopState> {
   @override
   ShopState build() {
-    // _loadInitial() reads `state.filters` and would throw if run
-    // synchronously here, before this method returns. Future.microtask
-    // defers it to run right after build() completes and the provider
-    // is fully mounted, so reading/writing `state` inside it is safe.
     Future.microtask(_loadInitial);
     return const ShopState();
   }
@@ -129,6 +127,7 @@ class ShopNotifier extends Notifier<ShopState> {
         total: page.total,
         isInitialLoading: false,
       );
+      await _autoFillIfNeeded();
     } catch (e) {
       state = state.copyWith(isInitialLoading: false, error: e);
     }
@@ -151,9 +150,20 @@ class ShopNotifier extends Notifier<ShopState> {
         total: page.total,
         isLoadingMore: false,
       );
+      await _autoFillIfNeeded();
     } catch (e) {
       state = state.copyWith(isLoadingMore: false, error: e);
     }
+  }
+
+
+  Future<void> _autoFillIfNeeded() async {
+    final hasActiveResultFilter =
+        state.filters.minRating != null || state.filters.maxPrice != null;
+    if (!hasActiveResultFilter) return;
+    if (state.filteredProducts.length >= shopPageSize) return;
+    if (!state.hasMore || state.isLoadingMore) return;
+    await loadMore();
   }
 
   Future<void> updateFilters(ShopFilters filters) async {

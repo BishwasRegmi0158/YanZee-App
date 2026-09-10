@@ -40,6 +40,12 @@ class CartNotifier extends Notifier<Map<int, int>> {
     }
     state = updated;
   }
+
+  /// Wipes the cart. Call this on logout (and on login) so one account's
+  /// cart never leaks into another account's session.
+  void clear() {
+    state = {};
+  }
 }
 
 final cartProvider = NotifierProvider<CartNotifier, Map<int, int>>(CartNotifier.new);

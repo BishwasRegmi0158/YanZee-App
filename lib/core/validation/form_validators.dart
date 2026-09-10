@@ -1,7 +1,9 @@
 class FormValidators {
   static final _nameRegex = RegExp(r"^[a-zA-Z][a-zA-Z\s.'-]*$");
   static final _emailRegex = RegExp(r'^\S+@\S+\.\S+$');
-  static final _phoneRegex = RegExp(r'^\+?\d{7,15}$');
+
+
+  static final _nepaliMobileRegex = RegExp(r'^9(6|7|8)\d{8}$');
 
   static String? name(String? value) {
     final name = value?.trim() ?? '';
@@ -19,12 +21,42 @@ class FormValidators {
   }
 
   static String? phone(String? value) {
-    final rawPhone = value?.trim() ?? '';
-    final digitsOnly = rawPhone.replaceAll(RegExp(r'[\s-]'), '');
-    if (rawPhone.isEmpty) return 'Phone number is required.';
-    return _phoneRegex.hasMatch(digitsOnly)
-        ? null
-        : 'Enter a valid phone number (7–15 digits).';
+    final raw = value?.trim() ?? '';
+    if (raw.isEmpty) return 'Phone number is required.';
+
+    var digits = raw.replaceAll(RegExp(r'[\s-]'), '');
+
+   
+    if (digits.startsWith('+977')) {
+      digits = digits.substring(4);
+    } else if (digits.startsWith('977') && digits.length > 10) {
+      digits = digits.substring(3);
+    }
+
+    if (!RegExp(r'^\d+$').hasMatch(digits)) {
+      return 'Phone number must contain digits only.';
+    }
+    if (digits.length != 10) {
+      return 'Enter a 10-digit mobile number.';
+    }
+    if (!_nepaliMobileRegex.hasMatch(digits)) {
+      return 'Enter a valid Ncell, NTC (Namaste) or Smart Cell number.';
+    }
+    return null;
+  }
+
+  
+  static String? carrierFor(String? value) {
+    final digits = (value ?? '').replaceAll(RegExp(r'[\s-]'), '');
+    if (digits.length != 10) return null;
+    final prefix = digits.substring(0, 3);
+    const ncell = {'980', '981', '982', '986'};
+    const ntc = {'974', '975', '976', '984', '985'};
+    const smartCell = {'961', '962', '988'};
+    if (ncell.contains(prefix)) return 'Ncell';
+    if (ntc.contains(prefix)) return 'NTC (Namaste)';
+    if (smartCell.contains(prefix)) return 'Smart Cell';
+    return null;
   }
 
   static String? required(String? value) {

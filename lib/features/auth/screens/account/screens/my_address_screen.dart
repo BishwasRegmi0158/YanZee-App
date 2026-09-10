@@ -77,47 +77,65 @@ class _MyAddressScreenState extends State<MyAddressScreen> {
     );
   }
 
-  Widget _addressCard(ShippingAddress address, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E0DC)),
+ Widget _addressCard(ShippingAddress address, int index) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(
+        color: address.isDefault ? Colors.black : const Color(0xFFE3E0DC),
+        width: address.isDefault ? 1.4 : 1,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  address.fullName,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
+    ),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: address.isDefault
+          ? null
+          : () => AuthState.instance.setDefaultAddress(index),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    address.fullName,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-              if (address.isDefault)
-                const Chip(
-                  label: Text(
-                    'DEFAULT',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                if (address.isDefault)
+                  const Chip(
+                    label: Text(
+                      'PRIMARY',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                    ),
                   ),
+                IconButton(
+                  onPressed: () => _openEditor(address: address, index: index),
+                  icon: const Icon(Icons.edit_outlined, size: 19),
                 ),
-              IconButton(
-                onPressed: () => _openEditor(address: address, index: index),
-                icon: const Icon(Icons.edit_outlined, size: 19),
+              ],
+            ),
+            Text(address.phone, style: const TextStyle(color: Colors.black54)),
+            const SizedBox(height: 8),
+            Text(address.summary),
+            if (!address.isDefault) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Tap to set as primary address',
+                style: TextStyle(fontSize: 12, color: Colors.black38),
               ),
             ],
-          ),
-          Text(address.phone, style: const TextStyle(color: Colors.black54)),
-          const SizedBox(height: 8),
-          Text(address.summary),
-        ],
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

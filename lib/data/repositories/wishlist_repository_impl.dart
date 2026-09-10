@@ -11,4 +11,7 @@ class InMemoryWishlistRepository implements WishlistRepository {
 
   @override
   Future<void> remove(int productId) async => _ids.remove(productId);
+
+  @override
+  Future<void> clear() async => _ids.clear();
 }

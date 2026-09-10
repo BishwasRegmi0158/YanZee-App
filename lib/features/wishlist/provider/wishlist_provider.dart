@@ -2,9 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yanzee_app/data/repositories/wishlist_repository.dart';
 import 'package:yanzee_app/data/repositories/wishlist_repository_impl.dart';
 
-
 final wishlistRepositoryProvider = Provider<WishlistRepository>((ref) {
-  return InMemoryWishlistRepository(); // swap this one line later
+  return InMemoryWishlistRepository(); 
 });
 
 class WishlistNotifier extends Notifier<Set<int>> {
@@ -23,6 +22,11 @@ class WishlistNotifier extends Notifier<Set<int>> {
   }
 
   bool isWishlisted(int productId) => state.contains(productId);
+  Future<void> clear() async {
+    final repo = ref.read(wishlistRepositoryProvider);
+    await repo.clear();
+    state = {};
+  }
 }
 
 final wishlistProvider = NotifierProvider<WishlistNotifier, Set<int>>(

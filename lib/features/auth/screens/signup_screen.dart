@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
@@ -7,18 +8,20 @@ import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/location_data.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/auth_visual_panel.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/searchable_select_field.dart';
+import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
+import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
 import 'login_screen.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   static const routeName = '/signup';
 
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
@@ -129,6 +132,9 @@ class _SignupScreenState extends State<SignupScreen> {
         email: payload['email'] as String,
       ),
     );
+
+    ref.read(cartProvider.notifier).clear();
+    ref.read(wishlistProvider.notifier).clear();
     _showMessage('Account created successfully!');
     context.go('/my-profile');
   }

@@ -20,6 +20,7 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
   late final TextEditingController _city;
   late final TextEditingController _street;
   String? _province;
+  bool _setAsDefault = true;
 
   static const _provinces = [
     'Koshi',
@@ -40,6 +41,8 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
     _city = TextEditingController(text: address?.city ?? '');
     _street = TextEditingController(text: address?.street ?? '');
     _province = address?.province;
+    _setAsDefault = address?.isDefault ??
+        (AuthState.instance.addresses.isEmpty);
   }
 
   @override
@@ -64,7 +67,7 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
       province: _province!,
       city: _city.text.trim(),
       street: _street.text.trim(),
-      isDefault: AuthState.instance.addresses.isEmpty,
+      isDefault: _setAsDefault,
     );
     if (widget.index == null) {
       AuthState.instance.saveAddress(address);
@@ -123,7 +126,23 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
             ),
             _field('City / District', _city, 'e.g. Kathmandu'),
             _field('Street / Area', _street, 'House no, street, area'),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _setAsDefault,
+              onChanged: (value) =>
+                  setState(() => _setAsDefault = value ?? true),
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text(
+                'Set as primary address',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text(
+                'This is the address that will be used at checkout',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               height: 52,
               child: ElevatedButton(

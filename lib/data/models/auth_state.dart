@@ -90,9 +90,7 @@ class UserProfile {
     );
   }
 
-  /// Builds a profile from a DummyJSON /auth/login or /auth/me response.
-  /// [overrideEmail] keeps whatever email the person actually typed in
-  /// the login form, since DummyJSON's seeded account has its own email.
+  
   factory UserProfile.fromDummyJson(
     Map<String, dynamic> json, {
     String? overrideEmail,
@@ -157,34 +155,38 @@ class AuthState extends ChangeNotifier {
   }
 
   void saveAddress(ShippingAddress address) {
-    final normalized = address.copyWith(
-      isDefault: _addresses.isEmpty || address.isDefault,
-    );
-    if (normalized.isDefault) {
-      _addresses
-        ..clear()
-        ..add(normalized);
-    } else {
-      _addresses.add(normalized);
+    final shouldBeDefault = _addresses.isEmpty || address.isDefault;
+    if (shouldBeDefault) {
+      for (var i = 0; i < _addresses.length; i++) {
+        if (_addresses[i].isDefault) {
+          _addresses[i] = _addresses[i].copyWith(isDefault: false);
+        }
+      }
     }
+    _addresses.add(address.copyWith(isDefault: shouldBeDefault));
     notifyListeners();
   }
 
   void updateAddress(int index, ShippingAddress address) {
     if (index < 0 || index >= _addresses.length) return;
-    final updated = address.copyWith(
-      isDefault: index == 0 || address.isDefault,
-    );
-    _addresses[index] = updated;
+    if (address.isDefault) {
+      for (var i = 0; i < _addresses.length; i++) {
+        if (i != index && _addresses[i].isDefault) {
+          _addresses[i] = _addresses[i].copyWith(isDefault: false);
+        }
+      }
+    }
+    _addresses[index] = address;
+    if (!_addresses.any((a) => a.isDefault) && _addresses.isNotEmpty) {
+      _addresses[0] = _addresses[0].copyWith(isDefault: true);
+    }
     notifyListeners();
   }
 
-  void removeAddress(int index) {
+  void setDefaultAddress(int index) {
     if (index < 0 || index >= _addresses.length) return;
-    _addresses.removeAt(index);
-    if (_addresses.isNotEmpty &&
-        !_addresses.any((address) => address.isDefault)) {
-      _addresses[0] = _addresses[0].copyWith(isDefault: true);
+    for (var i = 0; i < _addresses.length; i++) {
+      _addresses[i] = _addresses[i].copyWith(isDefault: i == index);
     }
     notifyListeners();
   }

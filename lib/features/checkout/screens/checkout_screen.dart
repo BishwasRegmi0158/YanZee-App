@@ -4,6 +4,7 @@ import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/add_shipping_address_screen.dart';
+import 'package:yanzee_app/features/auth/screens/account/screens/choose_address_screen.dart';
 import 'package:yanzee_app/features/checkout/models/checkout_totals.dart';
 import 'package:yanzee_app/features/checkout/widgets/cost_summary.dart';
 
@@ -107,17 +108,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _showPayment = true);
   }
 
-  Future<void> _editSavedAddress() async {
-    if (_savedAddress == null) return;
-    final index = AuthState.instance.addresses.indexOf(_savedAddress!);
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AddShippingAddressScreen(
-          address: _savedAddress,
-          index: index < 0 ? 0 : index,
-        ),
-      ),
-    );
+  Future<void> _chooseAddress() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ChooseAddressScreen()));
     if (mounted) setState(_loadSavedAddress);
   }
 
@@ -250,7 +244,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               style: const TextStyle(fontSize: 13, height: 1.4),
             ),
           ),
-          TextButton(onPressed: _editSavedAddress, child: const Text('Edit')),
+          TextButton(onPressed: _chooseAddress, child: const Text('Change')),
         ],
       ),
     );
