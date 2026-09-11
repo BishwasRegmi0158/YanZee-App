@@ -10,4 +10,8 @@ class AppColors {
   static const Color textGray = Color(0xFF8A8A8A);
   static const Color accentRed = Color(0xFFE63946);
   static const Color loadingGray = Color(0xFFBFBFBF);
+  
+ // seller dashboard
+  static const Color gold = Color(0xFFB8894F);
+static const Color ink = Color(0xFF0D0D0F);
 }

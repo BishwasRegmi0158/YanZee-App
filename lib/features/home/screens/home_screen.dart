@@ -75,8 +75,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
+                    // TODO(dev-only): remove once the real "Become a Seller"
+                   
                     GestureDetector(
-                      onTap: () => context.push('/shop'),
+                      onTap: () => context.go('/seller-dashboard'),
                       child: Container(
                         height: 46,
                         width: 46,
@@ -85,7 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
-                          Icons.tune,
+                          Icons.storefront_outlined,
                           color: Colors.white,
                           size: 20,
                         ),
@@ -95,7 +97,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
-
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
             // ---------------- Category pills (All / Fashion / Beauty ...) ----------------

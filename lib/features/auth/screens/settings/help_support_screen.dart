@@ -7,7 +7,7 @@ import 'package:yanzee_app/core/theme/auth_theme.dart';
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key});
 
-  static const String _supportNumber = '+9779800000000';
+  static const String _supportNumber = '+9779860573543';
 
   Future<void> _callSupport(BuildContext context) async {
     final uri = Uri(scheme: 'tel', path: _supportNumber);

@@ -14,6 +14,11 @@ import 'package:yanzee_app/features/home/screens/new_arrivals_screen.dart';
 import 'package:yanzee_app/features/home/screens/product_detail_screen.dart';
 import 'package:yanzee_app/features/home/screens/search_screen.dart';
 import 'package:yanzee_app/features/home/screens/widgets/categories_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/seller_dashboard_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/seller_orders_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/seller_products_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/seller_store_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/seller_shell.dart';
 import 'package:yanzee_app/features/shop/screens/shop_screen.dart';
 import 'package:yanzee_app/features/splash/screens/splash_screen.dart';
 import 'package:yanzee_app/features/wishlist/screens/wishlist_screen.dart';
@@ -23,19 +28,6 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
-
-  // NOTE: refreshListenable: AuthState.instance was removed on purpose.
-  // With it enabled, GoRouter re-ran `redirect` (and rebuilt matched
-  // routes) every time AuthState fired notifyListeners() — including
-  // mid-way through our push(LoginScreen)/pop(true) "resume action after
-  // login" flow. That caused two crashes:
-  //   1. A duplicate-page-key navigator assertion, from the auto-redirect
-  //      and our manual pop(true) both mutating the stack at once.
-  //   2. `/product/:id` getting rebuilt from its URL alone (losing the
-  //      `extra: product` it was pushed with), causing the `as Product`
-  //      cast to throw on a null extra.
-  // Without refreshListenable, `redirect` still runs on every real
-  // navigation event (push/pop/go) — which is all this callback needs.
   redirect: (context, state) {
     final loggedIn = AuthState.instance.isLoggedIn;
     final goingToAuth =
@@ -121,6 +113,46 @@ final appRouter = GoRouter(
         ),
         // duplicate '/shop' branch removed — was causing a 6th branch
         // against a 5-tab bottom nav
+      ],
+    ),
+    // --- Seller Studio shell (temporary, no auth gate yet) ---
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return SellerShell(navigationShell: navigationShell);
+      },
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/seller-dashboard',
+              builder: (context, state) => const SellerDashboardScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/seller-products',
+              builder: (context, state) => const SellerProductsScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/seller-orders',
+              builder: (context, state) => const SellerOrdersScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/seller-store',
+              builder: (context, state) => const SellerStoreScreen(),
+            ),
+          ],
+        ),
       ],
     ),
     GoRoute(
