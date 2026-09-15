@@ -12,6 +12,7 @@ class SellerRepository {
   Future<List<SellerOrder>> getAllOrders() async {
     final carts = await _api.fetchCarts(limit: 50); // dummyjson's real max
     const statuses = ['New', 'Processing', 'Ready', 'On its way', 'Delivered', 'Declined'];
+    const paymentMethods = ['Cash on Delivery', 'eSewa', 'Card']; // placeholder — no real field in dummyjson
     final now = DateTime.now();
 
     final orders = await Future.wait(carts.asMap().entries.map((entry) async {
@@ -35,16 +36,21 @@ class SellerRepository {
       final productImageUrl = firstProduct != null
           ? (firstProduct['thumbnail'] as String? ?? '')
           : '';
+      // Qty of the displayed line item, not the whole cart.
+      final lineQty = firstProduct != null
+          ? (firstProduct['quantity'] ?? 1) as int
+          : (cart['totalQuantity'] ?? 1) as int;
 
       return SellerOrder(
         id: '${cart['id']}', // no leading '#' — the widget adds it where needed
         customerName: customerName,
         date: DateTime(now.year, now.month, now.day).subtract(Duration(days: i * 9)),
-        itemCount: (cart['totalQuantity'] ?? 1) as int,
+        itemCount: lineQty,
         total: (cart['total'] ?? 0).toDouble(),
         status: statuses[i % statuses.length],
         productName: productName,
         productImageUrl: productImageUrl,
+        paymentMethod: paymentMethods[i % paymentMethods.length],
       );
     }));
 

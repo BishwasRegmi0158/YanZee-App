@@ -9,8 +9,14 @@ import 'package:yanzee_app/features/seller/widgets/order_status_badge.dart';
 class RecentOrdersCard extends StatelessWidget {
   final List<SellerOrder> orders;
   final int totalCount; // pass the full order count, orders can be just the preview slice
+  final void Function(SellerOrder order)? onOrderTap;
 
-  const RecentOrdersCard({super.key, required this.orders, required this.totalCount});
+  const RecentOrdersCard({
+    super.key,
+    required this.orders,
+    required this.totalCount,
+    this.onOrderTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -53,53 +59,57 @@ class RecentOrdersCard extends StatelessWidget {
               separatorBuilder: (_, __) => const Divider(height: 20),
               itemBuilder: (context, index) {
                 final order = orders[index];
-                return Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: order.productImageUrl.isNotEmpty
-                          ? Image.network(
-                              order.productImageUrl,
-                              width: 44,
-                              height: 44,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                return InkWell(
+                  onTap: onOrderTap == null ? null : () => onOrderTap!(order),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: order.productImageUrl.isNotEmpty
+                            ? Image.network(
+                                order.productImageUrl,
+                                width: 44,
+                                height: 44,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 44,
+                                  height: 44,
+                                  color: Colors.grey.shade200,
+                                ),
+                              )
+                            : Container(
                                 width: 44,
                                 height: 44,
                                 color: Colors.grey.shade200,
+                                child: const Icon(Icons.inventory_2_outlined, size: 18, color: AppColors.textGray),
                               ),
-                            )
-                          : Container(
-                              width: 44,
-                              height: 44,
-                              color: Colors.grey.shade200,
-                              child: const Icon(Icons.inventory_2_outlined, size: 18, color: AppColors.textGray),
-                            ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(order.productName.isNotEmpty ? order.productName : 'Order #${order.id}',
+                                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                            const SizedBox(height: 2),
+                            Text('${order.customerName} · ${dateFmt.format(order.date)}',
+                                style: const TextStyle(fontSize: 11.5, color: AppColors.textGray)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(order.productName.isNotEmpty ? order.productName : 'Order #${order.id}',
-                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
-                          const SizedBox(height: 2),
-                          Text('${order.customerName} · ${dateFmt.format(order.date)}',
-                              style: const TextStyle(fontSize: 11.5, color: AppColors.textGray)),
+                          Text('\$${order.total.toStringAsFixed(0)}',
+                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.ink)),
+                          const SizedBox(height: 4),
+                          OrderStatusBadge(status: order.status),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('\$${order.total.toStringAsFixed(0)}',
-                            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.ink)),
-                        const SizedBox(height: 4),
-                        OrderStatusBadge(status: order.status),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),

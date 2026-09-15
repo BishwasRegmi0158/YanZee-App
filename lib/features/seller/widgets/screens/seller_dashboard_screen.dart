@@ -8,6 +8,7 @@ import 'package:yanzee_app/features/seller/widgets/chart_card.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_dashboard_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/stat_card.dart';
 import 'package:yanzee_app/features/seller/widgets/recent_orders_card.dart';
+import 'package:yanzee_app/features/seller/widgets/order_detail_sheet.dart';
 
 class SellerDashboardScreen extends ConsumerWidget {
   const SellerDashboardScreen({super.key});
@@ -253,6 +254,7 @@ class SellerDashboardScreen extends ConsumerWidget {
               RecentOrdersCard(
                 orders: stats.recentOrders,
                 totalCount: stats.totalOrders,
+                onOrderTap: (order) => showOrderDetailSheet(context, ref, order),
               ),
             ],
           ),

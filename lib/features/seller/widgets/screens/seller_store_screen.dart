@@ -1,18 +1,92 @@
-
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/seller_store_provider.dart';
 
-class SellerStoreScreen extends StatelessWidget {
+class SellerStoreScreen extends ConsumerWidget {
   const SellerStoreScreen({super.key});
 
+  Future<void> _pickLogo(WidgetRef ref) async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null) {
+      ref.read(sellerStoreProvider.notifier).updateLogo(File(picked.path));
+    }
+  }
+
+  Future<void> _editField({
+    required BuildContext context,
+    required String label,
+    required String currentValue,
+    required void Function(String) onSave,
+    int maxLines = 1,
+  }) async {
+    final controller = TextEditingController(text: currentValue == 'Not set' ? '' : currentValue);
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Edit $label', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              maxLines: maxLines,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Enter $label',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 14)),
+                onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+                child: const Text('Save', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null && result.isNotEmpty) {
+      onSave(result);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(sellerStoreProvider);
+    final notifier = ref.read(sellerStoreProvider.notifier);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F5F2),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7F5F2),
         elevation: 0,
-        title: const Text('Store', style: TextStyle(fontFamily: AppFonts.brand, fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text('Store',
+            style: TextStyle(fontFamily: AppFonts.brand, fontSize: 22, color: Colors.black, fontWeight: FontWeight.bold)),
+        actions: [
+          TextButton(
+            onPressed: () => context.push('/seller-profile'),
+            child: const Text('Preview as customer', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -20,50 +94,116 @@ class SellerStoreScreen extends StatelessWidget {
           Center(
             child: Stack(
               children: [
-                const CircleAvatar(radius: 42, backgroundColor: Colors.white, child: Icon(Icons.storefront, size: 36)),
+                CircleAvatar(
+                  radius: 42,
+                  backgroundColor: Colors.white,
+                  backgroundImage: store.logoImage != null ? FileImage(store.logoImage!) : null,
+                  child: store.logoImage == null ? const Icon(Icons.storefront, size: 36) : null,
+                ),
                 Positioned(
-                  bottom: 0, right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
-                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: () => _pickLogo(ref),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          _tile(Icons.storefront_outlined, 'Store name', 'YanZee Atelier'),
-          _tile(Icons.description_outlined, 'Description', 'Handmade Nepali crafts & textiles'),
-          _tile(Icons.location_on_outlined, 'Pickup address', 'Not set'),
-          _tile(Icons.phone_outlined, 'Contact number', 'Not set'),
-          _tile(Icons.percent_outlined, 'Return policy', '7-day returns'),
+          _tile(
+            context,
+            Icons.storefront_outlined,
+            'Store name',
+            store.name,
+            onEdit: (v) => notifier.updateField(name: v),
+          ),
+          _tile(
+            context,
+            Icons.description_outlined,
+            'Description',
+            store.description,
+            onEdit: (v) => notifier.updateField(description: v),
+            maxLines: 3,
+          ),
+          _tile(
+            context,
+            Icons.location_on_outlined,
+            'Pickup address',
+            store.pickupAddress,
+            onEdit: (v) => notifier.updateField(pickupAddress: v),
+          ),
+          _tile(
+            context,
+            Icons.phone_outlined,
+            'Contact number',
+            store.contactNumber,
+            onEdit: (v) => notifier.updateField(contactNumber: v),
+          ),
+          _tile(
+            context,
+            Icons.percent_outlined,
+            'Return policy',
+            store.returnPolicy,
+            onEdit: (v) => notifier.updateField(returnPolicy: v),
+          ),
         ],
       ),
     );
   }
 
-  Widget _tile(IconData icon, String label, String value) {
+  Widget _tile(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value, {
+    required void Function(String) onEdit,
+    int maxLines = 1,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.shade200)),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.black87),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => _editField(
+            context: context,
+            label: label,
+            currentValue: value,
+            onSave: onEdit,
+            maxLines: maxLines,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
               children: [
-                Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                Icon(icon, size: 20, color: Colors.black87),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      const SizedBox(height: 2),
+                      Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.grey),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: Colors.grey),
-        ],
+        ),
       ),
     );
   }

@@ -1,5 +1,3 @@
-
-
 enum ProductStatus { active, draft, outOfStock }
 
 extension ProductStatusX on ProductStatus {
@@ -11,7 +9,6 @@ extension ProductStatusX on ProductStatus {
 }
 
 const kSellerCategories = ['Fashion', 'Beauty', 'Fragrance', 'Accessories'];
-
 
 String _mapToSellerCategory(String rawCategory) {
   final c = rawCategory.toLowerCase();
@@ -58,7 +55,6 @@ class SellerProduct {
     this.options = const [],
   });
 
-  
   bool get isActive => status == ProductStatus.active;
 
   factory SellerProduct.fromJson(Map<String, dynamic> json) {
@@ -107,9 +103,10 @@ class SellerOrder {
   final DateTime date;
   final int itemCount;
   final double total;
-  final String status; 
+  final String status;
   final String productName;
   final String productImageUrl;
+  final String paymentMethod; // placeholder until backend provides real payment data
 
   const SellerOrder({
     required this.id,
@@ -120,12 +117,14 @@ class SellerOrder {
     required this.status,
     this.productName = '',
     this.productImageUrl = '',
+    this.paymentMethod = 'Cash on Delivery',
   });
 
   SellerOrder copyWith({
     String? status,
     String? productName,
     String? productImageUrl,
+    String? paymentMethod,
   }) =>
       SellerOrder(
         id: id,
@@ -136,5 +135,6 @@ class SellerOrder {
         status: status ?? this.status,
         productName: productName ?? this.productName,
         productImageUrl: productImageUrl ?? this.productImageUrl,
+        paymentMethod: paymentMethod ?? this.paymentMethod,
       );
 }
