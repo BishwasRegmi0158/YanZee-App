@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/data/models/seller_models.dart';
@@ -50,7 +51,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           content: Row(
             children: [
               const Icon(
-                Icons.check_circle_outline,
+                Iconsax.tick_circle,
                 color: AppColors.gold,
                 size: 20,
               ),
@@ -65,12 +66,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           ),
           backgroundColor: AppColors.ink,
           behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(
-            16,
-            0,
-            16,
-            90,
-          ), // clears the bottom nav bar
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -160,7 +156,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                           vertical: 12,
                         ),
                       ),
-                      icon: const Icon(Icons.add, size: 18),
+                      icon: const Icon(Iconsax.add, size: 18),
                       label: const Text('Add'),
                     ),
                   ],
@@ -171,7 +167,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                   decoration: InputDecoration(
                     hintText: 'Search products',
                     prefixIcon: const Icon(
-                      Icons.search,
+                      Iconsax.search_normal_1,
                       size: 20,
                       color: AppColors.textGray,
                     ),
@@ -200,7 +196,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                       child: Column(
                         children: [
                           Icon(
-                            Icons.inventory_2_outlined,
+                            Iconsax.box,
                             size: 44,
                             color: Colors.grey.shade400,
                           ),
@@ -344,10 +340,10 @@ class _ProductCard extends StatelessWidget {
           const SizedBox(width: 4),
           Column(
             children: [
-              _CircleIconButton(icon: Icons.edit_outlined, onTap: onEdit),
+              _CircleIconButton(icon: Iconsax.edit_2, onTap: onEdit),
               const SizedBox(height: 8),
               _CircleIconButton(
-                icon: Icons.delete_outline,
+                icon: Iconsax.trash,
                 iconColor: Colors.red,
                 onTap: onDelete,
               ),
@@ -363,7 +359,7 @@ class _ProductCard extends StatelessWidget {
     height: 56,
     color: Colors.grey.shade100,
     child: const Icon(
-      Icons.image_not_supported_outlined,
+      Iconsax.gallery_slash,
       color: AppColors.textGray,
     ),
   );

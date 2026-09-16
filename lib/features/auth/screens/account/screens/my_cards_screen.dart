@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/data/models/cards_state.dart';
 
@@ -107,7 +108,7 @@ class _MyCardsScreenState extends State<MyCardsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 40),
                 child: Column(
                   children: const [
-                    Icon(Icons.credit_card_off_outlined, size: 44, color: AuthColors.iconMuted),
+                    Icon(Iconsax.card, size: 44, color: AuthColors.iconMuted),
                     SizedBox(height: 10),
                     Text('No cards saved yet', style: TextStyle(fontWeight: FontWeight.w700, color: AuthColors.textDark)),
                   ],
@@ -143,7 +144,7 @@ class _MyCardsScreenState extends State<MyCardsScreen> {
         decoration: BoxDecoration(color: Colors.red.shade400, borderRadius: BorderRadius.circular(14)),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete_outline, color: Colors.white),
+        child: const Icon(Iconsax.trash, color: Colors.white),
       ),
       onDismissed: (_) => CardsState.instance.removeCard(card.last4),
       child: Container(

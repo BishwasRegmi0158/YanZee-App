@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/constants/categories.dart';
 import 'package:yanzee_app/features/shop/provider/shop_provider.dart';
 
@@ -9,7 +10,7 @@ Future<void> showFilterSheet(BuildContext context, WidgetRef ref) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    useSafeArea: true, // keeps the sheet clear of the status bar/notch
+    useSafeArea: true, 
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -23,7 +24,7 @@ Future<void> showFilterSheet(BuildContext context, WidgetRef ref) {
 class _FilterSheetContent extends ConsumerStatefulWidget {
   final ShopFilters initial;
   final List<dynamic>
-  loadedProducts; // List<Product>, kept loose here to avoid an extra import cycle
+  loadedProducts; 
 
   const _FilterSheetContent({
     required this.initial,
@@ -129,7 +130,7 @@ class _FilterSheetContentState extends ConsumerState<_FilterSheetContent> {
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Iconsax.close_circle),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -226,7 +227,7 @@ class _FilterSheetContentState extends ConsumerState<_FilterSheetContent> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           icon: Icon(
-                            star <= _minRating ? Icons.star : Icons.star_border,
+                            star <= _minRating ? Iconsax.star1 : Iconsax.star,
                             color: const Color(0xFFE53935),
                             size: 26,
                           ),
@@ -343,8 +344,6 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-/// Bordered row: label + trailing radio circle, matching the "Sort by" list
-/// in the design (selected row gets a black border, filled radio dot).
 class _SortTile extends StatelessWidget {
   final String label;
   final bool selected;
@@ -384,7 +383,7 @@ class _SortTile extends StatelessWidget {
                 ),
               ),
               Icon(
-                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                selected ? Iconsax.tick_circle5 : Iconsax.record_circle,
                 color: selected ? Colors.black : Colors.grey.shade400,
                 size: 20,
               ),

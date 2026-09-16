@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/features/auth/screens/settings/about_screen.dart';
 import 'package:yanzee_app/features/auth/screens/settings/help_support_screen.dart';
@@ -40,7 +41,7 @@ class SettingsScreen extends StatelessWidget {
       children: [
         ListTile(
           title: Text(label, style: const TextStyle(fontSize: 15, color: AuthColors.textDark)),
-          trailing: const Icon(Icons.chevron_right, color: AuthColors.iconMuted),
+          trailing: const Icon(Iconsax.arrow_right_3, color: AuthColors.iconMuted),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => destination)),
         ),
         const Divider(height: 1, color: Color(0xFFEDEBE7), indent: 16, endIndent: 16),

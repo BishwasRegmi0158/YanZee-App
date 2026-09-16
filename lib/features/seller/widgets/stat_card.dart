@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
 
 class StatCard extends StatelessWidget {
   final String label;
@@ -31,16 +30,27 @@ class StatCard extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(label.toUpperCase(),
-                  style: const TextStyle(fontSize: 11, color: AppColors.textGray, letterSpacing: 0.5)),
+    
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.ink.withOpacity(0.62),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  )),
             ],
           ),
           const SizedBox(height: 10),
           Text(value,
               style: const TextStyle(
-                  fontFamily: AppFonts.brand, fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.ink)),
+                  fontFamily: 'Arial', fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.ink)),
           if (subtext != null) ...[
             const SizedBox(height: 4),
-            Text(subtext!, style: TextStyle(fontSize: 12, color: subtextColor ?? AppColors.textGray)),
+            Text(subtext!,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: subtextColor ?? AppColors.ink.withOpacity(0.55),
+                )),
           ],
         ],
       ),

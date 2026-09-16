@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/features/home/screens/widgets/product_card.dart';
 import 'package:yanzee_app/features/shop/provider/shop_provider.dart';
 import 'package:yanzee_app/features/shop/widgets/filter_sheet.dart';
@@ -44,7 +45,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         title: const Text('Shop'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.tune),
+            icon: const Icon(Iconsax.setting_4),
             onPressed: () => showFilterSheet(context, ref),
           ),
         ],

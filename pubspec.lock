@@ -181,10 +181,10 @@ packages:
     dependency: "direct main"
     description:
       name: fl_chart
-      sha256: "74959b99b92b9eebeed1a4049426fd67c4abc3c5a0f4d12e2877097d6a11ae08"
+      sha256: b938f77d042cbcd822936a7a359a7235bad8bd72070de1f827efc2cc297ac888
       url: "https://pub.dev"
     source: hosted
-    version: "0.69.2"
+    version: "1.2.0"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -272,6 +272,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  iconsax:
+    dependency: "direct main"
+    description:
+      name: iconsax
+      sha256: fb0144c61f41f3f8a385fadc27783ea9f5359670be885ed7f35cef32565d5228
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.8"
   image_picker:
     dependency: "direct main"
     description:
@@ -464,6 +472,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.2.1"
+  phosphor_icons:
+    dependency: "direct main"
+    description:
+      name: phosphor_icons
+      sha256: "0f32a6c6a7bbadb2e42cba15ec103dcd23dfa47137f17a6f5b5a078081ac55f8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.1"
   plugin_platform_interface:
     dependency: transitive
     description:

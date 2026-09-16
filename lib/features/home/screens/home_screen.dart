@@ -63,11 +63,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.search, color: Colors.grey, size: 20),
+                              Icon(Icons.search, color: AppColors.ink, size: 20),
                               SizedBox(width: 8),
                               Text(
                                 'Search products, brands...',
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: AppColors.ink,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ],
                           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/data/models/orders_state.dart';
 
@@ -57,7 +58,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.local_shipping_outlined, size: 48, color: AuthColors.iconMuted),
+            const Icon(Iconsax.truck, size: 48, color: AuthColors.iconMuted),
             const SizedBox(height: 12),
             const Text('No orders yet', style: TextStyle(fontWeight: FontWeight.w700, color: AuthColors.textDark)),
             const SizedBox(height: 6),

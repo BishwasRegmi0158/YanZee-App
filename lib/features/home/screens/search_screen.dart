@@ -20,6 +20,11 @@ class SearchScreen extends ConsumerWidget {
           autofocus: true,
           decoration: const InputDecoration(
             hintText: 'Search products, brands...',
+            hintStyle: TextStyle(
+              color: Colors.black87,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
             border: InputBorder.none,
           ),
           onChanged: (value) =>

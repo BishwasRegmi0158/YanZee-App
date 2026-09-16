@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
 import 'package:yanzee_app/features/checkout/screens/checkout_screen.dart';
 import 'package:yanzee_app/features/home/providers/product_provider.dart';
+import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -452,7 +453,12 @@ class _EmptyCart extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () => context.go('/shop'),
+              onPressed: () async {
+                final loggedIn = await requireLogin(context);
+                if (loggedIn && context.mounted) {
+                  context.go('/home');
+                }
+              },
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: Text(

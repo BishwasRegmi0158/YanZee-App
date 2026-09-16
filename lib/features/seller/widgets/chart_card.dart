@@ -49,12 +49,18 @@ class ChartCard extends StatelessWidget {
           const SizedBox(height: 2),
           Padding(
             padding: const EdgeInsets.only(left: 11),
-            child: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textGray)),
+            child: Text(subtitle,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.ink.withOpacity(0.55),
+                )),
           ),
           const SizedBox(height: 18),
           SizedBox(height: 200, child: child),
         ],
       ),
+      
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
@@ -31,11 +32,11 @@ class AccountScreen extends ConsumerStatefulWidget {
 
 class _AccountScreenState extends ConsumerState<AccountScreen> {
   static const _orderStages = [
-    ('To Pay', Icons.receipt_long_outlined),
-    ('To Ship', Icons.inventory_2_outlined),
-    ('To Receive', Icons.local_shipping_outlined),
-    ('To Review', Icons.rate_review_outlined),
-    ('Returns', Icons.assignment_return_outlined),
+    ('To Pay', Iconsax.receipt_1),
+    ('To Ship', Iconsax.box),
+    ('To Receive', Iconsax.truck),
+    ('To Review', Iconsax.edit),
+    ('Returns', Iconsax.receipt_item),
   ];
 
   final ImagePicker _imagePicker = ImagePicker();
@@ -71,16 +72,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
-  /// Logs the account out AND clears cart/wishlist state, so the next
-  /// person to log in on this device doesn't inherit someone else's items.
+
   void _logout() {
     AuthState.instance.logout();
     ref.read(cartProvider.notifier).clear();
     ref.read(wishlistProvider.notifier).clear();
   }
 
-  /// Profile photo always starts blank (no default placeholder image) —
-  /// the person picks one from their gallery whenever they want.
+
   Future<void> _pickProfileImage() async {
     final picked = await _imagePicker.pickImage(
       source: ImageSource.gallery,
@@ -98,7 +97,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         image: picked.path,
       );
     } catch (_) {
-      // Non-fatal — the person can retry by tapping the avatar again.
+     
     }
     if (!mounted) return;
     setState(() => _isUpdatingPhoto = false);
@@ -227,7 +226,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   )
                 : (!hasImage
                       ? const Icon(
-                          Icons.person,
+                          Iconsax.profile_circle,
                           size: 46,
                           color: AuthColors.iconMuted,
                         )
@@ -244,7 +243,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.camera_alt_outlined,
+                Iconsax.camera,
                 size: 14,
                 color: Colors.white,
               ),
@@ -273,7 +272,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.place_outlined, size: 18, color: AuthColors.textDark),
+                  Icon(Iconsax.location, size: 18, color: AuthColors.textDark),
                   SizedBox(width: 8),
                   Text(
                     'Primary Address',
@@ -307,7 +306,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.phone, size: 13, color: Color(0xFF9A9A9A)),
+              const Icon(Iconsax.call, size: 13, color: Color(0xFF9A9A9A)),
               const SizedBox(width: 6),
               Text(
                 address.phone,
@@ -397,38 +396,38 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       child: Column(
         children: [
           _linkTile(
-            Icons.person_outline,
+            Iconsax.user,
             'My Profile',
             () => _openScreen(const MyProfileScreen()),
           ),
           _divider(),
           _linkTile(
-            Icons.place_outlined,
+            Iconsax.location,
             'My Address',
             () => _openScreen(const MyAddressScreen()),
           ),
           _divider(),
           _linkTile(
-            Icons.local_shipping_outlined,
+            Iconsax.truck,
             'My Orders',
             () => _openScreen(const MyOrdersScreen()),
           ),
           _divider(),
           _linkTile(
-            Icons.credit_card_outlined,
+            Iconsax.card,
             'My Cards',
             () => _openScreen(const MyCardsScreen()),
           ),
           _divider(),
           _linkTile(
-            Icons.settings_outlined,
+            Iconsax.setting_2,
             'Settings',
             () => _openScreen(const SettingsScreen()),
           ),
           if (isLoggedIn) ...[
             _divider(),
             _linkTile(
-              Icons.logout,
+              Iconsax.logout,
               'Log Out',
               _logout,
               color: const Color(0xFFE05A47),
@@ -463,7 +462,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           color: tint,
         ),
       ),
-      trailing: Icon(Icons.chevron_right, color: AuthColors.iconMuted),
+      trailing: const Icon(Iconsax.arrow_right_3, color: AuthColors.iconMuted),
       onTap: onTap,
     );
   }

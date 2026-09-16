@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/features/home/providers/product_provider.dart';
 import 'package:yanzee_app/features/home/screens/widgets/product_card.dart';
+import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
 
 class WishlistScreen extends ConsumerWidget {
@@ -111,7 +112,12 @@ class _EmptyWishlist extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () => context.go('/shop'),
+              onPressed: () async {
+                final loggedIn = await requireLogin(context);
+                if (loggedIn && context.mounted) {
+                  context.go('/home');
+                }
+              },
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: Text(

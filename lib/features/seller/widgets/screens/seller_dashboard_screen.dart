@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/features/seller/widgets/chart_card.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_dashboard_provider.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/seller_dashboard_visit_provider.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/seller_store_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/stat_card.dart';
 import 'package:yanzee_app/features/seller/widgets/recent_orders_card.dart';
 import 'package:yanzee_app/features/seller/widgets/order_detail_sheet.dart';
@@ -16,9 +19,11 @@ class SellerDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(sellerDashboardProvider);
+    final store = ref.watch(sellerStoreProvider); // NEW: live store data
+    final visitCount = ref.watch(sellerDashboardVisitProvider); // NEW: bumps on tab revisit
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F5F2),
+      backgroundColor: AppColors.homeBackground,
       body: SafeArea(
         child: statsAsync.when(
           loading: () => const Center(
@@ -27,9 +32,13 @@ class SellerDashboardScreen extends ConsumerWidget {
           error: (err, _) =>
               Center(child: Text('Failed to load dashboard: $err')),
           data: (stats) => ListView(
+            key: ValueKey(visitCount), // NEW: forces rebuild -> replays chart animations
             padding: const EdgeInsets.all(16),
             children: [
-              _Header(onBuyerView: () => context.go('/home')),
+              _Header(
+                storeName: store.name, // NEW: reactive instead of hardcoded
+                onBuyerView: () => context.go('/home'),
+              ),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -102,9 +111,12 @@ class SellerDashboardScreen extends ConsumerWidget {
                               padding: const EdgeInsets.only(top: 6),
                               child: Text(
                                 stats.revenueTrend[i].month,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.textGray,
+                                // was fontSize 10, AppColors.textGray — too
+                                // faint to read comfortably.
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.ink.withOpacity(0.55),
                                 ),
                               ),
                             );
@@ -138,7 +150,7 @@ class SellerDashboardScreen extends ConsumerWidget {
                       },
                       touchTooltipData: LineTouchTooltipData(
                         getTooltipColor: (touchedSpot) => AppColors.ink,
-                        tooltipRoundedRadius: 10,
+                        tooltipBorderRadius: BorderRadius.circular(10),
                         tooltipPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
@@ -189,6 +201,9 @@ class SellerDashboardScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  key: ValueKey('revenue-chart-$visitCount'),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.easeInOutCubic,
                 ),
               ),
               const SizedBox(height: 16),
@@ -223,14 +238,58 @@ class SellerDashboardScreen extends ConsumerWidget {
                               padding: const EdgeInsets.only(top: 6),
                               child: Text(
                                 stats.monthlyOrders[i].month,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.textGray,
+                                // was fontSize 10, AppColors.textGray — too
+                                // faint to read comfortably.
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.ink.withOpacity(0.55),
                                 ),
                               ),
                             );
                           },
                         ),
+                      ),
+                    ),
+                    // NEW: clean tooltip matching the revenue chart, instead
+                    // of fl_chart's default plain gray box.
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (group) => AppColors.ink,
+                        tooltipBorderRadius: BorderRadius.circular(10),
+                        tooltipMargin: 8,
+                        tooltipPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        fitInsideHorizontally: true,
+                        fitInsideVertically: true,
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          final i = group.x;
+                          final month = (i >= 0 && i < stats.monthlyOrders.length)
+                              ? stats.monthlyOrders[i].month
+                              : '';
+                          final count = rod.toY.round();
+                          return BarTooltipItem(
+                            '$month\n',
+                            const TextStyle(
+                              color: AppColors.textGray,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: '$count ${count == 1 ? 'order' : 'orders'}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                     barGroups: [
@@ -265,38 +324,44 @@ class SellerDashboardScreen extends ConsumerWidget {
 }
 
 class _Header extends StatelessWidget {
+  final String storeName; // NEW
   final VoidCallback onBuyerView;
-  const _Header({required this.onBuyerView});
+  const _Header({required this.storeName, required this.onBuyerView});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'SELLER STUDIO',
-              style: TextStyle(
-                fontSize: 11,
-                letterSpacing: 1.2,
-                color: AppColors.gold,
-                fontWeight: FontWeight.w600,
+        Expanded( // NEW: prevents long store names from overflowing the row
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'SELLER STUDIO',
+                style: TextStyle(
+                  fontSize: 11,
+                  letterSpacing: 1.2,
+                  color: AppColors.gold,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            const Text(
-              'YanZee Atelier',
-              style: TextStyle(
-                fontFamily: AppFonts.brand,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: AppColors.ink,
+              const SizedBox(height: 2),
+              Text(
+                storeName, // was the hardcoded 'YanZee Atelier'
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: AppFonts.brand,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.ink,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(width: 12),
         OutlinedButton.icon(
           onPressed: onBuyerView,
           style: OutlinedButton.styleFrom(
@@ -307,7 +372,7 @@ class _Header extends StatelessWidget {
             ),
           ),
           icon: const Icon(
-            Icons.storefront_outlined,
+            Iconsax.shop, // was Icons.storefront_outlined
             size: 16,
             color: AppColors.gold,
           ),

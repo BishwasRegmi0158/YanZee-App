@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_store_provider.dart';
@@ -98,7 +99,7 @@ class SellerStoreScreen extends ConsumerWidget {
                   radius: 42,
                   backgroundColor: Colors.white,
                   backgroundImage: store.logoImage != null ? FileImage(store.logoImage!) : null,
-                  child: store.logoImage == null ? const Icon(Icons.storefront, size: 36) : null,
+                  child: store.logoImage == null ? const Icon(Iconsax.shop, size: 36) : null,
                 ),
                 Positioned(
                   bottom: 0,
@@ -108,7 +109,7 @@ class SellerStoreScreen extends ConsumerWidget {
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
-                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                      child: const Icon(Iconsax.camera, color: Colors.white, size: 14),
                     ),
                   ),
                 ),
@@ -118,14 +119,14 @@ class SellerStoreScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           _tile(
             context,
-            Icons.storefront_outlined,
+            Iconsax.shop,
             'Store name',
             store.name,
             onEdit: (v) => notifier.updateField(name: v),
           ),
           _tile(
             context,
-            Icons.description_outlined,
+            Iconsax.document_text,
             'Description',
             store.description,
             onEdit: (v) => notifier.updateField(description: v),
@@ -133,21 +134,21 @@ class SellerStoreScreen extends ConsumerWidget {
           ),
           _tile(
             context,
-            Icons.location_on_outlined,
+            Iconsax.location,
             'Pickup address',
             store.pickupAddress,
             onEdit: (v) => notifier.updateField(pickupAddress: v),
           ),
           _tile(
             context,
-            Icons.phone_outlined,
+            Iconsax.call,
             'Contact number',
             store.contactNumber,
             onEdit: (v) => notifier.updateField(contactNumber: v),
           ),
           _tile(
             context,
-            Icons.percent_outlined,
+            Iconsax.percentage_square,
             'Return policy',
             store.returnPolicy,
             onEdit: (v) => notifier.updateField(returnPolicy: v),
@@ -199,7 +200,7 @@ class SellerStoreScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.grey),
+                const Icon(Iconsax.arrow_right_3, color: Colors.grey, size: 18),
               ],
             ),
           ),

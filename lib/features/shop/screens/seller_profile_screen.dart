@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
@@ -32,7 +33,7 @@ class SellerProfileScreen extends ConsumerWidget {
               radius: 42,
               backgroundColor: Colors.white,
               backgroundImage: store.logoImage != null ? FileImage(store.logoImage!) : null,
-              child: store.logoImage == null ? const Icon(Icons.storefront, size: 36) : null,
+              child: store.logoImage == null ? const Icon(Iconsax.shop, size: 36) : null,
             ),
           ),
           const SizedBox(height: 12),
@@ -45,7 +46,7 @@ class SellerProfileScreen extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star, color: AppColors.gold, size: 16),
+                const Icon(Iconsax.star1, color: AppColors.gold, size: 16),
                 const SizedBox(width: 4),
                 Text('${avg.toStringAsFixed(1)} · ${reviews.length} reviews',
                     style: const TextStyle(fontSize: 12.5, color: AppColors.textGray)),
@@ -65,9 +66,9 @@ class SellerProfileScreen extends ConsumerWidget {
               children: [
                 Text(store.description, style: const TextStyle(fontSize: 13.5)),
                 const Divider(height: 24),
-                _infoRow(Icons.location_on_outlined, store.pickupAddress),
+                _infoRow(Iconsax.location, store.pickupAddress),
                 const SizedBox(height: 8),
-                _infoRow(Icons.percent_outlined, store.returnPolicy),
+                _infoRow(Iconsax.percentage_square, store.returnPolicy),
               ],
             ),
           ),

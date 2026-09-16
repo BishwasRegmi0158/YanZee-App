@@ -1,17 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 
-/// "My Profile" — shows name/email/phone read-only, with an Edit button
-/// (top-right pencil) that turns the rows into editable, validated
-/// fields. The avatar's camera badge is always visible/tappable —
-/// independent of edit mode — so changing/removing the photo doesn't
-/// require entering edit mode first.
+
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
 
@@ -30,7 +27,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   String? _error;
   String? _emailError;
   String? _phoneError;
-  String? _pendingImage; // null = unchanged, '' = removed, else new URL/path
+  String? _pendingImage; 
 
   @override
   void initState() {
@@ -92,13 +89,13 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
+              leading: const Icon(Iconsax.gallery),
               title: const Text('Choose new photo'),
               onTap: () => Navigator.pop(context, 'pick'),
             ),
             if (hasImage)
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                leading: const Icon(Iconsax.trash, color: Colors.red),
                 title: const Text(
                   'Remove photo',
                   style: TextStyle(color: Colors.red),
@@ -106,7 +103,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                 onTap: () => Navigator.pop(context, 'remove'),
               ),
             ListTile(
-              leading: const Icon(Icons.close),
+              leading: const Icon(Iconsax.close_circle),
               title: const Text('Cancel'),
               onTap: () => Navigator.pop(context, null),
             ),
@@ -137,9 +134,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     _persistImageChange();
   }
 
-  /// If the person isn't in the edit form, a photo change saves
-  /// immediately (no separate "Save" step needed just for the photo).
-  /// If they're mid-edit, it's folded into the normal Save Changes tap.
+
   Future<void> _persistImageChange() async {
     if (_isEditing) return;
     setState(() => _isSaving = true);
@@ -151,8 +146,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         image: _pendingImage == '' ? null : _pendingImage,
       );
     } catch (_) {
-      // Non-fatal — the picked image still shows locally even if the
-      // save call fails; the person can retry from the same menu.
+     
     }
     if (!mounted) return;
     setState(() {
@@ -216,7 +210,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         actions: [
           IconButton(
             icon: Icon(
-              _isEditing ? Icons.close : Icons.edit_outlined,
+              _isEditing ? Iconsax.close_circle : Iconsax.edit_2,
               color: AuthColors.textDark,
             ),
             onPressed: _isSaving ? null : _toggleEdit,
@@ -241,7 +235,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                         : null,
                     child: (currentImage == null || currentImage.isEmpty)
                         ? const Icon(
-                            Icons.person,
+                            Iconsax.profile_circle,
                             size: 42,
                             color: AuthColors.iconMuted,
                           )
@@ -261,7 +255,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
-                          Icons.camera_alt_outlined,
+                          Iconsax.camera,
                           size: 15,
                           color: Colors.white,
                         ),
@@ -295,7 +289,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               const SizedBox(height: 15),
             ],
             _field(
-              icon: Icons.person_outline,
+              icon: Iconsax.user,
               label: 'Name',
               controller: _nameController,
               errorText: _error,
@@ -305,7 +299,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             ),
             const SizedBox(height: 18),
             _field(
-              icon: Icons.mail_outline,
+              icon: Iconsax.sms,
               label: 'Email',
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
@@ -316,7 +310,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             ),
             const SizedBox(height: 18),
             _field(
-              icon: Icons.phone_outlined,
+              icon: Iconsax.call,
               label: 'Phone Number',
               controller: _phoneController,
               keyboardType: TextInputType.phone,

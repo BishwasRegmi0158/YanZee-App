@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/widgets/add_to_cart_animator.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/product.dart';
@@ -78,7 +79,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
           child: Container(
             color: Colors.white,
             alignment: Alignment.center,
-            child: const Icon(Icons.favorite, color: Colors.red, size: 20),
+            child: const Icon(Iconsax.heart5, color: Colors.red, size: 20),
           ),
         );
       }
@@ -176,7 +177,7 @@ class _ProductImage extends StatelessWidget {
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             color: Colors.grey.shade200,
-            child: const Icon(Icons.image_not_supported_outlined),
+            child: const Icon(Iconsax.gallery_slash),
           ),
         ),
         Positioned(
@@ -184,7 +185,7 @@ class _ProductImage extends StatelessWidget {
           right: 6,
           child: _IconToggleButton(
             key: heartButtonKey,
-            icon: isWishlisted ? Icons.favorite : Icons.favorite_border,
+            icon: isWishlisted ? Iconsax.heart5 : Iconsax.heart,
             iconColor: isWishlisted ? Colors.red : Colors.grey,
             backgroundColor: Colors.white,
             onTap: onToggleWishlist,
@@ -194,7 +195,7 @@ class _ProductImage extends StatelessWidget {
           bottom: 6,
           right: 6,
           child: _IconToggleButton(
-            icon: isInCart ? Icons.check : Icons.add_shopping_cart_outlined,
+            icon: isInCart ? Iconsax.tick_square5 : Iconsax.shopping_cart,
             iconColor: isInCart ? Colors.white : Colors.grey,
             backgroundColor: isInCart ? const Color(0xFFE53935) : Colors.white,
             onTap: onToggleCart,
@@ -258,7 +259,7 @@ class _ProductInfo extends StatelessWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.star, size: 12, color: Colors.red),
+              const Icon(Iconsax.star1, size: 12, color: Colors.red),
               const SizedBox(width: 2),
               Text(
                 product.rating.toStringAsFixed(1),

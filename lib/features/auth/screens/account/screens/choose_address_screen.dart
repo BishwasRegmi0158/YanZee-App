@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/add_shipping_address_screen.dart';
 
@@ -66,7 +67,7 @@ class _ChooseAddressScreenState extends State<ChooseAddressScreen> {
             _addressTile(addresses[i], i),
           OutlinedButton.icon(
             onPressed: _addNew,
-            icon: const Icon(Icons.add),
+            icon: const Icon(Iconsax.add),
             label: const Text('Add new address'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.black,
@@ -102,8 +103,8 @@ class _ChooseAddressScreenState extends State<ChooseAddressScreen> {
             children: [
               Icon(
                 address.isDefault
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_off,
+                    ? Iconsax.tick_circle5
+                    : Iconsax.record_circle,
                 color: address.isDefault ? Colors.black : Colors.black38,
               ),
               const SizedBox(width: 12),

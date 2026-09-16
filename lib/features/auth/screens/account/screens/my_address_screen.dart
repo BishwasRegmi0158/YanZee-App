@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/add_shipping_address_screen.dart';
 
@@ -61,7 +62,7 @@ class _MyAddressScreenState extends State<MyAddressScreen> {
             _addressCard(addresses[i], i),
           OutlinedButton.icon(
             onPressed: () => _openEditor(),
-            icon: const Icon(Icons.add),
+            icon: const Icon(Iconsax.add),
             label: const Text('Add new address'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.black,
@@ -118,7 +119,7 @@ class _MyAddressScreenState extends State<MyAddressScreen> {
                   ),
                 IconButton(
                   onPressed: () => _openEditor(address: address, index: index),
-                  icon: const Icon(Icons.edit_outlined, size: 19),
+                  icon: const Icon(Iconsax.edit_2, size: 19),
                 ),
               ],
             ),
