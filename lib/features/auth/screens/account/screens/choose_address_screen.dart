@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:yanzee_app/core/navigation/full_screen_nav.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/add_shipping_address_screen.dart';
 
@@ -31,9 +32,7 @@ class _ChooseAddressScreenState extends State<ChooseAddressScreen> {
   }
 
   Future<void> _addNew() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddShippingAddressScreen()),
-    );
+    await pushFullScreen(context, const AddShippingAddressScreen());
     // The newly added address is already the default (see AddShippingAddressScreen),
     // so once it comes back we can just close the picker too.
     if (mounted) Navigator.of(context).pop();

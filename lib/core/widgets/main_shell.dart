@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
+import 'package:yanzee_app/core/provider/main_tab_provider.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/account_screen.dart';
 import 'package:yanzee_app/features/cart/provider/cart_icon_key_provider.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
@@ -31,6 +32,11 @@ class _MainShellState extends ConsumerState<MainShell> {
         CustomNavBarScreen(screen: AccountScreen()),
       ];
 
+  void _selectTab(int index) {
+    setState(() => _controller.index = index);
+    ref.read(mainTabIndexProvider.notifier).state = index;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartIconKey = ref.watch(cartIconKeyProvider);
@@ -38,6 +44,13 @@ class _MainShellState extends ConsumerState<MainShell> {
     final cartCount =
         ref.watch(cartProvider).values.fold<int>(0, (a, b) => a + b);
     final wishlistCount = ref.watch(wishlistProvider).length;
+
+
+    ref.listen<int>(mainTabIndexProvider, (previous, next) {
+      if (next != _controller.index) {
+        setState(() => _controller.index = next);
+      }
+    });
 
     return PersistentTabView.custom(
       context,
@@ -50,11 +63,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         wishlistCount: wishlistCount,
         cartIconKey: cartIconKey,
         wishlistIconKey: wishlistIconKey,
-        onItemSelected: (index) {
-          setState(() {
-            _controller.index = index;
-          });
-        },
+        onItemSelected: _selectTab,
       ),
       navBarHeight: 64,
       backgroundColor: Colors.white,
@@ -99,11 +108,9 @@ class _MainNavBar extends StatelessWidget {
     _NavItem(activeIcon: Iconsax.shop5, inactiveIcon: Iconsax.shop, label: 'Shop'),
     _NavItem(activeIcon: Iconsax.heart5, inactiveIcon: Iconsax.heart, label: 'Wishlist'),
     _NavItem(activeIcon: Iconsax.shopping_cart5, inactiveIcon: Iconsax.shopping_cart, label: 'Cart'),
-    // Fixed: Iconsax.user5 doesn't exist in this package and rendered blank.
     _NavItem(activeIcon: Iconsax.profile_circle5, inactiveIcon: Iconsax.profile_circle, label: 'Profile'),
   ];
 
-  // Decrease/increase this to control icon-label gap directly.
   static const double _iconLabelGap = 2;
 
   @override

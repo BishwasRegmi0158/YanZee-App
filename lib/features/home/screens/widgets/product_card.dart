@@ -195,9 +195,9 @@ class _ProductImage extends StatelessWidget {
           bottom: 6,
           right: 6,
           child: _IconToggleButton(
-            icon: isInCart ? Iconsax.tick_square5 : Iconsax.shopping_cart,
-            iconColor: isInCart ? Colors.white : Colors.grey,
-            backgroundColor: isInCart ? const Color(0xFFE53935) : Colors.white,
+            icon: isInCart ? Iconsax.shopping_cart5 : Iconsax.shopping_cart,
+            iconColor: isInCart ? Colors.red : Colors.grey,
+            backgroundColor: Colors.white,
             onTap: onToggleCart,
           ),
         ),

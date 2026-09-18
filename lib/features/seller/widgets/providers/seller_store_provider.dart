@@ -20,10 +20,14 @@ class SellerStoreNotifier extends StateNotifier<SellerStore> {
       returnPolicy: returnPolicy,
     );
   }
-
-  void updateLogo(File image) {
-    state = state.copyWith(logoImage: image);
+void updateLogo(File? logoFile) {
+  if (logoFile == null) {
+    state = state.copyWith(clearLogo: true);
+  } else {
+    state = state.copyWith(logoImage: logoFile);
   }
+}
+
 }
 
 final sellerStoreProvider = StateNotifierProvider<SellerStoreNotifier, SellerStore>((ref) {

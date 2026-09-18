@@ -578,35 +578,30 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   }
 
   Widget _buildBackButton() {
-    return InkWell(
+  return Transform.translate(
+    offset: const Offset(-8, 0),
+    child: InkWell(
       onTap: _goBack,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AuthColors.borderDefault),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+      borderRadius: BorderRadius.circular(8),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.arrow_back, size: 17, color: AuthColors.textDark),
+            Icon(Icons.arrow_back, size: 20, color: AuthColors.textDark),
             SizedBox(width: 6),
             Text(
               'Back',
-              style: TextStyle(fontSize: 14, color: AuthColors.textDark),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AuthColors.textDark,
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

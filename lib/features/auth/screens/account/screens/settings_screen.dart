@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:yanzee_app/core/navigation/full_screen_nav.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/features/auth/screens/settings/about_screen.dart';
 import 'package:yanzee_app/features/auth/screens/settings/help_support_screen.dart';
 import 'package:yanzee_app/features/auth/screens/settings/language_screen.dart';
 import 'package:yanzee_app/features/auth/screens/settings/notifications_screen.dart';
 import 'package:yanzee_app/features/auth/screens/settings/privacy_security_screen.dart';
-
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -42,7 +42,7 @@ class SettingsScreen extends StatelessWidget {
         ListTile(
           title: Text(label, style: const TextStyle(fontSize: 15, color: AuthColors.textDark)),
           trailing: const Icon(Iconsax.arrow_right_3, color: AuthColors.iconMuted),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => destination)),
+          onTap: () => pushFullScreen(context, destination),
         ),
         const Divider(height: 1, color: Color(0xFFEDEBE7), indent: 16, endIndent: 16),
       ],

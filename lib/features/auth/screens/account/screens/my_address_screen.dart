@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:yanzee_app/core/navigation/full_screen_nav.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/add_shipping_address_screen.dart';
 
@@ -26,11 +27,9 @@ class _MyAddressScreenState extends State<MyAddressScreen> {
   void _refresh() => setState(() {});
 
   Future<void> _openEditor({ShippingAddress? address, int? index}) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            AddShippingAddressScreen(address: address, index: index),
-      ),
+    await pushFullScreen(
+      context,
+      AddShippingAddressScreen(address: address, index: index),
     );
   }
 
@@ -78,65 +77,65 @@ class _MyAddressScreenState extends State<MyAddressScreen> {
     );
   }
 
- Widget _addressCard(ShippingAddress address, int index) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(
-        color: address.isDefault ? Colors.black : const Color(0xFFE3E0DC),
-        width: address.isDefault ? 1.4 : 1,
-      ),
-    ),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: address.isDefault
-          ? null
-          : () => AuthState.instance.setDefaultAddress(index),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    address.fullName,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                if (address.isDefault)
-                  const Chip(
-                    label: Text(
-                      'PRIMARY',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                IconButton(
-                  onPressed: () => _openEditor(address: address, index: index),
-                  icon: const Icon(Iconsax.edit_2, size: 19),
-                ),
-              ],
-            ),
-            Text(address.phone, style: const TextStyle(color: Colors.black54)),
-            const SizedBox(height: 8),
-            Text(address.summary),
-            if (!address.isDefault) ...[
-              const SizedBox(height: 8),
-              const Text(
-                'Tap to set as primary address',
-                style: TextStyle(fontSize: 12, color: Colors.black38),
-              ),
-            ],
-          ],
+  Widget _addressCard(ShippingAddress address, int index) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: address.isDefault ? Colors.black : const Color(0xFFE3E0DC),
+          width: address.isDefault ? 1.4 : 1,
         ),
       ),
-    ),
-  );
-}
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: address.isDefault
+            ? null
+            : () => AuthState.instance.setDefaultAddress(index),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      address.fullName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (address.isDefault)
+                    const Chip(
+                      label: Text(
+                        'PRIMARY',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  IconButton(
+                    onPressed: () => _openEditor(address: address, index: index),
+                    icon: const Icon(Iconsax.edit_2, size: 19),
+                  ),
+                ],
+              ),
+              Text(address.phone, style: const TextStyle(color: Colors.black54)),
+              const SizedBox(height: 8),
+              Text(address.summary),
+              if (!address.isDefault) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Tap to set as primary address',
+                  style: TextStyle(fontSize: 12, color: Colors.black38),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

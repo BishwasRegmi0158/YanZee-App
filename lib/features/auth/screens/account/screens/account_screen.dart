@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:yanzee_app/core/navigation/full_screen_nav.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
+import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
+import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/my_address_screen.dart';
@@ -19,7 +22,6 @@ import 'package:yanzee_app/features/auth/screens/order_screen.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
-
 
 class AccountScreen extends ConsumerStatefulWidget {
   static const routeName = '/account';
@@ -59,19 +61,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   Future<void> _openOrderStages({int initialTab = 0}) async {
     final ok = await requireLogin(context);
     if (!ok || !mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => OrdersScreen(initialTabIndex: initialTab),
-      ),
-    );
+    pushFullScreen(context, OrdersScreen(initialTabIndex: initialTab));
   }
 
   Future<void> _openScreen(Widget screen) async {
     final ok = await requireLogin(context);
     if (!ok || !mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+    pushFullScreen(context, screen);
   }
-
 
   void _logout() {
     AuthState.instance.logout();
@@ -79,11 +76,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     ref.read(wishlistProvider.notifier).clear();
   }
 
-
   Future<void> _pickProfileImage() async {
     final picked = await _imagePicker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85,
+      maxWidth: 1080,
+      maxHeight: 1080,
+      imageQuality: 80,
     );
     if (picked == null || !mounted) return;
 
@@ -96,11 +94,43 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         phone: user?.phone ?? '',
         image: picked.path,
       );
-    } catch (_) {
-     
-    }
+    } catch (_) {}
     if (!mounted) return;
     setState(() => _isUpdatingPhoto = false);
+  }
+
+  Future<void> _deleteProfileImage() async {
+    setState(() => _isUpdatingPhoto = true);
+    final user = AuthState.instance.user;
+    try {
+      await AuthService.updateProfile(
+        name: user?.name ?? '',
+        email: user?.email ?? '',
+        phone: user?.phone ?? '',
+        image: '',
+      );
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() => _isUpdatingPhoto = false);
+  }
+
+  void _showAvatarOptions(bool hasImage, String? imagePath) {
+    showImageActionSheet(
+      context: context,
+      hasImage: hasImage,
+      onPreview: () {
+        if (imagePath == null) return;
+        pushFullScreen(
+          context,
+          ImagePreviewScreen(
+            imagePath: imagePath,
+            onDelete: _deleteProfileImage,
+          ),
+        );
+      },
+      onChange: _pickProfileImage,
+      onDelete: hasImage ? _deleteProfileImage : null,
+    );
   }
 
   @override
@@ -206,7 +236,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final hasImage = image != null && image.isNotEmpty;
 
     return InkWell(
-      onTap: _isUpdatingPhoto ? null : _pickProfileImage,
+      onTap: _isUpdatingPhoto ? null : () => _showAvatarOptions(hasImage, image),
       customBorder: const CircleBorder(),
       child: Stack(
         children: [
@@ -215,8 +245,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             backgroundColor: const Color(0xFFF0EEEA),
             backgroundImage: hasImage
                 ? (image.startsWith('http')
-                      ? NetworkImage(image)
-                      : FileImage(File(image)) as ImageProvider)
+                    ? ResizeImage(NetworkImage(image), width: 300, height: 300)
+                    : ResizeImage(FileImage(File(image)), width: 300, height: 300) as ImageProvider)
                 : null,
             child: _isUpdatingPhoto
                 ? const SizedBox(
@@ -225,12 +255,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : (!hasImage
-                      ? const Icon(
-                          Iconsax.profile_circle,
-                          size: 46,
-                          color: AuthColors.iconMuted,
-                        )
-                      : null),
+                    ? const Icon(
+                        Iconsax.profile_circle,
+                        size: 46,
+                        color: AuthColors.iconMuted,
+                      )
+                    : null),
           ),
           Positioned(
             right: 2,
@@ -439,11 +469,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   }
 
   Widget _divider() => const Divider(
-    height: 1,
-    color: Color(0xFFEDEBE7),
-    indent: 16,
-    endIndent: 16,
-  );
+        height: 1,
+        color: Color(0xFFEDEBE7),
+        indent: 16,
+        endIndent: 16,
+      );
 
   Widget _linkTile(
     IconData icon,

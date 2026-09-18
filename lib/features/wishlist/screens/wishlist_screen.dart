@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/core/provider/main_tab_provider.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/features/home/providers/product_provider.dart';
 import 'package:yanzee_app/features/home/screens/widgets/product_card.dart';
@@ -26,7 +26,7 @@ class WishlistScreen extends ConsumerWidget {
         centerTitle: false,
       ),
       body: wishlistIds.isEmpty
-          ? _EmptyWishlist()
+          ? const _EmptyWishlist()
           : _WishlistBody(wishlistIds: wishlistIds),
     );
   }
@@ -62,7 +62,7 @@ class _WishlistBody extends ConsumerWidget {
         .toList();
 
     if (wishlistedProducts.isEmpty) {
-      return _EmptyWishlist();
+      return const _EmptyWishlist();
     }
 
     return Padding(
@@ -83,9 +83,11 @@ class _WishlistBody extends ConsumerWidget {
   }
 }
 
-class _EmptyWishlist extends StatelessWidget {
+class _EmptyWishlist extends ConsumerWidget {
+  const _EmptyWishlist();
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -114,9 +116,10 @@ class _EmptyWishlist extends StatelessWidget {
               ),
               onPressed: () async {
                 final loggedIn = await requireLogin(context);
-                if (loggedIn && context.mounted) {
-                  context.go('/home');
-                }
+                if (!loggedIn) return;
+            
+                ref.read(mainTabIndexProvider.notifier).state =
+                    kShopTabIndex;
               },
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),

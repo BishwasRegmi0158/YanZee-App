@@ -1,3 +1,4 @@
+// lib/features/seller/widgets/chart_card.dart
 import 'package:flutter/material.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
@@ -6,12 +7,15 @@ class ChartCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget child;
+  
+  final double chartHeight;
 
   const ChartCard({
     super.key,
     required this.title,
     required this.subtitle,
     required this.child,
+    this.chartHeight = 230,
   });
 
   @override
@@ -57,10 +61,9 @@ class ChartCard extends StatelessWidget {
                 )),
           ),
           const SizedBox(height: 18),
-          SizedBox(height: 200, child: child),
+          SizedBox(height: chartHeight, child: child),
         ],
       ),
-      
     );
   }
 }

@@ -24,6 +24,7 @@ class SellerStore {
     String? contactNumber,
     String? returnPolicy,
     File? logoImage,
+    bool clearLogo = false,
   }) {
     return SellerStore(
       name: name ?? this.name,
@@ -31,7 +32,7 @@ class SellerStore {
       pickupAddress: pickupAddress ?? this.pickupAddress,
       contactNumber: contactNumber ?? this.contactNumber,
       returnPolicy: returnPolicy ?? this.returnPolicy,
-      logoImage: logoImage ?? this.logoImage,
+      logoImage: clearLogo ? null : (logoImage ?? this.logoImage),
     );
   }
 }

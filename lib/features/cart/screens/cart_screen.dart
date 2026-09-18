@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/core/provider/main_tab_provider.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
 import 'package:yanzee_app/features/checkout/screens/checkout_screen.dart';
 import 'package:yanzee_app/features/home/providers/product_provider.dart';
@@ -14,20 +15,17 @@ class CartScreen extends ConsumerStatefulWidget {
 }
 
 class _CartScreenState extends ConsumerState<CartScreen> {
-  // Selection is screen-local UI state, not persisted with the cart itself.
   final Set<int> _selectedIds = {};
   bool _initializedSelection = false;
 
   @override
   Widget build(BuildContext context) {
-    final cartMap = ref.watch(cartProvider); // Map<productId, quantity>
+    final cartMap = ref.watch(cartProvider);
 
-    // Default: everything selected the first time items exist.
     if (!_initializedSelection && cartMap.isNotEmpty) {
       _selectedIds.addAll(cartMap.keys);
       _initializedSelection = true;
     }
-    // Drop selections for items no longer in the cart (e.g. removed elsewhere).
     _selectedIds.removeWhere((id) => !cartMap.containsKey(id));
 
     return Scaffold(
@@ -51,7 +49,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
         ],
       ),
-      body: cartMap.isEmpty ? _EmptyCart() : _buildBody(context, cartMap),
+      body: cartMap.isEmpty ? const _EmptyCart() : _buildBody(context, cartMap),
     );
   }
 
@@ -145,7 +143,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 }
 
-/// One row: checkbox + product info (fetched by id) + quantity stepper.
 class _CartLineItem extends ConsumerWidget {
   final int productId;
   final int quantity;
@@ -240,8 +237,6 @@ class _CartLineItem extends ConsumerWidget {
                 ),
               ),
             ),
-            // Stepper + total price sit outside the InkWell so they
-            // don't trigger navigation when tapped.
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -316,7 +311,6 @@ class _StepperButton extends StatelessWidget {
   }
 }
 
-/// Bottom bar — subtotal computed ONLY from selected items.
 class _CartCheckoutBar extends ConsumerWidget {
   final Set<int> selectedIds;
 
@@ -420,9 +414,11 @@ class _CartCheckoutBar extends ConsumerWidget {
   }
 }
 
-class _EmptyCart extends StatelessWidget {
+class _EmptyCart extends ConsumerWidget {
+  const _EmptyCart();
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -455,9 +451,10 @@ class _EmptyCart extends StatelessWidget {
               ),
               onPressed: () async {
                 final loggedIn = await requireLogin(context);
-                if (loggedIn && context.mounted) {
-                  context.go('/home');
-                }
+                if (!loggedIn) return;
+              
+                ref.read(mainTabIndexProvider.notifier).state =
+                    kShopTabIndex;
               },
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),

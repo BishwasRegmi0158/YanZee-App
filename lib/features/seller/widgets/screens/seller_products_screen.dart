@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/data/models/seller_models.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_products_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/product_form_screen.dart';
@@ -45,20 +46,18 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
         ],
       ),
     );
-    if (mounted) {
+    if (confirmed == true && mounted) {
+      ref.read(sellerProductsProvider.notifier).deleteProduct(p.id);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              const Icon(
-                Iconsax.tick_circle,
-                color: AppColors.gold,
-                size: 20,
-              ),
+              const Icon(Iconsax.tick_circle, color: AppColors.gold, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   '"${p.name}" deleted',
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white, fontSize: 13.5),
                 ),
               ),
@@ -67,9 +66,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           backgroundColor: AppColors.ink,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -90,6 +87,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(sellerProductsProvider);
+    final isNarrow = Responsive.isSmallPhone(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F5F2),
@@ -105,9 +103,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                 : products
                       .where(
                         (p) =>
-                            p.name.toLowerCase().contains(
-                              _query.toLowerCase(),
-                            ) ||
+                            p.name.toLowerCase().contains(_query.toLowerCase()) ||
                             p.category.toLowerCase().contains(
                               _query.toLowerCase(),
                             ),
@@ -117,49 +113,10 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Products',
-                          style: TextStyle(
-                            fontFamily: AppFonts.brand,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${products.length} items in your catalogue',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textGray,
-                          ),
-                        ),
-                      ],
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => _openForm(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.ink,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                      icon: const Icon(Iconsax.add, size: 18),
-                      label: const Text('Add'),
-                    ),
-                  ],
+                _HeaderRow(
+                  isNarrow: isNarrow,
+                  itemCount: products.length,
+                  onAdd: () => _openForm(),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -195,16 +152,13 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                     child: Center(
                       child: Column(
                         children: [
-                          Icon(
-                            Iconsax.box,
-                            size: 44,
-                            color: Colors.grey.shade400,
-                          ),
+                          Icon(Iconsax.box, size: 44, color: Colors.grey.shade400),
                           const SizedBox(height: 10),
                           Text(
                             products.isEmpty
                                 ? 'No products yet'
                                 : 'No products match "$_query"',
+                            textAlign: TextAlign.center,
                             style: const TextStyle(color: AppColors.textGray),
                           ),
                         ],
@@ -225,6 +179,81 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Title + item count on the left, Add button on the right. On very
+/// narrow phones the button drops to its own row below the title instead
+/// of squeezing next to it, which is what caused the overflow before.
+class _HeaderRow extends StatelessWidget {
+  final bool isNarrow;
+  final int itemCount;
+  final VoidCallback onAdd;
+
+  const _HeaderRow({
+    required this.isNarrow,
+    required this.itemCount,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final title = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Products',
+          style: TextStyle(
+            fontFamily: AppFonts.brand,
+            fontSize: Responsive.font(context, 24),
+            fontWeight: FontWeight.bold,
+            color: AppColors.ink,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '$itemCount item${itemCount == 1 ? '' : 's'} in your catalogue',
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: Responsive.font(context, 12),
+            color: AppColors.textGray,
+          ),
+        ),
+      ],
+    );
+
+    final addButton = ElevatedButton.icon(
+      onPressed: onAdd,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.ink,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      icon: const Icon(Iconsax.add, size: 18),
+      label: Text('Add', style: TextStyle(fontSize: Responsive.font(context, 13))),
+    );
+
+    if (isNarrow) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          title,
+          const SizedBox(height: 12),
+          addButton,
+        ],
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: title),
+        const SizedBox(width: 12),
+        addButton,
+      ],
     );
   }
 }
@@ -275,21 +304,28 @@ class _ProductCard extends StatelessWidget {
               children: [
                 Text(
                   product.name,
-                  style: const TextStyle(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 14.5,
+                    fontSize: Responsive.font(context, 14.5),
                     color: AppColors.ink,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   product.category,
-                  style: const TextStyle(
-                    fontSize: 12,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: Responsive.font(context, 12),
                     color: AppColors.textGray,
                   ),
                 ),
                 const SizedBox(height: 6),
+                // Wrap already handles narrow widths by flowing to a new
+                // line instead of overflowing — kept as-is, just with
+                // responsive font sizes for consistency with the rest.
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: 8,
@@ -297,9 +333,9 @@ class _ProductCard extends StatelessWidget {
                   children: [
                     Text(
                       '\$${product.price.toStringAsFixed(0)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: Responsive.font(context, 14),
                         color: AppColors.ink,
                       ),
                     ),
@@ -308,7 +344,7 @@ class _ProductCard extends StatelessWidget {
                           ? 'No stock'
                           : '${product.stock} in stock',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: Responsive.font(context, 12),
                         color: product.stock == 0
                             ? Colors.red.shade600
                             : AppColors.textGray,
@@ -326,7 +362,7 @@ class _ProductCard extends StatelessWidget {
                       child: Text(
                         product.status.label,
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: Responsive.font(context, 10.5),
                           fontWeight: FontWeight.w600,
                           color: fg,
                         ),
@@ -358,10 +394,7 @@ class _ProductCard extends StatelessWidget {
     width: 56,
     height: 56,
     color: Colors.grey.shade100,
-    child: const Icon(
-      Iconsax.gallery_slash,
-      color: AppColors.textGray,
-    ),
+    child: const Icon(Iconsax.gallery_slash, color: AppColors.textGray),
   );
 }
 

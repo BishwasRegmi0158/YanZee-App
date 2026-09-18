@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:yanzee_app/core/navigation/full_screen_nav.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
+import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
+import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
-
 
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
@@ -27,7 +29,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   String? _error;
   String? _emailError;
   String? _phoneError;
-  String? _pendingImage; 
+  String? _pendingImage;
 
   @override
   void initState() {
@@ -56,17 +58,16 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         _error = null;
         _emailError = null;
         _phoneError = null;
+        _pendingImage = null;
       }
       _isEditing = !_isEditing;
     });
   }
 
   bool _validate() {
-    String? emailErr;
-    String? phoneErr;
     final nameErr = FormValidators.name(_nameController.text);
-    emailErr = FormValidators.email(_emailController.text);
-    phoneErr = FormValidators.phone(_phoneController.text);
+    final emailErr = FormValidators.email(_emailController.text);
+    final phoneErr = FormValidators.phone(_phoneController.text);
 
     setState(() {
       _error = nameErr;
@@ -78,50 +79,32 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Future<void> _showPhotoOptions() async {
-    final hasImage = (_currentImage() != null && _currentImage()!.isNotEmpty);
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Iconsax.gallery),
-              title: const Text('Choose new photo'),
-              onTap: () => Navigator.pop(context, 'pick'),
-            ),
-            if (hasImage)
-              ListTile(
-                leading: const Icon(Iconsax.trash, color: Colors.red),
-                title: const Text(
-                  'Remove photo',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onTap: () => Navigator.pop(context, 'remove'),
-              ),
-            ListTile(
-              leading: const Icon(Iconsax.close_circle),
-              title: const Text('Cancel'),
-              onTap: () => Navigator.pop(context, null),
-            ),
-          ],
-        ),
-      ),
-    );
+    final img = _currentImage();
+    final hasImage = img != null && img.isNotEmpty;
 
-    if (choice == 'pick') {
-      await _pickImage();
-    } else if (choice == 'remove') {
-      _removeImage();
-    }
+    await showImageActionSheet(
+      context: context,
+      hasImage: hasImage,
+      onPreview: () {
+        if (img == null) return;
+        pushFullScreen(
+          context,
+          ImagePreviewScreen(
+            imagePath: img,
+            onDelete: _removeImage,
+          ),
+        );
+      },
+      onChange: _pickImage,
+      onDelete: hasImage ? _removeImage : null,
+    );
   }
 
   Future<void> _pickImage() async {
     final picked = await _imagePicker.pickImage(
       source: ImageSource.gallery,
+      maxWidth: 1080,
+      maxHeight: 1080,
       imageQuality: 85,
     );
     if (picked == null || !mounted) return;
@@ -134,7 +117,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     _persistImageChange();
   }
 
-
   Future<void> _persistImageChange() async {
     if (_isEditing) return;
     setState(() => _isSaving = true);
@@ -145,9 +127,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         phone: _phoneController.text.trim(),
         image: _pendingImage == '' ? null : _pendingImage,
       );
-    } catch (_) {
-     
-    }
+    } catch (_) {}
     if (!mounted) return;
     setState(() {
       _isSaving = false;
@@ -158,6 +138,24 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   String? _currentImage() {
     if (_pendingImage == null) return AuthState.instance.user?.image;
     return _pendingImage == '' ? null : _pendingImage;
+  }
+
+  ImageProvider? _getAvatarProvider(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) return null;
+
+    if (imagePath.startsWith('http')) {
+      return ResizeImage(
+        NetworkImage(imagePath),
+        width: 300,
+        height: 300,
+      );
+    } else {
+      return ResizeImage(
+        FileImage(File(imagePath)),
+        width: 300,
+        height: 300,
+      );
+    }
   }
 
   Future<void> _save() async {
@@ -192,14 +190,16 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       _isEditing = false;
       _pendingImage = null;
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Profile updated')));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Profile updated successfully')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final currentImage = _currentImage();
+    final avatarProvider = _getAvatarProvider(currentImage);
 
     return Scaffold(
       backgroundColor: AuthColors.pageBackground,
@@ -225,18 +225,13 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               child: Stack(
                 children: [
                   CircleAvatar(
-                    radius: 44,
+                    radius: 48,
                     backgroundColor: const Color(0xFFF0EEEA),
-                    backgroundImage:
-                        currentImage != null && currentImage.isNotEmpty
-                        ? (currentImage.startsWith('http')
-                              ? NetworkImage(currentImage)
-                              : FileImage(File(currentImage)) as ImageProvider)
-                        : null,
-                    child: (currentImage == null || currentImage.isEmpty)
+                    backgroundImage: avatarProvider,
+                    child: avatarProvider == null
                         ? const Icon(
                             Iconsax.profile_circle,
-                            size: 42,
+                            size: 46,
                             color: AuthColors.iconMuted,
                           )
                         : null,
@@ -248,11 +243,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                       onTap: _isSaving ? null : _showPhotoOptions,
                       customBorder: const CircleBorder(),
                       child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: const BoxDecoration(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
                           color: Colors.black,
                           shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
                         ),
                         child: const Icon(
                           Iconsax.camera,
@@ -357,7 +353,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: AuthColors.iconMuted),
+        Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Icon(icon, size: 20, color: AuthColors.iconMuted),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -388,12 +387,15 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                         ),
                       ),
                     )
-                  : Text(
-                      controller.text.isEmpty ? '—' : controller.text,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AuthColors.textDark,
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Text(
+                        controller.text.isEmpty ? '—' : controller.text,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AuthColors.textDark,
+                        ),
                       ),
                     ),
               const SizedBox(height: 8),
