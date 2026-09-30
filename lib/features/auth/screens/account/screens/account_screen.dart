@@ -69,9 +69,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (!ok || !mounted) return;
     pushFullScreen(context, screen);
   }
-
-  void _logout() {
-    AuthState.instance.logout();
+  Future<void> _logout() async {
+    await AuthService.logout(); 
     ref.read(cartProvider.notifier).clear();
     ref.read(wishlistProvider.notifier).clear();
   }

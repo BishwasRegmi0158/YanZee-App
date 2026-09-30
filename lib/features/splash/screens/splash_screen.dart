@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/data/models/auth_state.dart';
+import 'package:yanzee_app/data/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -22,10 +24,28 @@ class _SplashScreenState extends State<SplashScreen> {
     _navigateNext();
   }
 
+  Future<void> _restoreSession() async {
+    try {
+      // Render's free tier can take a while to wake up, so don't wait forever.
+      await AuthService.restoreSession().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => false,
+      );
+    } catch (_) {
+      // Any failure just means the user starts logged out.
+    }
+  }
+
   Future<void> _navigateNext() async {
-    await Future.delayed(const Duration(seconds: 2));
+    // Show the splash for at least 2s while the session is restored.
+    await Future.wait<void>([
+      Future.delayed(const Duration(seconds: 2)),
+      _restoreSession(),
+    ]);
     if (!mounted) return;
-    context.go('/home');
+
+    // Shop owner -> /seller-dashboard, customer or guest -> /home
+    context.go(AuthState.instance.homeRoute);
   }
 
   Widget _dots() {

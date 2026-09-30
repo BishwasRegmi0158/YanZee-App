@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
+import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
+import 'package:yanzee_app/features/auth/screens/widgets/auth_error_banner.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/auth_visual_panel.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
@@ -24,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _showPassword = false;
+  bool _rememberMe = false;
   bool _isLoading = false;
   String? _error;
 
@@ -35,6 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleSubmit() async {
+    FocusScope.of(context).unfocus();
     setState(() => _error = null);
 
     final email = _emailController.text.trim();
@@ -71,10 +75,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (context.canPop()) {
+    // Shop owner -> dashboard, customer -> back / home
+    if (AuthState.instance.isShopOwner) {
+      context.go('/seller-dashboard');
+    } else if (context.canPop()) {
       context.pop();
     } else {
-      context.go('/my-profile');
+      context.go('/home');
     }
   }
 
@@ -86,14 +93,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go('/my-profile');
+      context.go('/home');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AuthColors.pageBackground,
+      backgroundColor: AuthColors.screenBackground,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -101,12 +109,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
             if (!isWide) {
               return SingleChildScrollView(
-                padding: const EdgeInsets.only(top: 4, bottom: 24),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: Align(
                     alignment: Alignment.topCenter,
-                    child: _buildFormPanel(showMobileBrand: true),
+                    child: _buildFormPanel(constraints.maxWidth),
                   ),
                 ),
               );
@@ -119,7 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   constraints: const BoxConstraints(maxWidth: 1100),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AuthColors.cardBackground,
+                      color: AuthColors.screenBackground,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
@@ -136,7 +145,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const Expanded(flex: 48, child: AuthVisualPanel()),
                           Expanded(
                             flex: 52,
-                            child: _buildFormPanel(showMobileBrand: false),
+                            child: SingleChildScrollView(
+                              child: _buildFormPanel(
+                                constraints.maxWidth * 0.5,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -151,181 +164,160 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildFormPanel({required bool showMobileBrand}) {
+  Widget _buildFormPanel(double panelWidth) {
+    // Scales text slightly on small phones so nothing overflows.
+    final scale = (panelWidth / 390).clamp(0.85, 1.0);
+    final hPad = (panelWidth * 0.06).clamp(16.0, 28.0);
+
     return Padding(
-      padding: const EdgeInsets.only(left: 24, right: 24, top: 8, bottom: 30),
+      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 28),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildBackButton(),
-              const SizedBox(height: 12),
-              if (showMobileBrand) ...[
-                Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 35,
-                        height: 35,
-                        alignment: Alignment.center,
-                        decoration: const BoxDecoration(
-                          color: Colors.black,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Text(
-                          'Y',
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'YanZee Collection',
-                        style: TextStyle(
-                          color: AuthColors.textDark,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+              Align(alignment: Alignment.centerLeft, child: _buildBackButton()),
+              const SizedBox(height: 28),
+
+              Text(
+                'Log in',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 30 * scale,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Enter your email and password to securely access your account.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13.5 * scale,
+                    height: 1.4,
+                    color: AuthColors.subtitleGray,
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
-
-              Text(
-                'Welcome back',
-                textAlign: showMobileBrand ? TextAlign.center : TextAlign.start,
-                style: AuthTextStyles.heading,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Sign in to your YanZee Collection account',
-                textAlign: showMobileBrand ? TextAlign.center : TextAlign.start,
-                style: AuthTextStyles.subheading,
-              ),
-              const SizedBox(height: 22),
-
-              Container(
-                height: 46,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AuthColors.tabsBackground,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(7),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: const Text(
-                          'Login',
-                          style: AuthTextStyles.tabActive,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: InkWell(
-                        onTap: _goToSignup,
-                        borderRadius: BorderRadius.circular(7),
-                        child: const Center(
-                          child: Text('Signup', style: AuthTextStyles.tab),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               if (_error != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AuthColors.errorBackground,
-                    border: Border.all(color: AuthColors.errorBorder),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '⚠ $_error',
-                    style: const TextStyle(
-                      color: AuthColors.errorText,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
+                AuthErrorBanner(_error!),
+                const SizedBox(height: 16),
               ],
 
-              const Text('Email address', style: AuthTextStyles.fieldLabel),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [AutofillHints.email],
-                style: AuthTextStyles.inputText,
-                onChanged: (_) => setState(() => _error = null),
-                decoration: authInputDecoration(
-                  hint: 'Enter your email',
-                  prefixIcon: const Icon(
-                    Icons.mail_outline,
-                    size: 18,
-                    color: AuthColors.iconMuted,
+              // Email
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(40),
+                  boxShadow: authPillShadow,
+                ),
+                child: TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.email],
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AuthColors.pillText,
+                  ),
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
+                  decoration: authPillInputDecoration(
+                    hint: 'Email address',
+                    icon: Icons.email_rounded,
                   ),
                 ),
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 16),
 
-              const Text('Password', style: AuthTextStyles.fieldLabel),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _passwordController,
-                obscureText: !_showPassword,
-                autofillHints: const [AutofillHints.password],
-                style: AuthTextStyles.inputText,
-                onChanged: (_) => setState(() => _error = null),
-                decoration: authInputDecoration(
-                  hint: 'Enter your password',
-                  prefixIcon: const Icon(
-                    Icons.lock_outline,
-                    size: 18,
-                    color: AuthColors.iconMuted,
+              // Password
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(40),
+                  boxShadow: authPillShadow,
+                ),
+                child: TextField(
+                  controller: _passwordController,
+                  obscureText: !_showPassword,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.password],
+                  onSubmitted: (_) => _isLoading ? null : _handleSubmit(),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AuthColors.pillText,
                   ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _showPassword ? Icons.visibility : Icons.visibility_off,
-                      size: 18,
-                      color: AuthColors.iconMuted,
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
+                  decoration: authPillInputDecoration(
+                    hint: 'Password',
+                    icon: Icons.lock_rounded,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _showPassword
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
+                        size: 20,
+                        color: AuthColors.pillIcon,
+                      ),
+                      onPressed: () =>
+                          setState(() => _showPassword = !_showPassword),
                     ),
-                    onPressed: () =>
-                        setState(() => _showPassword = !_showPassword),
                   ),
                 ),
               ),
+              const SizedBox(height: 14),
 
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 6, bottom: 12),
-                  child: TextButton(
+              // Remember me + Forgot password
+              Row(
+                children: [
+                  Flexible(
+                    child: InkWell(
+                      onTap: () => setState(() => _rememberMe = !_rememberMe),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: Checkbox(
+                              value: _rememberMe,
+                              onChanged: (v) =>
+                                  setState(() => _rememberMe = v ?? false),
+                              activeColor: AuthColors.primary,
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Remember me',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5 * scale,
+                                color: AuthColors.pillText,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                       minimumSize: Size.zero,
@@ -334,49 +326,84 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: () {
                       // TODO: navigate to your forgot-password screen.
                     },
-                    child: const Text(
-                      'Forgot password?',
-                      style: AuthTextStyles.forgotLink,
+                    child: Text(
+                      'Forgot Password',
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 12.5 * scale,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
+              const SizedBox(height: 26),
 
-              SizedBox(
-                width: double.infinity,
-                height: 48,
+              // Login button
+              Container(
+                height: 52,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(40),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AuthColors.primary.withOpacity(0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleSubmit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AuthColors.submitButton,
-                    disabledBackgroundColor: AuthColors.submitButton
-                        .withOpacity(0.65),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    backgroundColor: AuthColors.primary,
+                    disabledBackgroundColor: AuthColors.primary.withOpacity(
+                      0.65,
                     ),
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
                     elevation: 0,
                   ),
-                  child: Text(
-                    _isLoading ? 'Logging in...' : 'Login',
-                    style: AuthTextStyles.submitButton,
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Login',
+                          style: TextStyle(
+                            fontSize: 15 * scale,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
 
-              Center(
-                child: RichText(
-                  text: TextSpan(
-                    style: AuthTextStyles.switchText,
-                    children: [
-                      const TextSpan(text: "Don't have an account? "),
-                      TextSpan(
-                        text: 'Create account',
-                        style: AuthTextStyles.switchLink,
-                        recognizer: TapGestureRecognizer()..onTap = _goToSignup,
-                      ),
-                    ],
+              // Sign up link (wraps to 2 lines instead of overflowing)
+              Text.rich(
+                textAlign: TextAlign.center,
+                TextSpan(
+                  style: TextStyle(
+                    fontSize: 13 * scale,
+                    color: AuthColors.pillText,
                   ),
+                  children: [
+                    const TextSpan(text: "Don't have an account?  "),
+                    TextSpan(
+                      text: 'Sign Up here',
+                      style: const TextStyle(
+                        color: AuthColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      recognizer: TapGestureRecognizer()..onTap = _goToSignup,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -387,27 +414,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildBackButton() {
-    return Transform.translate(
-      offset: const Offset(-8, 0),
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      elevation: 3,
+      shadowColor: Colors.black26,
       child: InkWell(
+        customBorder: const CircleBorder(),
         onTap: _goBack,
-        borderRadius: BorderRadius.circular(8),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.arrow_back, size: 20, color: AuthColors.textDark),
-              SizedBox(width: 6),
-              Text(
-                'Back',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AuthColors.textDark,
-                ),
-              ),
-            ],
+        child: const SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(
+            Icons.chevron_left_rounded,
+            size: 26,
+            color: Colors.black87,
           ),
         ),
       ),

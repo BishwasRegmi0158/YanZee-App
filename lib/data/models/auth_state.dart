@@ -1,5 +1,10 @@
 import 'package:flutter/foundation.dart';
 
+class UserRole {
+  static const customer = 'CUSTOMER';
+  static const shopOwner = 'SHOP_OWNER';
+}
+
 class ShippingAddress {
   const ShippingAddress({
     required this.fullName,
@@ -48,9 +53,11 @@ class UserProfile {
     this.lastName,
     this.phone,
     this.image,
+    this.role,
   });
 
-  final int? id;
+  /// Backend ids are UUID strings.
+  final String? id;
   final String? username;
   final String name;
   final String email;
@@ -58,6 +65,9 @@ class UserProfile {
   final String? lastName;
   final String? phone;
   final String? image;
+
+  /// 'CUSTOMER' or 'SHOP_OWNER'
+  final String? role;
 
   static String nameFromEmail(String email) {
     final localPart = email.split('@').first.trim();
@@ -77,6 +87,7 @@ class UserProfile {
     String? email,
     String? phone,
     String? image,
+    String? role,
   }) {
     return UserProfile(
       id: id,
@@ -87,32 +98,19 @@ class UserProfile {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       image: image ?? this.image,
+      role: role ?? this.role,
     );
   }
 
-  
-  factory UserProfile.fromDummyJson(
-    Map<String, dynamic> json, {
-    String? overrideEmail,
-  }) {
-    final first = (json['firstName'] as String?) ?? '';
-    final last = (json['lastName'] as String?) ?? '';
-    final fullName = [first, last].where((s) => s.isNotEmpty).join(' ');
-    final email = overrideEmail ?? (json['email'] as String? ?? '');
-    final emailName = nameFromEmail(email);
+  /// Backend user object: { id, fullName, email, phone, profileImg, role }
+  factory UserProfile.fromApi(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'] is int ? json['id'] as int : null,
-      username: json['username'] as String?,
-      firstName: first,
-      lastName: last,
-      name: overrideEmail != null && emailName.isNotEmpty
-          ? emailName
-          : fullName.isNotEmpty
-          ? fullName
-          : (json['username'] as String? ?? ''),
-      email: email,
+      id: json['id']?.toString(),
+      name: (json['fullName'] as String?) ?? '',
+      email: (json['email'] as String?) ?? '',
       phone: json['phone'] as String?,
-      image: json['image'] as String?,
+      image: json['profileImg'] as String?,
+      role: json['role'] as String?,
     );
   }
 }
@@ -122,12 +120,20 @@ class AuthState extends ChangeNotifier {
   static final AuthState instance = AuthState._();
 
   UserProfile? _user;
-  String? _token;
+  String? _token; // access token, memory only
+  String? _refreshToken;
   final List<ShippingAddress> _addresses = [];
 
   UserProfile? get user => _user;
   String? get token => _token;
+  String? get refreshToken => _refreshToken;
   bool get isLoggedIn => _user != null;
+  bool get isShopOwner => _user?.role == UserRole.shopOwner;
+  bool get isCustomer => isLoggedIn && !isShopOwner;
+
+  /// Where this user should land after login/signup/app start.
+  String get homeRoute => isShopOwner ? '/seller-dashboard' : '/home';
+
   List<ShippingAddress> get addresses => List.unmodifiable(_addresses);
   ShippingAddress? get defaultAddress {
     for (final address in _addresses) {
@@ -136,9 +142,16 @@ class AuthState extends ChangeNotifier {
     return _addresses.isEmpty ? null : _addresses.first;
   }
 
-  void login(UserProfile user, {String? token}) {
+  void login(UserProfile user, {String? token, String? refreshToken}) {
     _user = user;
     _token = token ?? _token;
+    _refreshToken = refreshToken ?? _refreshToken;
+    notifyListeners();
+  }
+
+  void setTokens(String? access, String? refresh) {
+    _token = access;
+    _refreshToken = refresh;
     notifyListeners();
   }
 
@@ -150,6 +163,7 @@ class AuthState extends ChangeNotifier {
   void logout() {
     _user = null;
     _token = null;
+    _refreshToken = null;
     _addresses.clear();
     notifyListeners();
   }

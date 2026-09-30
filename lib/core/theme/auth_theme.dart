@@ -19,6 +19,14 @@ class AuthColors {
 
   static const required = Color(0xFFD32F2F);
   static const submitButton = Colors.black;
+
+
+static const screenBackground = Color(0xFFF7F8FA);
+static const primary = Color(0xFF3BB77E); // green button / links
+static const pillText = Color(0xFF2E3134);
+static const pillHint = Color(0xFF5F6368);
+static const pillIcon = Color(0xFF55595C);
+static const subtitleGray = Color(0xFF6B7075);
 }
 
 class AuthTextStyles {
@@ -111,3 +119,39 @@ class AppFonts {
   static const String devanagari = 'NotoSerifDevanagari';
   static const String brand = 'CormorantGaramond';
 }
+
+/// Wrap the TextField in a Container with [authPillShadow] for the soft shadow.
+InputDecoration authPillInputDecoration({
+  required String hint,
+  required IconData icon,
+  Widget? suffixIcon,
+}) {
+  OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(40),
+        borderSide: BorderSide(color: color, width: width),
+      );
+
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: const TextStyle(color: AuthColors.pillHint, fontSize: 14),
+    prefixIcon: Icon(icon, size: 20, color: AuthColors.pillIcon),
+    suffixIcon: suffixIcon,
+    filled: true,
+    fillColor: Colors.white,
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+    border: border(Colors.transparent, 0),
+    enabledBorder: border(Colors.transparent, 0),
+    focusedBorder: border(AuthColors.primary, 1.2),
+    errorBorder: border(AuthColors.errorBorder, 1),
+    disabledBorder: border(Colors.transparent, 0),
+  );
+}
+
+const authPillShadow = [
+  BoxShadow(
+    color: Color(0x12000000),
+    blurRadius: 14,
+    offset: Offset(0, 4),
+  ),
+];

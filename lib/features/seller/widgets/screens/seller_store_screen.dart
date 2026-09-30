@@ -10,6 +10,7 @@ import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
 import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/core/widgets/keyboard_safe_sheet.dart';
+import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_store_provider.dart';
 
 class SellerStoreScreen extends ConsumerWidget {
@@ -68,6 +69,38 @@ class SellerStoreScreen extends ConsumerWidget {
     if (context.mounted && result != null && result.isNotEmpty) {
       onSave(result);
     }
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('You will need to log in again to open your shop.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              'Log out',
+              style: TextStyle(color: Color(0xFFE05A47)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true || !context.mounted) return;
+
+    // POST /auth/logout, clears the saved refresh token and AuthState
+    await AuthService.logout();
+    if (!context.mounted) return;
+
+    // The user is no longer a shop owner, so go to the customer home.
+    context.go('/home');
   }
 
   ImageProvider? _getLogoProvider(File? logoFile) {
@@ -185,7 +218,32 @@ class SellerStoreScreen extends ConsumerWidget {
             store.returnPolicy,
             onEdit: (v) => notifier.updateField(returnPolicy: v),
           ),
+          const SizedBox(height: 14),
+          _logoutButton(context),
+          const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+
+  Widget _logoutButton(BuildContext context) {
+    const red = Color(0xFFE05A47);
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: () => _confirmLogout(context),
+        icon: const Icon(Iconsax.logout, size: 18, color: red),
+        label: const Text(
+          'Log out',
+          style: TextStyle(color: red, fontWeight: FontWeight.w600),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: red),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }

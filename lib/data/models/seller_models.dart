@@ -10,28 +10,16 @@ extension ProductStatusX on ProductStatus {
 
 const kSellerCategories = ['Fashion', 'Beauty', 'Fragrance', 'Accessories'];
 
-String _mapToSellerCategory(String rawCategory) {
-  final c = rawCategory.toLowerCase();
+// Decimal prices often arrive from the backend as strings ("149.99"),
+// so handle both numbers and strings.
+double _toDouble(dynamic v) =>
+    v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
 
-  if (c.contains('fragrance')) return 'Fragrance';
-  if (c.contains('beauty') || c.contains('skin')) return 'Beauty';
-  if (c.contains('watch') || c.contains('bag') || c.contains('jewel') || c.contains('sunglass')) {
-    return 'Accessories';
-  }
-  if (c.contains('shirt') ||
-      c.contains('dress') ||
-      c.contains('shoe') ||
-      c.contains('top') ||
-      c.contains('mens') ||
-      c.contains('womens')) {
-    return 'Fashion';
-  }
-
-  return 'Fashion';
-}
+String _titleCase(String s) =>
+    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}';
 
 class SellerProduct {
-  final int id;
+  final String id; // backend ids are UUID strings
   final String name;
   final double price;
   final String category;
@@ -57,17 +45,34 @@ class SellerProduct {
 
   bool get isActive => status == ProductStatus.active;
 
+  /// Backend product: { id, name, category, status, price, discountPrice,
+  /// image, gallery, description, variants: [{ size, stock, sku }] }
   factory SellerProduct.fromJson(Map<String, dynamic> json) {
-    final stock = (json['stock'] ?? 0) as int;
+    final variants = (json['variants'] as List?) ?? const [];
+    final stock = variants.fold<int>(
+      0,
+      (sum, v) => sum + (((v as Map)['stock'] as num?) ?? 0).toInt(),
+    );
+    final sizes = variants
+        .map((v) => (v as Map)['size']?.toString() ?? '')
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    final rawStatus = json['status']?.toString().toUpperCase();
+    final status = (rawStatus == null || rawStatus == 'ACTIVE')
+        ? (stock == 0 ? ProductStatus.outOfStock : ProductStatus.active)
+        : ProductStatus.draft;
+
     return SellerProduct(
-      id: json['id'] ?? 0,
-      name: json['title'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-      category: _mapToSellerCategory(json['category'] ?? ''),
-      imageUrl: json['thumbnail'] ?? '',
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      price: _toDouble(json['price']),
+      category: _titleCase(json['category']?.toString() ?? ''),
+      imageUrl: json['image']?.toString() ?? '',
       stock: stock,
-      status: stock == 0 ? ProductStatus.outOfStock : ProductStatus.active,
-      description: json['description'] ?? '',
+      status: status,
+      description: json['description']?.toString() ?? '',
+      options: sizes,
     );
   }
 

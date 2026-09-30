@@ -28,8 +28,6 @@ class _ShopFilterBarState extends State<ShopFilterBar> {
   @override
   void didUpdateWidget(covariant ShopFilterBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Keep the dropdowns' displayed value in sync if filters changed
-    // from elsewhere (e.g. the filter sheet's "Apply" button).
     if (oldWidget.filters.category != widget.filters.category) {
       _categoryNotifier.value = widget.filters.category;
     }

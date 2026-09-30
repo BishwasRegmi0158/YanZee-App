@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
@@ -7,33 +8,32 @@ import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
+import 'package:yanzee_app/features/auth/screens/widgets/auth_error_banner.dart';
 
-/// Shows the login sheet if the user isn't logged in yet.
-/// Returns true if the user is (or becomes) logged in, false if they dismissed it.
 Future<bool> requireLogin(BuildContext context) async {
   if (AuthState.instance.isLoggedIn) return true;
 
   final result = await showModalBottomSheet<bool>(
     context: context,
-    // FIX (keyboard hidden behind fields): tab screens under
-    // persistent_bottom_nav_bar each live in their own nested Navigator,
-    // which carries a MediaQuery with viewInsets stripped out (so the
-    // persistent nav bar itself doesn't jump around when some *other*
-    // tab's keyboard opens). If this sheet attaches to that nested
-    // Navigator, it inherits the broken MediaQuery and never sees the
-    // real keyboard height — no amount of padding logic inside the sheet
-    // can fix that. useRootNavigator forces the sheet onto the actual
-    // root Navigator, which has the real, correct viewInsets.
     useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
+    backgroundColor: AuthColors.screenBackground,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (context) => const LoginPromptSheet(),
   );
 
-  return result ?? false;
+  final loggedIn = result ?? false;
+
+  // A shop owner shouldn't stay on the customer screens.
+  if (loggedIn && AuthState.instance.isShopOwner && context.mounted) {
+    context.go('/seller-dashboard');
+    return false; // stop the customer flow that asked for login
+  }
+
+  return loggedIn;
 }
 
 class LoginPromptSheet extends StatefulWidget {
@@ -59,6 +59,7 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
   }
 
   Future<void> _handleLogin() async {
+    FocusScope.of(context).unfocus();
     setState(() => _error = null);
 
     final email = _emailController.text.trim();
@@ -102,6 +103,16 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
     router.push(SignupScreen.routeName);
   }
 
+  Widget _pillBox(Widget child) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(40),
+        boxShadow: authPillShadow,
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewInsets = MediaQuery.viewInsetsOf(context);
@@ -114,132 +125,163 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
         child: SafeArea(
           top: false,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Center(
                   child: Container(
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE0DEDA),
+                      color: const Color(0xFFD5D8DC),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 22),
                 Text(
                   'Login required',
-                  style: AuthTextStyles.heading.copyWith(
-                    fontSize: Responsive.font(context, 20),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: Responsive.font(context, 24),
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   'Sign in to view this section',
-                  style: AuthTextStyles.subheading.copyWith(
-                    fontSize: Responsive.font(context, 13),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: Responsive.font(context, 13.5),
+                    height: 1.4,
+                    color: AuthColors.subtitleGray,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+
                 if (_error != null) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AuthColors.errorBackground,
-                      border: Border.all(color: AuthColors.errorBorder),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '⚠ $_error',
-                      style: TextStyle(
-                        color: AuthColors.errorText,
-                        fontSize: Responsive.font(context, 13),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
+                  AuthErrorBanner(_error!),
+                  const SizedBox(height: 16),
                 ],
-                Text('Email address', style: AuthTextStyles.fieldLabel),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  style: AuthTextStyles.inputText,
-                  decoration: authInputDecoration(
-                    hint: 'Enter your email',
-                    prefixIcon: const Icon(
-                      Icons.mail_outline,
-                      size: 18,
-                      color: AuthColors.iconMuted,
+
+                _pillBox(
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AuthColors.pillText,
+                    ),
+                    onChanged: (_) {
+                      if (_error != null) setState(() => _error = null);
+                    },
+                    decoration: authPillInputDecoration(
+                      hint: 'Email address',
+                      icon: Icons.email_rounded,
                     ),
                   ),
                 ),
-                const SizedBox(height: 15),
-                Text('Password', style: AuthTextStyles.fieldLabel),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: !_showPassword,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _handleLogin(),
-                  style: AuthTextStyles.inputText,
-                  decoration: authInputDecoration(
-                    hint: 'Enter your password',
-                    prefixIcon: const Icon(
-                      Icons.lock_outline,
-                      size: 18,
-                      color: AuthColors.iconMuted,
+                const SizedBox(height: 16),
+
+                _pillBox(
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: !_showPassword,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _isLoading ? null : _handleLogin(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AuthColors.pillText,
                     ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _showPassword
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                        size: 18,
-                        color: AuthColors.iconMuted,
+                    onChanged: (_) {
+                      if (_error != null) setState(() => _error = null);
+                    },
+                    decoration: authPillInputDecoration(
+                      hint: 'Password',
+                      icon: Icons.lock_rounded,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _showPassword
+                              ? Icons.visibility_rounded
+                              : Icons.visibility_off_rounded,
+                          size: 20,
+                          color: AuthColors.pillIcon,
+                        ),
+                        onPressed: () =>
+                            setState(() => _showPassword = !_showPassword),
                       ),
-                      onPressed: () =>
-                          setState(() => _showPassword = !_showPassword),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
+                const SizedBox(height: 24),
+
+                Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(40),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AuthColors.primary.withOpacity(0.35),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AuthColors.submitButton,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      backgroundColor: AuthColors.primary,
+                      disabledBackgroundColor: AuthColors.primary.withOpacity(
+                        0.65,
                       ),
+                      foregroundColor: Colors.white,
+                      shape: const StadiumBorder(),
                       elevation: 0,
                     ),
-                    child: Text(
-                      _isLoading ? 'Logging in...' : 'Login',
-                      style: AuthTextStyles.submitButton,
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Login',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                Center(
-                  child: TextButton(
-                    onPressed: _goToSignup,
-                    child: Text(
-                      "Don't have an account? Create one",
-                      style: AuthTextStyles.switchLink.copyWith(
-                        fontSize: Responsive.font(context, 13),
-                      ),
+                const SizedBox(height: 18),
+
+                Text.rich(
+                  textAlign: TextAlign.center,
+                  TextSpan(
+                    style: TextStyle(
+                      fontSize: Responsive.font(context, 13),
+                      color: AuthColors.pillText,
                     ),
+                    children: [
+                      const TextSpan(text: "Don't have an account?  "),
+                      TextSpan(
+                        text: 'Sign Up here',
+                        style: const TextStyle(
+                          color: AuthColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        recognizer: TapGestureRecognizer()..onTap = _goToSignup,
+                      ),
+                    ],
                   ),
                 ),
                 SizedBox(height: viewInsets.bottom > 0 ? 8 : 0),

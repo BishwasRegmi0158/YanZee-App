@@ -21,21 +21,28 @@ final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
   redirect: (context, state) {
-    final loggedIn = AuthState.instance.isLoggedIn;
-    final goingToAuth =
-        state.matchedLocation == LoginScreen.routeName ||
-        state.matchedLocation == SignupScreen.routeName;
+    final auth = AuthState.instance;
+    final loc = state.matchedLocation;
 
-    if (loggedIn && goingToAuth) {
-      return '/home';
+    final goingToAuth =
+        loc == LoginScreen.routeName || loc == SignupScreen.routeName;
+
+    // Logged-in users don't need the login/signup pages.
+    if (auth.isLoggedIn && goingToAuth) return auth.homeRoute;
+
+    // Shop owners live in the seller dashboard, not the customer shell.
+    if (auth.isShopOwner && loc.startsWith('/home')) {
+      return '/seller-dashboard';
     }
+
+    // Only shop owners may open the seller dashboard.
+    if (loc == '/seller-dashboard' && !auth.isShopOwner) return '/home';
 
     return null; // no redirect needed
   },
   routes: [
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
 
- 
     GoRoute(
       path: '/home',
       builder: (context, state) => const MainShell(),

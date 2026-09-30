@@ -1,36 +1,40 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:yanzee_app/core/api/api_client.dart';
 import 'package:yanzee_app/core/api/api_config.dart';
 
 class SellerApiService {
-  static const _timeout = Duration(seconds: 10);
+  Future<List<dynamic>> fetchMyProducts() async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/products');
+    final res = await ApiClient.send((h) => http.get(url, headers: h));
+    debugPrint('PRODUCTS ${res.statusCode} ${res.body}');
 
-  Future<List<dynamic>> fetchMyProducts({int limit = 5, int skip = 0}) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/products')
-        .replace(queryParameters: {'limit': '$limit', 'skip': '$skip'});
-    final response = await http.get(url).timeout(_timeout);
-    if (response.statusCode == 200) {
-      return (jsonDecode(response.body) as Map<String, dynamic>)['products'] as List<dynamic>;
+    if (res.statusCode != 200) {
+      throw Exception(
+        'Failed to load products (${res.statusCode}): ${res.body}',
+      );
     }
-    throw Exception('Failed to load products (${response.statusCode})');
+    // Owner has no shop yet: treat as an empty catalogue instead of an error.
+    if (res.statusCode == 404 && res.body.contains('do not have a shop')) {
+      return const [];
+    }
+    return _extractList(jsonDecode(res.body));
   }
 
-  Future<List<dynamic>> fetchCarts({int limit = 6}) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/carts')
-        .replace(queryParameters: {'limit': '$limit'});
-    final response = await http.get(url).timeout(_timeout);
-    if (response.statusCode == 200) {
-      return (jsonDecode(response.body) as Map<String, dynamic>)['carts'] as List<dynamic>;
+  // The response wrapper isn't confirmed yet, so accept a bare list,
+  // {data: [...]}, or {data: {products/items/results: [...]}}.
+  List<dynamic> _extractList(dynamic body) {
+    if (body is List) return body;
+    if (body is Map) {
+      final data = body['data'] ?? body;
+      if (data is List) return data;
+      if (data is Map) {
+        for (final key in ['products', 'items', 'results']) {
+          if (data[key] is List) return data[key] as List;
+        }
+      }
     }
-    throw Exception('Failed to load carts (${response.statusCode})');
-  }
-
-  Future<Map<String, dynamic>> fetchUser(int id) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/users/$id');
-    final response = await http.get(url).timeout(_timeout);
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
-    }
-    throw Exception('Failed to load user $id (${response.statusCode})');
+    return const [];
   }
 }
