@@ -10,11 +10,25 @@ import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
 import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/core/widgets/keyboard_safe_sheet.dart';
+import 'package:yanzee_app/data/models/seller_store.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_store_provider.dart';
 
 class SellerStoreScreen extends ConsumerWidget {
   const SellerStoreScreen({super.key});
+
+  /// Runs a save and shows the error (if any) in a snackbar.
+  Future<void> _save(
+    BuildContext context,
+    Future<String?> Function() action,
+  ) async {
+    final error = await action();
+    if (error != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    }
+  }
 
   Future<void> _pickLogo(BuildContext context, WidgetRef ref) async {
     final picked = await ImagePicker().pickImage(
@@ -22,30 +36,52 @@ class SellerStoreScreen extends ConsumerWidget {
       imageQuality: 80,
     );
     if (picked != null && context.mounted) {
-      ref.read(sellerStoreProvider.notifier).updateLogo(File(picked.path));
+      final notifier = ref.read(sellerStoreProvider.notifier);
+      _save(context, () => notifier.updateLogo(File(picked.path)));
     }
   }
 
-  void _showLogoOptions(BuildContext context, WidgetRef ref, File? logoFile) {
-    final hasImage = logoFile != null;
+  void _previewLogo(BuildContext context, WidgetRef ref, SellerStore store) {
+    final notifier = ref.read(sellerStoreProvider.notifier);
+    final file = store.logoImage;
+    final url = store.logoUrl;
+
+    if (file != null) {
+      pushFullScreen(
+        context,
+        ImagePreviewScreen(
+          imagePath: file.path,
+          onDelete: () => _save(context, () => notifier.removeLogo()),
+        ),
+      );
+    } else if (url != null) {
+      showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: InteractiveViewer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(url, fit: BoxFit.contain),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showLogoOptions(BuildContext context, WidgetRef ref, SellerStore store) {
+    final hasImage = store.logoImage != null || store.logoUrl != null;
+    final notifier = ref.read(sellerStoreProvider.notifier);
 
     showImageActionSheet(
       context: context,
       hasImage: hasImage,
-      onPreview: () {
-        if (logoFile == null) return;
-        pushFullScreen(
-          context,
-          ImagePreviewScreen(
-            imagePath: logoFile.path,
-            onDelete: () =>
-                ref.read(sellerStoreProvider.notifier).updateLogo(null),
-          ),
-        );
-      },
+      onPreview: () => _previewLogo(context, ref, store),
       onChange: () => _pickLogo(context, ref),
       onDelete: hasImage
-          ? () => ref.read(sellerStoreProvider.notifier).updateLogo(null)
+          ? () => _save(context, () => notifier.removeLogo())
           : null,
     );
   }
@@ -103,20 +139,22 @@ class SellerStoreScreen extends ConsumerWidget {
     context.go('/home');
   }
 
-  ImageProvider? _getLogoProvider(File? logoFile) {
-    if (logoFile == null) return null;
-    return ResizeImage(
-      FileImage(logoFile),
-      width: 300,
-      height: 300,
-    );
+  /// A freshly picked file wins (instant preview); otherwise the saved URL.
+  ImageProvider? _getLogoProvider(SellerStore store) {
+    if (store.logoImage != null) {
+      return ResizeImage(FileImage(store.logoImage!), width: 300, height: 300);
+    }
+    if (store.logoUrl != null) {
+      return ResizeImage(NetworkImage(store.logoUrl!), width: 300, height: 300);
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final store = ref.watch(sellerStoreProvider);
     final notifier = ref.read(sellerStoreProvider.notifier);
-    final logoProvider = _getLogoProvider(store.logoImage);
+    final logoProvider = _getLogoProvider(store);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F5F2),
@@ -163,7 +201,7 @@ class SellerStoreScreen extends ConsumerWidget {
                   bottom: 0,
                   right: 0,
                   child: GestureDetector(
-                    onTap: () => _showLogoOptions(context, ref, store.logoImage),
+                    onTap: () => _showLogoOptions(context, ref, store),
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: const BoxDecoration(
@@ -187,36 +225,50 @@ class SellerStoreScreen extends ConsumerWidget {
             Iconsax.shop,
             'Store name',
             store.name,
-            onEdit: (v) => notifier.updateField(name: v),
+            onEdit: (v) => _save(context, () => notifier.updateField(name: v)),
           ),
           _tile(
             context,
             Iconsax.document_text,
             'Description',
             store.description,
-            onEdit: (v) => notifier.updateField(description: v),
+            onEdit: (v) =>
+                _save(context, () => notifier.updateField(description: v)),
             maxLines: 3,
+          ),
+          _tile(
+            context,
+            Iconsax.sms,
+            'Contact email',
+            store.contactEmail,
+            onEdit: (v) =>
+                _save(context, () => notifier.updateField(contactEmail: v)),
           ),
           _tile(
             context,
             Iconsax.location,
             'Pickup address',
-            store.pickupAddress,
-            onEdit: (v) => notifier.updateField(pickupAddress: v),
+            store.address,
+            onEdit: (v) =>
+                _save(context, () => notifier.updateField(address: v)),
+            maxLines: 2,
           ),
           _tile(
             context,
             Iconsax.call,
             'Contact number',
-            store.contactNumber,
-            onEdit: (v) => notifier.updateField(contactNumber: v),
+            store.contactPhone,
+            onEdit: (v) =>
+                _save(context, () => notifier.updateField(contactPhone: v)),
           ),
           _tile(
             context,
             Iconsax.percentage_square,
             'Return policy',
             store.returnPolicy,
-            onEdit: (v) => notifier.updateField(returnPolicy: v),
+            onEdit: (v) =>
+                _save(context, () => notifier.updateField(returnPolicy: v)),
+            maxLines: 3,
           ),
           const SizedBox(height: 14),
           _logoutButton(context),

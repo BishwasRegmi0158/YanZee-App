@@ -46,17 +46,27 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
         ],
       ),
     );
+
     if (confirmed == true && mounted) {
-      ref.read(sellerProductsProvider.notifier).deleteProduct(p.id);
+      final error = await ref
+          .read(sellerProductsProvider.notifier)
+          .deleteProduct(p.id);
+      if (!mounted) return;
+      final failed = error != null;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              const Icon(Iconsax.tick_circle, color: AppColors.gold, size: 20),
+              Icon(
+                failed ? Iconsax.close_circle : Iconsax.tick_circle,
+                color: failed ? Colors.redAccent : AppColors.gold,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '"${p.name}" deleted',
+                  error ?? '"${p.name}" deleted',
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white, fontSize: 13.5),
                 ),

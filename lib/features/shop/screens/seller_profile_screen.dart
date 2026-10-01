@@ -101,7 +101,7 @@ class SellerProfileScreen extends ConsumerWidget {
                   style: const TextStyle(fontSize: 13.5),
                 ),
                 const Divider(height: 24),
-                _infoRow(Iconsax.location, store.pickupAddress),
+                _infoRow(Iconsax.location, store.address),
                 const SizedBox(height: 8),
                 _infoRow(Iconsax.percentage_square, store.returnPolicy),
               ],
@@ -144,7 +144,7 @@ class SellerProfileScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          r.customerName,
+                          r!.customerName,
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 13.5,

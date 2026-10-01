@@ -11,6 +11,7 @@ import 'package:yanzee_app/features/home/screens/new_arrivals_screen.dart';
 import 'package:yanzee_app/features/home/screens/product_detail_screen.dart';
 import 'package:yanzee_app/features/home/screens/search_screen.dart';
 import 'package:yanzee_app/features/home/screens/widgets/categories_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/seller_gate.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_shell.dart';
 import 'package:yanzee_app/features/shop/screens/seller_profile_screen.dart';
 import 'package:yanzee_app/features/splash/screens/splash_screen.dart';
@@ -72,7 +73,7 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/seller-dashboard',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const SellerShell(),
+      builder: (context, state) => const SellerGate(),
     ),
 
     GoRoute(
