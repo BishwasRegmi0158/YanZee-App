@@ -1,16 +1,18 @@
+// lib/features/wishlist/provider/wishlist_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yanzee_app/data/repositories/wishlist_repository.dart';
 import 'package:yanzee_app/data/repositories/wishlist_repository_impl.dart';
 
 final wishlistRepositoryProvider = Provider<WishlistRepository>((ref) {
-  return InMemoryWishlistRepository(); 
+  return InMemoryWishlistRepository();
 });
 
-class WishlistNotifier extends Notifier<Set<int>> {
+/// Product ids are UUID strings now.
+class WishlistNotifier extends Notifier<Set<String>> {
   @override
-  Set<int> build() => {};
+  Set<String> build() => {};
 
-  Future<void> toggle(int productId) async {
+  Future<void> toggle(String productId) async {
     final repo = ref.read(wishlistRepositoryProvider);
     if (state.contains(productId)) {
       await repo.remove(productId);
@@ -21,7 +23,8 @@ class WishlistNotifier extends Notifier<Set<int>> {
     }
   }
 
-  bool isWishlisted(int productId) => state.contains(productId);
+  bool isWishlisted(String productId) => state.contains(productId);
+
   Future<void> clear() async {
     final repo = ref.read(wishlistRepositoryProvider);
     await repo.clear();
@@ -29,6 +32,6 @@ class WishlistNotifier extends Notifier<Set<int>> {
   }
 }
 
-final wishlistProvider = NotifierProvider<WishlistNotifier, Set<int>>(
+final wishlistProvider = NotifierProvider<WishlistNotifier, Set<String>>(
   WishlistNotifier.new,
 );

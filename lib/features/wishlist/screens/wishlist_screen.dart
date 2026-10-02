@@ -40,7 +40,7 @@ class _WishlistBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productAsyncs = wishlistIds
-        .map((id) => ref.watch(productByIdProvider(id)))
+        .map((id) => ref.watch(productByIdProvider(InkDecoration(decoration: decoration, configuration: configuration, controller: controller, referenceBox: referenceBox))))
         .toList();
 
     final anyLoading = productAsyncs.any((p) => p.isLoading);

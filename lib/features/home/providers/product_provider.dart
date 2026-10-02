@@ -1,3 +1,4 @@
+// lib/features/home/providers/product_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/data/repositories/product_repository.dart';
@@ -7,16 +8,25 @@ final productRepositoryProvider = Provider<ProductRepository>((ref) {
 });
 
 final newArrivalsProvider = FutureProvider<List<Product>>((ref) async {
-  final productRepository = ref.watch(productRepositoryProvider);
-  return productRepository.getNewArrivals();
+  final repo = ref.watch(productRepositoryProvider);
+  return repo.getNewArrivals();
 });
+
 final allNewArrivalsProvider = FutureProvider<List<Product>>((ref) {
-  final repository = ref.watch(productRepositoryProvider);
-  return repository.getNewArrivals(limit: 50);
+  final repo = ref.watch(productRepositoryProvider);
+  return repo.getNewArrivals(limit: 50);
 });
 
-
-final productByIdProvider = FutureProvider.family<Product, int>((ref, id) async {
+/// Product ids are UUID strings now.
+final productByIdProvider =
+    FutureProvider.family<Product, String>((ref, id) async {
   final repo = ref.watch(productRepositoryProvider);
   return repo.getProductById(id);
+});
+
+/// shopId -> shop name, shown on the product screen instead of the brand.
+final shopNameProvider =
+    FutureProvider.family<String, String>((ref, shopId) async {
+  final repo = ref.watch(productRepositoryProvider);
+  return repo.getShopName(shopId);
 });

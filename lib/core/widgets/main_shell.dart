@@ -41,8 +41,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final cartIconKey = ref.watch(cartIconKeyProvider);
     final wishlistIconKey = ref.watch(wishlistIconKeyProvider);
-    final cartCount =
-        ref.watch(cartProvider).values.fold<int>(0, (a, b) => a + b);
+    final cartCount = ref.watch(cartCountProvider);
     final wishlistCount = ref.watch(wishlistProvider).length;
 
 

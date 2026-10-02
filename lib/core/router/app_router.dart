@@ -12,7 +12,6 @@ import 'package:yanzee_app/features/home/screens/product_detail_screen.dart';
 import 'package:yanzee_app/features/home/screens/search_screen.dart';
 import 'package:yanzee_app/features/home/screens/widgets/categories_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_gate.dart';
-import 'package:yanzee_app/features/seller/widgets/seller_shell.dart';
 import 'package:yanzee_app/features/shop/screens/seller_profile_screen.dart';
 import 'package:yanzee_app/features/splash/screens/splash_screen.dart';
 

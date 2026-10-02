@@ -1,11 +1,18 @@
+// lib/features/cart/screens/cart_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/provider/main_tab_provider.dart';
-import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
-import 'package:yanzee_app/features/checkout/screens/checkout_screen.dart';
-import 'package:yanzee_app/features/home/providers/product_provider.dart';
+import 'package:yanzee_app/core/utils/format_price.dart';
+import 'package:yanzee_app/data/models/auth_state.dart';
+import 'package:yanzee_app/data/models/cart_models.dart';
+import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart';
+import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
+import 'package:yanzee_app/features/cart/widgets/cart_actions.dart';
+import 'package:yanzee_app/features/checkout/screens/checkout_screen.dart';
+
+const _accent = Color(0xFFE53935);
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -15,21 +22,50 @@ class CartScreen extends ConsumerStatefulWidget {
 }
 
 class _CartScreenState extends ConsumerState<CartScreen> {
-  final Set<int> _selectedIds = {};
-  bool _initializedSelection = false;
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (!mounted) return;
+      if (AuthState.instance.isLoggedIn) {
+        ref.read(cartProvider.notifier).refresh();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cartMap = ref.watch(cartProvider);
+    final cart = ref.watch(cartProvider);
+    final data = cart.data;
+    final loggedIn = AuthState.instance.isLoggedIn;
 
-    if (!_initializedSelection && cartMap.isNotEmpty) {
-      _selectedIds.addAll(cartMap.keys);
-      _initializedSelection = true;
+    // Show a failed change (for example "Cart item not found") once.
+    ref.listen<CartState>(cartProvider, (previous, next) {
+      final message = next.message;
+      if (message != null && message != previous?.message) {
+        showCartSnack(context, message);
+        Future.microtask(() => ref.read(cartProvider.notifier).clearMessage());
+      }
+    });
+
+    Widget body;
+    if (!loggedIn) {
+      body = const _EmptyCart(loggedIn: false);
+    } else if (cart.isLoading && data.isEmpty) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (cart.error != null && data.isEmpty) {
+      body = _ErrorView(
+        message: cart.error.toString(),
+        onRetry: () => ref.read(cartProvider.notifier).refresh(),
+      );
+    } else if (data.isEmpty) {
+      body = const _EmptyCart(loggedIn: true);
+    } else {
+      body = _CartBody(cart: cart);
     }
-    _selectedIds.removeWhere((id) => !cartMap.containsKey(id));
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -38,88 +74,89 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: false,
-        actions: [
-          if (cartMap.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Color(0xFFE53935)),
-              tooltip: 'Delete selected',
-              onPressed: _selectedIds.isEmpty
-                  ? null
-                  : () => _confirmDelete(context, ref),
-            ),
-        ],
       ),
-      body: cartMap.isEmpty ? const _EmptyCart() : _buildBody(context, cartMap),
+      body: body,
     );
   }
+}
 
-  Widget _buildBody(BuildContext context, Map<int, int> cartMap) {
-    final allSelected =
-        _selectedIds.length == cartMap.length && cartMap.isNotEmpty;
+class _CartBody extends ConsumerWidget {
+  const _CartBody({required this.cart});
+
+  final CartState cart;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final data = cart.data;
+    final notifier = ref.read(cartProvider.notifier);
+    final hasSelection = data.items.any((i) => i.isSelected);
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        if (cart.isBusy)
+          const LinearProgressIndicator(minHeight: 2, color: Colors.black),
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: [
               Checkbox(
-                value: allSelected,
-                onChanged: (checked) {
-                  setState(() {
-                    if (checked == true) {
-                      _selectedIds
-                        ..clear()
-                        ..addAll(cartMap.keys);
-                    } else {
-                      _selectedIds.clear();
-                    }
-                  });
-                },
+                value: data.allSelected,
+                activeColor: Colors.black,
+                onChanged: (v) => notifier.setAllSelected(v == true),
               ),
               Text(
-                'Select all · ${_selectedIds.length} selected',
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
+                'SELECT ALL (${data.lineCount} ITEM(S))',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: !hasSelection
+                    ? null
+                    : () => _confirmDelete(context, notifier, data),
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: const Text('DELETE'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey.shade700,
+                  textStyle: const TextStyle(fontSize: 12),
+                ),
               ),
             ],
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: cartMap.length,
-            itemBuilder: (context, index) {
-              final productId = cartMap.keys.elementAt(index);
-              final quantity = cartMap[productId]!;
-              return _CartLineItem(
-                productId: productId,
-                quantity: quantity,
-                isSelected: _selectedIds.contains(productId),
-                onSelectedChanged: (checked) {
-                  setState(() {
-                    if (checked == true) {
-                      _selectedIds.add(productId);
-                    } else {
-                      _selectedIds.remove(productId);
-                    }
-                  });
-                },
-              );
-            },
+          child: RefreshIndicator(
+            onRefresh: notifier.refresh,
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
+              itemCount: data.shops.length,
+              itemBuilder: (context, index) =>
+                  _ShopSection(shop: data.shops[index]),
+            ),
           ),
         ),
-        _CartCheckoutBar(selectedIds: _selectedIds),
+        _CheckoutBar(data: data),
       ],
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
+  void _confirmDelete(
+    BuildContext context,
+    CartNotifier notifier,
+    CartData data,
+  ) {
+    final count = data.items.where((i) => i.isSelected).length;
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Remove items?'),
         content: Text(
-          'Remove ${_selectedIds.length} selected item${_selectedIds.length == 1 ? '' : 's'} from your cart?',
+          'Remove $count selected item${count == 1 ? '' : 's'} from your cart?',
         ),
         actions: [
           TextButton(
@@ -128,14 +165,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ),
           TextButton(
             onPressed: () {
-              ref.read(cartProvider.notifier).removeIds(_selectedIds);
-              setState(() => _selectedIds.clear());
               Navigator.pop(dialogContext);
+              notifier.removeSelected();
             },
-            child: const Text(
-              'Remove',
-              style: TextStyle(color: Color(0xFFE53935)),
-            ),
+            child: const Text('Remove', style: TextStyle(color: _accent)),
           ),
         ],
       ),
@@ -143,195 +176,256 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 }
 
-class _CartLineItem extends ConsumerWidget {
-  final int productId;
-  final int quantity;
-  final bool isSelected;
-  final ValueChanged<bool?> onSelectedChanged;
+class _ShopSection extends ConsumerWidget {
+  const _ShopSection({required this.shop});
 
-  const _CartLineItem({
-    required this.productId,
-    required this.quantity,
-    required this.isSelected,
-    required this.onSelectedChanged,
-  });
+  final CartShop shop;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final productAsync = ref.watch(productByIdProvider(productId));
+    final notifier = ref.read(cartProvider.notifier);
 
-    return productAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: SizedBox(
-          height: 90,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ),
-      error: (e, _) => const SizedBox.shrink(),
-      data: (product) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      color: Colors.white,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: shop.allSelected,
+                  activeColor: Colors.black,
+                  onChanged: (v) => notifier.setShopSelected(shop, v == true),
+                ),
+                Icon(
+                  Icons.storefront_outlined,
+                  size: 18,
+                  color: Colors.grey.shade700,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    shop.shopName,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: Colors.grey.shade500,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Checkbox(value: isSelected, onChanged: onSelectedChanged),
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () =>
-                    context.push('/product/${product.id}', extra: product),
-                child: Row(
+          ),
+          Divider(height: 1, color: Colors.grey.shade200),
+          for (final item in shop.items) _CartRow(item: item),
+        ],
+      ),
+    );
+  }
+}
+
+class _CartRow extends ConsumerWidget {
+  const _CartRow({required this.item});
+
+  final CartItem item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(cartProvider.notifier);
+    final image = item.image;
+    final note = item.warning ??
+        (item.isLowStock ? '${item.stock} item(s) left' : null);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 22),
+            child: Checkbox(
+              value: item.isSelected,
+              activeColor: Colors.black,
+              onChanged: (v) => notifier.setItemSelected(item, v == true),
+            ),
+          ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: (image == null || image.isEmpty)
+                ? _thumbPlaceholder()
+                : Image.network(
+                    image,
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _thumbPlaceholder(),
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.productName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Size: ${item.size}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        product.imageUrl,
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 64,
-                          height: 64,
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.image_not_supported_outlined),
-                        ),
+                    Text(
+                      formatPrice(item.effectivePrice),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _accent,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            product.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '\$${product.price.toStringAsFixed(2)} each',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
+                    if (item.hasDiscount) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        formatPrice(item.unitPrice),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                          decoration: TextDecoration.lineThrough,
+                        ),
                       ),
+                    ],
+                  ],
+                ),
+                if (note != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    note,
+                    style: const TextStyle(fontSize: 12, color: _accent),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _StepperButton(
+                      icon: Icons.remove,
+                      onTap: item.quantity > 1
+                          ? () => notifier.setQuantity(item, item.quantity - 1)
+                          : null,
+                    ),
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        '${item.quantity}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    _StepperButton(
+                      icon: Icons.add,
+                      onTap: item.canIncrease
+                          ? () => notifier.setQuantity(item, item.quantity + 1)
+                          : null,
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Remove',
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: Colors.grey.shade600,
+                      ),
+                      onPressed: () => notifier.removeItem(item),
                     ),
                   ],
                 ),
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '\$${(product.price * quantity).toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                _QuantityStepper(productId: productId, quantity: quantity),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _QuantityStepper extends ConsumerWidget {
-  final int productId;
-  final int quantity;
-
-  const _QuantityStepper({required this.productId, required this.quantity});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Row(
-      children: [
-        _StepperButton(
-          icon: Icons.remove,
-          onTap: () => ref.read(cartProvider.notifier).decrement(productId),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            '$quantity',
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-        _StepperButton(
-          icon: Icons.add,
-          onTap: () => ref.read(cartProvider.notifier).increment(productId),
-        ),
-      ],
-    );
-  }
+  Widget _thumbPlaceholder() => Container(
+        width: 72,
+        height: 72,
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.image_not_supported_outlined),
+      );
 }
 
 class _StepperButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
   const _StepperButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onTap != null;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.all(4),
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          shape: BoxShape.circle,
+          color: enabled ? const Color(0xFFEDEDF3) : const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(6),
         ),
-        child: Icon(icon, size: 14),
+        child: Icon(
+          icon,
+          size: 16,
+          color: enabled ? Colors.black87 : Colors.grey.shade400,
+        ),
       ),
     );
   }
 }
 
-class _CartCheckoutBar extends ConsumerWidget {
-  final Set<int> selectedIds;
+class _CheckoutBar extends StatelessWidget {
+  const _CheckoutBar({required this.data});
 
-  const _CartCheckoutBar({required this.selectedIds});
+  final CartData data;
+
+  /// Stopgap: CheckoutItem still wants a Product, so build a small one from
+  /// the cart row. This goes away when the checkout/order API is wired.
+  Product _asProduct(CartItem item, String shopId) {
+    return Product(
+      id: item.productId,
+      shopId: shopId,
+      name: item.productName,
+      category: '',
+      status: 'ACTIVE',
+      audience: '',
+      imageUrl: item.image ?? '',
+      gallery: const [],
+      totalStock: item.stock,
+      originalPrice: item.unitPrice,
+      salePrice: item.discountPrice,
+      variants: const [],
+    );
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cartMap = ref.watch(cartProvider);
-
-    double subtotal = 0;
-    int itemCount = 0;
-
-    for (final id in selectedIds) {
-      final quantity = cartMap[id];
-      if (quantity == null) continue;
-      final productAsync = ref.watch(productByIdProvider(id));
-      final product = productAsync.value;
-      if (product == null) continue;
-      subtotal += product.price * quantity;
-      itemCount += quantity;
-    }
+  Widget build(BuildContext context) {
+    final count = data.selectedCount;
 
     return SafeArea(
       child: Container(
@@ -353,11 +447,11 @@ class _CartCheckoutBar extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '$itemCount item${itemCount == 1 ? '' : 's'} selected',
+                    '$count item${count == 1 ? '' : 's'} selected',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   Text(
-                    '\$${subtotal.toStringAsFixed(2)}',
+                    formatPrice(data.grandTotal),
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -368,9 +462,8 @@ class _CartCheckoutBar extends ConsumerWidget {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: selectedIds.isEmpty
-                    ? Colors.grey.shade300
-                    : Colors.black,
+                backgroundColor: Colors.black,
+                disabledBackgroundColor: Colors.grey.shade300,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -379,16 +472,18 @@ class _CartCheckoutBar extends ConsumerWidget {
                   vertical: 14,
                 ),
               ),
-              onPressed: selectedIds.isEmpty
+              onPressed: count == 0
                   ? null
                   : () {
                       final items = <CheckoutItem>[];
-                      for (final id in selectedIds) {
-                        final product = ref.read(productByIdProvider(id)).value;
-                        final quantity = cartMap[id];
-                        if (product != null && quantity != null) {
+                      for (final shop in data.shops) {
+                        for (final item in shop.items) {
+                          if (!item.isSelected) continue;
                           items.add(
-                            CheckoutItem(product: product, quantity: quantity),
+                            CheckoutItem(
+                              product: _asProduct(item, shop.shopId),
+                              quantity: item.quantity,
+                            ),
                           );
                         }
                       }
@@ -414,8 +509,51 @@ class _CartCheckoutBar extends ConsumerWidget {
   }
 }
 
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_outlined, size: 56, color: Colors.grey.shade400),
+            const SizedBox(height: 12),
+            const Text(
+              'Could not load your cart',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+              onPressed: onRetry,
+              child: const Text('Try again', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyCart extends ConsumerWidget {
-  const _EmptyCart();
+  const _EmptyCart({required this.loggedIn});
+
+  final bool loggedIn;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -431,13 +569,15 @@ class _EmptyCart extends ConsumerWidget {
               color: Colors.grey.shade300,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Your cart is empty',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            Text(
+              loggedIn ? 'Your cart is empty' : 'Log in to see your cart',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
-              'Add products to your cart to see them here.',
+              loggedIn
+                  ? 'Add products to your cart to see them here.'
+                  : 'Your cart is saved to your account.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
@@ -450,17 +590,17 @@ class _EmptyCart extends ConsumerWidget {
                 ),
               ),
               onPressed: () async {
-                final loggedIn = await requireLogin(context);
-                if (!loggedIn) return;
-              
-                ref.read(mainTabIndexProvider.notifier).state =
-                    kShopTabIndex;
+                final ok = await requireLogin(context);
+                if (!ok) return;
+                if (loggedIn) {
+                  ref.read(mainTabIndexProvider.notifier).state = kShopTabIndex;
+                }
               },
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: Text(
-                  'Browse products',
-                  style: TextStyle(color: Colors.white),
+                  loggedIn ? 'Browse products' : 'Log in',
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ),

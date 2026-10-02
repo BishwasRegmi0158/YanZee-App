@@ -3,14 +3,17 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:yanzee_app/core/api/api_client.dart';
 import 'package:yanzee_app/core/api/api_config.dart';
+import 'package:yanzee_app/data/models/seller_models.dart';
 
 // Multipart field name for POST /images/product/cover.
 // ASSUMED to be 'image' like the shop upload. Confirm with the backend.
 const _coverField = 'image';
 
 class SellerProductApiService {
-  Map<String, String> _json(Map<String, String> h) =>
-      {...h, 'Content-Type': 'application/json'};
+  Map<String, String> _json(Map<String, String> h) => {
+    ...h,
+    'Content-Type': 'application/json',
+  };
 
   /// POST /products
   /// body: {name, category, audience, status, price, discountPrice, image,
@@ -21,7 +24,9 @@ class SellerProductApiService {
       (h) => http.post(url, headers: _json(h), body: jsonEncode(body)),
     );
     if (res.statusCode != 200 && res.statusCode != 201) {
-      throw Exception(_message(res, 'Could not create product (${res.statusCode})'));
+      throw Exception(
+        _message(res, 'Could not create product (${res.statusCode})'),
+      );
     }
   }
 
@@ -32,7 +37,9 @@ class SellerProductApiService {
       (h) => http.patch(url, headers: _json(h), body: jsonEncode(body)),
     );
     if (res.statusCode != 200) {
-      throw Exception(_message(res, 'Could not update product (${res.statusCode})'));
+      throw Exception(
+        _message(res, 'Could not update product (${res.statusCode})'),
+      );
     }
   }
 
@@ -41,8 +48,24 @@ class SellerProductApiService {
     final url = Uri.parse('${ApiConfig.baseUrl}/products/$id');
     final res = await ApiClient.send((h) => http.delete(url, headers: h));
     if (res.statusCode != 200 && res.statusCode != 204) {
-      throw Exception(_message(res, 'Could not delete product (${res.statusCode})'));
+      throw Exception(
+        _message(res, 'Could not delete product (${res.statusCode})'),
+      );
     }
+  }
+
+  /// GET /products/:id. Includes the description, which the list leaves out.
+  Future<SellerProduct> getProduct(String id) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/products/$id');
+    final res = await ApiClient.send((h) => http.get(url, headers: h));
+    if (res.statusCode != 200) {
+      throw Exception(
+        _message(res, 'Could not load product (${res.statusCode})'),
+      );
+    }
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final data = body['data'] as Map<String, dynamic>;
+    return SellerProduct.fromJson(data['product'] as Map<String, dynamic>);
   }
 
   /// POST /images/product/cover, returns the image URL.

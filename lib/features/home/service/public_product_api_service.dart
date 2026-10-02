@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:yanzee_app/core/api/api_config.dart';
+import 'package:yanzee_app/data/models/public_product.dart';
 
 class PublicProductPage {
-  final List<Map<String, dynamic>> products;
+  final List<PublicProduct> products;
   final int page;
   final int totalPages;
   final int total;
@@ -21,13 +22,14 @@ class PublicProductPage {
 class PublicProductApiService {
   static const _timeout = Duration(seconds: 20);
 
-  /// GET /products/public. [category] must be a backend enum value,
-  /// e.g. FASHION or HOME_DECOR.
+  /// GET /products/public. [category] and [audience] must be backend enum
+  /// values (e.g. SPORTS, HOME_DECOR / MEN, KIDS_UNISEX).
   Future<PublicProductPage> fetchPage({
     int page = 1,
     int limit = 10,
     String? search,
     String? category,
+    String? audience,
     double? minPrice,
     double? maxPrice,
   }) async {
@@ -36,6 +38,7 @@ class PublicProductApiService {
       'limit': '$limit',
       if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
       if (category != null && category.isNotEmpty) 'category': category,
+      if (audience != null && audience.isNotEmpty) 'audience': audience,
       if (minPrice != null) 'minPrice': '$minPrice',
       if (maxPrice != null) 'maxPrice': '$maxPrice',
     };
@@ -54,7 +57,10 @@ class PublicProductApiService {
     final p = (data['pagination'] as Map?) ?? const {};
 
     return PublicProductPage(
-      products: list.whereType<Map<String, dynamic>>().toList(),
+      products: list
+          .whereType<Map<String, dynamic>>()
+          .map(PublicProduct.fromJson)
+          .toList(),
       page: (p['page'] as num?)?.toInt() ?? page,
       totalPages: (p['totalPages'] as num?)?.toInt() ?? 1,
       total: (p['total'] as num?)?.toInt() ?? list.length,

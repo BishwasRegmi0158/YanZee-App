@@ -1,51 +1,275 @@
+// lib/features/cart/provider/cart_provider.dart
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yanzee_app/data/models/auth_state.dart';
+import 'package:yanzee_app/data/models/cart_models.dart';
+import 'package:yanzee_app/data/services/cart_api_service.dart';
 
-/// State is now productId -> quantity, instead of just a Set<int>.
-class CartNotifier extends Notifier<Map<int, int>> {
-  @override
-  Map<int, int> build() => {};
+class CartState {
+  final CartData data;
 
-  /// Used by ProductCard's quick-add icon and Product Detail's Add/Remove button.
-  void toggle(int productId) {
-    final updated = Map<int, int>.from(state);
-    if (updated.containsKey(productId)) {
-      updated.remove(productId);
-    } else {
-      updated[productId] = 1;
-    }
-    state = updated;
-  }
+  /// First load / pull-to-refresh.
+  final bool isLoading;
 
-  void increment(int productId) {
-    final updated = Map<int, int>.from(state);
-    updated[productId] = (updated[productId] ?? 0) + 1;
-    state = updated;
-  }
+  /// A change (select, quantity, ...) is being sent to the server.
+  final bool isBusy;
 
-  void decrement(int productId) {
-    final updated = Map<int, int>.from(state);
-    final current = updated[productId] ?? 0;
-    if (current <= 1) {
-      updated.remove(productId);
-    } else {
-      updated[productId] = current - 1;
-    }
-    state = updated;
-  }
+  /// Why the cart could not be loaded.
+  final Object? error;
 
-  void removeIds(Iterable<int> productIds) {
-    final updated = Map<int, int>.from(state);
-    for (final id in productIds) {
-      updated.remove(id);
-    }
-    state = updated;
-  }
+  /// A one-time message for a failed change. The Cart screen shows it
+  /// in a snack bar and then calls clearMessage().
+  final String? message;
 
-  /// Wipes the cart. Call this on logout (and on login) so one account's
-  /// cart never leaks into another account's session.
-  void clear() {
-    state = {};
+  const CartState({
+    this.data = CartData.empty,
+    this.isLoading = false,
+    this.isBusy = false,
+    this.error,
+    this.message,
+  });
+
+  CartState copyWith({
+    CartData? data,
+    bool? isLoading,
+    bool? isBusy,
+    Object? error,
+    bool clearError = false,
+    String? message,
+    bool clearMessage = false,
+  }) {
+    return CartState(
+      data: data ?? this.data,
+      isLoading: isLoading ?? this.isLoading,
+      isBusy: isBusy ?? this.isBusy,
+      error: clearError ? null : (error ?? this.error),
+      message: clearMessage ? null : (message ?? this.message),
+    );
   }
 }
 
-final cartProvider = NotifierProvider<CartNotifier, Map<int, int>>(CartNotifier.new);
+class CartNotifier extends Notifier<CartState> {
+  final CartApiService _api = CartApiService();
+
+  bool _alive = true;
+  bool _wasLoggedIn = false;
+  int _inFlight = 0;
+  int _reloadSeq = 0;
+
+  @override
+  CartState build() {
+    _alive = true;
+    _wasLoggedIn = AuthState.instance.isLoggedIn;
+
+    // Follow login / logout by itself: load the cart after login, empty it
+    // after logout.
+    AuthState.instance.addListener(_onAuthChanged);
+    ref.onDispose(() {
+      _alive = false;
+      AuthState.instance.removeListener(_onAuthChanged);
+    });
+
+    if (_wasLoggedIn) Future.microtask(refresh);
+    return const CartState();
+  }
+
+  void _onAuthChanged() {
+    final nowLoggedIn = AuthState.instance.isLoggedIn;
+    if (nowLoggedIn == _wasLoggedIn) return; // profile/address edits etc.
+    _wasLoggedIn = nowLoggedIn;
+    if (nowLoggedIn) {
+      refresh();
+    } else {
+      clear();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Loading
+  // ---------------------------------------------------------------------------
+
+  /// GET /carts
+  Future<void> refresh() async {
+    if (!AuthState.instance.isLoggedIn) {
+      clear();
+      return;
+    }
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _reload();
+    } catch (e) {
+      if (!_alive) return;
+      final text = _messageOf(e);
+      state = state.copyWith(error: text, message: text);
+    }
+    if (_alive) state = state.copyWith(isLoading: false);
+  }
+
+  /// Fetches the cart and replaces the state. If several reloads overlap,
+  /// only the newest one is applied.
+  Future<void> _reload() async {
+    final seq = ++_reloadSeq;
+    final json = await _api.fetchCart();
+    if (!_alive || seq != _reloadSeq) return;
+    state = state.copyWith(data: CartData.fromJson(json), clearError: true);
+  }
+
+  /// Local reset only (logout / login). Does not call the server.
+  void clear() {
+    _reloadSeq++;
+    state = const CartState();
+  }
+
+  void clearMessage() {
+    if (state.message != null) state = state.copyWith(clearMessage: true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Changes. Each one updates the screen at once, sends the request, then
+  // reloads the real cart from the server. Returns an error text or null.
+  // ---------------------------------------------------------------------------
+
+  /// POST /carts/items
+  Future<String?> addItem({required String variantId, int quantity = 1}) {
+    return _mutate(
+      request: () => _api.addItem(variantId: variantId, quantity: quantity),
+      showMessage: false, // the caller shows its own snack bar
+    );
+  }
+
+  /// PATCH /carts/items/:itemId  (quantity)
+  Future<String?> setQuantity(CartItem item, int quantity) {
+    final current = _latest(item);
+    final max = current.stock < 1 ? 1 : current.stock;
+    final q = quantity < 1 ? 1 : (quantity > max ? max : quantity);
+    if (q == current.quantity) return Future.value(null);
+
+    return _mutate(
+      optimistic: (d) => d.mapItems(
+        (shop, i) => i.itemId == current.itemId ? i.copyWith(quantity: q) : i,
+      ),
+      request: () => _api.updateItem(
+        current.itemId,
+        quantity: q,
+        isSelected: current.isSelected,
+      ),
+    );
+  }
+
+  /// PATCH /carts/items/:itemId  (isSelected)
+  Future<String?> setItemSelected(CartItem item, bool selected) {
+    final current = _latest(item);
+    return _mutate(
+      optimistic: (d) => d.mapItems(
+        (shop, i) =>
+            i.itemId == current.itemId ? i.copyWith(isSelected: selected) : i,
+      ),
+      request: () => _api.updateItem(
+        current.itemId,
+        quantity: current.quantity,
+        isSelected: selected,
+      ),
+    );
+  }
+
+  /// PATCH /carts/select-shop
+  Future<String?> setShopSelected(CartShop shop, bool selected) {
+    return _mutate(
+      optimistic: (d) => d.mapItems(
+        (s, i) => s.shopId == shop.shopId ? i.copyWith(isSelected: selected) : i,
+      ),
+      request: () => _api.selectShop(shop.shopId, selected),
+    );
+  }
+
+  /// PATCH /carts/select-all
+  Future<String?> setAllSelected(bool selected) {
+    return _mutate(
+      optimistic: (d) => d.mapItems((s, i) => i.copyWith(isSelected: selected)),
+      request: () => _api.selectAll(selected),
+    );
+  }
+
+  // The endpoints below are not connected yet (waiting for their URLs).
+
+  Future<String?> removeItem(CartItem item) => _notConnected('Remove item');
+
+  Future<String?> removeSelected() => _notConnected('Remove selected items');
+
+  Future<String?> emptyCart() => _notConnected('Clear cart');
+
+  Future<String?> _notConnected(String what) async {
+    const text = 'is not connected to the backend yet.';
+    state = state.copyWith(message: '$what $text');
+    return '$what $text';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internals
+  // ---------------------------------------------------------------------------
+
+  CartItem _latest(CartItem item) {
+    for (final i in state.data.items) {
+      if (i.itemId == item.itemId) return i;
+    }
+    return item;
+  }
+
+  Future<String?> _mutate({
+    CartData Function(CartData current)? optimistic,
+    required Future<void> Function() request,
+    bool showMessage = true,
+  }) async {
+    if (!AuthState.instance.isLoggedIn) return 'Please log in first';
+
+    _inFlight++;
+    state = state.copyWith(
+      isBusy: true,
+      data: optimistic == null ? null : optimistic(state.data),
+    );
+
+    String? error;
+    try {
+      await request();
+    } catch (e) {
+      error = _messageOf(e);
+    }
+    // Always reload: it shows the real cart, and it undoes the instant
+    // update if the request failed.
+    try {
+      await _reload();
+    } catch (e) {
+      error ??= _messageOf(e);
+    }
+
+    _inFlight--;
+    if (!_alive) return error;
+    state = state.copyWith(
+      isBusy: _inFlight > 0,
+      message: showMessage ? error : null,
+    );
+    return error;
+  }
+
+  String _messageOf(Object e) {
+    if (e is CartApiException) return e.message;
+    if (e is TimeoutException) {
+      return 'The server took too long to answer. Please try again.';
+    }
+    final text = e.toString();
+    if (text.contains('SocketException') || text.contains('ClientException')) {
+      return 'No internet connection.';
+    }
+    return text.startsWith('Exception: ') ? text.substring(11) : text;
+  }
+}
+
+final cartProvider = NotifierProvider<CartNotifier, CartState>(
+  CartNotifier.new,
+);
+
+/// Total quantity in the cart, for the badge on the Cart tab.
+final cartCountProvider = Provider<int>((ref) {
+  return ref.watch(cartProvider.select((s) => s.data.totalItems));
+});

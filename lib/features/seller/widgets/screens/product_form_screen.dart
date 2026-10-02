@@ -36,6 +36,10 @@ class ProductFormScreen extends ConsumerStatefulWidget {
 }
 
 class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
+  // Backend rule: a variant size may contain only letters, numbers,
+  // spaces and the characters - . /
+  static final _sizeRule = RegExp(r'^[A-Za-z0-9 \-./]+$');
+
   late final TextEditingController _name;
   late final TextEditingController _price;
   late final TextEditingController _discount;
@@ -47,6 +51,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   File? _pickedImage;
   String? _existingImageUrl;
   bool _saving = false;
+
+  /// The full product from GET /products/:id (the list has no description).
+  SellerProduct? _base;
+  bool _loadingDetails = false;
+  bool _detailsFailed = false;
 
   final FocusNode _descriptionFocus = FocusNode();
   final ScrollController _scrollController = ScrollController();
@@ -62,6 +71,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   void initState() {
     super.initState();
     final p = widget.initial;
+    _base = p;
     _name = TextEditingController(text: p?.name ?? '');
     _price = TextEditingController(text: p != null ? _fmt(p.price) : '');
     _discount = TextEditingController(
@@ -102,6 +112,42 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         });
       }
     });
+
+    // When editing, load the full product first. The list does not contain
+    // the description, so saving without it would erase it on the server.
+    if (_isEditing) {
+      _loadingDetails = true;
+      _fetchDetails();
+    }
+  }
+
+  Future<void> _fetchDetails() async {
+    try {
+      final full = await ref
+          .read(sellerProductApiProvider)
+          .getProduct(widget.initial!.id);
+      if (!mounted) return;
+      setState(() {
+        _base = full;
+        if (_description.text.isEmpty) _description.text = full.description;
+        _loadingDetails = false;
+        _detailsFailed = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingDetails = false;
+        _detailsFailed = true;
+      });
+    }
+  }
+
+  void _retryDetails() {
+    setState(() {
+      _loadingDetails = true;
+      _detailsFailed = false;
+    });
+    _fetchDetails();
   }
 
   @override
@@ -146,8 +192,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  bool get _canSave => !_saving && !_loadingDetails && !_detailsFailed;
+
   Future<void> _submit() async {
-    if (_saving) return;
+    if (!_canSave) return;
     FocusScope.of(context).unfocus();
 
     final name = _name.text.trim();
@@ -173,6 +221,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       if (size.isEmpty || sku.isEmpty || stock == null || stock < 0) {
         return _showError('Every variant needs a size, a stock number and a SKU');
       }
+      if (!_sizeRule.hasMatch(size)) {
+        return _showError(
+          'Size "$size" is not allowed. Use only letters, numbers, spaces and - . /',
+        );
+      }
       if (!seenSkus.add(sku.toLowerCase())) {
         return _showError('SKU "$sku" is used twice. Each SKU must be unique');
       }
@@ -184,7 +237,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     final SellerProduct product;
     if (_isEditing) {
-      product = widget.initial!.copyWith(
+      product = _base!.copyWith(
         name: name,
         price: price,
         discountPrice: discount,
@@ -266,6 +319,38 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_loadingDetails)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: LinearProgressIndicator(
+                        color: AppColors.ink,
+                        backgroundColor: Colors.grey.shade300,
+                      ),
+                    ),
+                  if (_detailsFailed)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAF9F7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Could not load the full product details, so saving is disabled.',
+                              style: TextStyle(fontSize: 12.5),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _retryDetails,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
                   _label(context, 'Product image'),
                   GestureDetector(
                     onTap: _saving ? null : _pickImage,
@@ -543,7 +628,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     Expanded(
                       flex: 2,
                       child: ElevatedButton(
-                        onPressed: _saving ? null : _submit,
+                        onPressed: _canSave ? _submit : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.ink,
                           padding: const EdgeInsets.symmetric(vertical: 16),

@@ -26,6 +26,17 @@ class ShopApiService {
     return (body['data'] as Map<String, dynamic>)['url'] as String;
   }
 
+  /// DELETE /shops/my
+  Future<void> deleteMyShop() async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/shops/my');
+    final res = await ApiClient.send((h) => http.delete(url, headers: h));
+    if (res.statusCode != 200 && res.statusCode != 204) {
+      throw Exception(
+        _message(res, 'Could not delete shop (${res.statusCode})'),
+      );
+    }
+  }
+
   /// Returns null when the owner has no shop yet (404).
   Future<SellerShop?> getMyShop() async {
     final url = Uri.parse('${ApiConfig.baseUrl}/shops/my');

@@ -12,6 +12,8 @@ import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/core/widgets/keyboard_safe_sheet.dart';
 import 'package:yanzee_app/data/models/seller_store.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/my_shop_provider.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/seller_products_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_store_provider.dart';
 
 class SellerStoreScreen extends ConsumerWidget {
@@ -24,9 +26,9 @@ class SellerStoreScreen extends ConsumerWidget {
   ) async {
     final error = await action();
     if (error != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     }
   }
 
@@ -71,7 +73,11 @@ class SellerStoreScreen extends ConsumerWidget {
     }
   }
 
-  void _showLogoOptions(BuildContext context, WidgetRef ref, SellerStore store) {
+  void _showLogoOptions(
+    BuildContext context,
+    WidgetRef ref,
+    SellerStore store,
+  ) {
     final hasImage = store.logoImage != null || store.logoUrl != null;
     final notifier = ref.read(sellerStoreProvider.notifier);
 
@@ -137,6 +143,67 @@ class SellerStoreScreen extends ConsumerWidget {
 
     // The user is no longer a shop owner, so go to the customer home.
     context.go('/home');
+  }
+
+  Future<void> _confirmDeleteShop(
+    BuildContext context,
+    WidgetRef ref,
+    String shopName,
+  ) async {
+    const red = Color(0xFFE05A47);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete shop?'),
+        content: Text(
+          '"$shopName" will be permanently deleted. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete', style: TextStyle(color: red)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+
+    // Block the screen with a spinner while the server works.
+    final nav = Navigator.of(context, rootNavigator: true);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+    );
+
+    String? error;
+    try {
+      await ref.read(shopApiServiceProvider).deleteMyShop();
+    } catch (e) {
+      error = e.toString().replaceFirst('Exception: ', '');
+    }
+    nav.pop(); // close the spinner
+
+    if (!context.mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Shop deleted')));
+    // The gate asks GET /shops/my again, gets 404 and shows Create Shop.
+    ref.invalidate(sellerProductsProvider);
+    ref.invalidate(myShopProvider);
   }
 
   /// A freshly picked file wins (instant preview); otherwise the saved URL.
@@ -271,7 +338,20 @@ class SellerStoreScreen extends ConsumerWidget {
             maxLines: 3,
           ),
           const SizedBox(height: 14),
-          _logoutButton(context),
+
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: () => _confirmDeleteShop(context, ref, store.name),
+              child: const Text(
+                'Delete shop',
+                style: TextStyle(
+                  color: Color(0xFFE05A47),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
         ],
       ),
@@ -354,11 +434,7 @@ class SellerStoreScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const Icon(
-                  Iconsax.arrow_right_3,
-                  color: Colors.grey,
-                  size: 18,
-                ),
+                const Icon(Iconsax.arrow_right_3, color: Colors.grey, size: 18),
               ],
             ),
           ),
@@ -419,10 +495,7 @@ class _EditFieldFormState extends State<_EditFieldForm> {
       children: [
         Text(
           'Edit ${widget.label}',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         const SizedBox(height: 14),
         TextField(
@@ -431,9 +504,7 @@ class _EditFieldFormState extends State<_EditFieldForm> {
           maxLines: widget.maxLines,
           decoration: InputDecoration(
             hintText: 'Enter ${widget.label}',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
         const SizedBox(height: 16),
@@ -445,10 +516,7 @@ class _EditFieldFormState extends State<_EditFieldForm> {
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
-            child: const Text(
-              'Save',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
           ),
         ),
       ],

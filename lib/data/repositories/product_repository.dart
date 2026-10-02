@@ -1,75 +1,89 @@
+// lib/data/repositories/product_repository.dart
+import 'package:yanzee_app/core/utils/parse.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/data/services/product_api_service.dart';
 
 class ProductPage {
   final List<Product> products;
-  final int total;
-  final int skip;
+  final int page;
   final int limit;
+  final int total;
+  final int totalPages;
 
   const ProductPage({
     required this.products,
-    required this.total,
-    required this.skip,
+    required this.page,
     required this.limit,
+    required this.total,
+    required this.totalPages,
   });
 
-  bool get hasMore => skip + products.length < total;
+  bool get hasMore => page < totalPages;
 }
 
 class ProductRepository {
-  final ProductApiService _apiService = ProductApiService();
+  final ProductApiService _api = ProductApiService();
 
-  /// Used by Home screen's New Arrivals section
-  Future<List<Product>> getNewArrivals({int limit = 10}) async {
-    final rawList = await _apiService.fetchProducts(limit: limit);
-    return rawList.map((json) => Product.fromJson(json)).toList();
-  }
-
-  /// Used by Category Products screen
-  Future<List<Product>> getProductsByCategory(String categorySlug) async {
-    final rawProducts = await _apiService.fetchProductsByCategory(categorySlug);
-    return rawProducts.map((json) => Product.fromJson(json)).toList();
-  }
-
-  /// Used by Search screen
-  Future<List<Product>> searchProducts(String query) async {
-    final rawList = await _apiService.searchProducts(query);
-    return rawList.map((json) => Product.fromJson(json)).toList();
-  }
-
-  // fetch the product through id
-Future<Product> getProductById(int id) async {
-  final json = await _apiService.fetchProductById(id);
-  return Product.fromJson(json);
-}
-
-  /// Used by Shop screen — paginated, filterable, sortable
-  Future<ProductPage> getProducts({
+  /// Paginated + filterable list. Used by the Shop screen and by every
+  /// helper below.
+  Future<ProductPage> getPublicProducts({
+    int page = 1,
     int limit = 20,
-    int skip = 0,
-    String? category, // null or 'all' means no category filter
-    String? sortBy,
-    String? order,
+    String? search,
+    String? category, // backend enum, null = all
+    String? audience,
+    double? minPrice,
+    double? maxPrice,
   }) async {
-    final json = (category == null || category == 'all')
-        ? await _apiService.fetchProductsPage(
-            limit: limit, skip: skip, sortBy: sortBy, order: order)
-        : await _apiService.fetchProductsByCategoryPage(
-            categorySlug: category,
-            limit: limit,
-            skip: skip,
-            sortBy: sortBy,
-            order: order,
-          );
+    final data = await _api.fetchPublicProducts(
+      page: page,
+      limit: limit,
+      search: search,
+      category: category,
+      audience: audience,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+    );
+
+    final products = ((data['products'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+    final pagination =
+        (data['pagination'] as Map<String, dynamic>?) ?? <String, dynamic>{};
 
     return ProductPage(
-      products: (json['products'] as List)
-          .map((e) => Product.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      total: json['total'] as int,
-      skip: json['skip'] as int,
-      limit: json['limit'] as int,
+      products: products,
+      page: parseInt(pagination['page'], page),
+      limit: parseInt(pagination['limit'], limit),
+      total: parseInt(pagination['total'], products.length),
+      totalPages: parseInt(pagination['totalPages'], 1),
     );
+  }
+
+  /// Home "New Arrivals" (the backend's default order).
+  Future<List<Product>> getNewArrivals({int limit = 10}) async =>
+      (await getPublicProducts(limit: limit)).products;
+
+  Future<List<Product>> getProductsByCategory(
+    String category, {
+    int limit = 50,
+  }) async =>
+      (await getPublicProducts(category: category.toUpperCase(), limit: limit))
+          .products;
+
+  Future<List<Product>> searchProducts(String query, {int limit = 30}) async =>
+      (await getPublicProducts(search: query, limit: limit)).products;
+
+  Future<Product> getProductById(String id) async {
+    final data = await _api.fetchProductById(id);
+    return Product.fromJson(data['product'] as Map<String, dynamic>);
+  }
+
+  /// The product API only returns shopId, so the shop name is looked up here.
+  Future<String> getShopName(String shopId) async {
+    final data = await _api.fetchShopById(shopId);
+    final shop = data['shop'] as Map<String, dynamic>?;
+    return (shop?['name'] ?? '').toString();
   }
 }
