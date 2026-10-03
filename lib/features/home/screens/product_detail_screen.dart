@@ -123,7 +123,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             ),
             onPressed: () => _requireLogin(
               context,
-              () => ref.read(wishlistProvider.notifier).toggle(product.id),
+              () => ref.read(wishlistProvider.notifier).toggle(product),
             ),
           ),
           const SizedBox(width: 8),

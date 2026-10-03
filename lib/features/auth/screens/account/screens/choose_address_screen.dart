@@ -32,10 +32,11 @@ class _ChooseAddressScreenState extends State<ChooseAddressScreen> {
   }
 
   Future<void> _addNew() async {
-    await pushFullScreen(context, const AddShippingAddressScreen());
-    // The newly added address is already the default (see AddShippingAddressScreen),
-    // so once it comes back we can just close the picker too.
-    if (mounted) Navigator.of(context).pop();
+    final saved = await pushFullScreen<ShippingAddress>(
+      context,
+      const AddShippingAddressScreen(),
+    );
+    if (saved != null && mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -121,7 +122,10 @@ class _ChooseAddressScreenState extends State<ChooseAddressScreen> {
                     const SizedBox(height: 4),
                     Text(
                       address.summary,
-                      style: const TextStyle(fontSize: 13, color: Colors.black54),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                      ),
                     ),
                   ],
                 ),

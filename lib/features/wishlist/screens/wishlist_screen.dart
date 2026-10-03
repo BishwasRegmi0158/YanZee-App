@@ -1,10 +1,10 @@
+// lib/features/wishlist/screens/wishlist_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yanzee_app/core/provider/main_tab_provider.dart';
 import 'package:yanzee_app/data/models/product.dart';
-import 'package:yanzee_app/features/home/providers/product_provider.dart';
-import 'package:yanzee_app/features/home/screens/widgets/product_card.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart';
+import 'package:yanzee_app/features/home/screens/widgets/product_card.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
 
 class WishlistScreen extends ConsumerWidget {
@@ -12,7 +12,8 @@ class WishlistScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final wishlistIds = ref.watch(wishlistProvider);
+    ref.watch(wishlistProvider); // rebuild whenever the wishlist changes
+    final products = ref.read(wishlistProvider.notifier).products;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -25,46 +26,20 @@ class WishlistScreen extends ConsumerWidget {
         ),
         centerTitle: false,
       ),
-      body: wishlistIds.isEmpty
+      body: products.isEmpty
           ? const _EmptyWishlist()
-          : _WishlistBody(wishlistIds: wishlistIds),
+          : _WishlistGrid(products: products),
     );
   }
 }
 
-class _WishlistBody extends ConsumerWidget {
-  final Iterable<int> wishlistIds;
+class _WishlistGrid extends StatelessWidget {
+  const _WishlistGrid({required this.products});
 
-  const _WishlistBody({required this.wishlistIds});
+  final List<Product> products;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final productAsyncs = wishlistIds
-        .map((id) => ref.watch(productByIdProvider(InkDecoration(decoration: decoration, configuration: configuration, controller: controller, referenceBox: referenceBox))))
-        .toList();
-
-    final anyLoading = productAsyncs.any((p) => p.isLoading);
-    final firstError = productAsyncs.firstWhere(
-      (p) => p.hasError,
-      orElse: () => productAsyncs.first,
-    );
-
-    if (anyLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (firstError.hasError) {
-      return Center(child: Text('Something went wrong: ${firstError.error}'));
-    }
-
-    final wishlistedProducts = productAsyncs
-        .map((p) => p.value)
-        .whereType<Product>()
-        .toList();
-
-    if (wishlistedProducts.isEmpty) {
-      return const _EmptyWishlist();
-    }
-
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: GridView.builder(
@@ -74,10 +49,8 @@ class _WishlistBody extends ConsumerWidget {
           crossAxisSpacing: 14,
           mainAxisExtent: 240,
         ),
-        itemCount: wishlistedProducts.length,
-        itemBuilder: (context, index) {
-          return ProductCard(product: wishlistedProducts[index]);
-        },
+        itemCount: products.length,
+        itemBuilder: (context, index) => ProductCard(product: products[index]),
       ),
     );
   }
@@ -117,9 +90,8 @@ class _EmptyWishlist extends ConsumerWidget {
               onPressed: () async {
                 final loggedIn = await requireLogin(context);
                 if (!loggedIn) return;
-            
-                ref.read(mainTabIndexProvider.notifier).state =
-                    kShopTabIndex;
+
+                ref.read(mainTabIndexProvider.notifier).state = kShopTabIndex;
               },
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),

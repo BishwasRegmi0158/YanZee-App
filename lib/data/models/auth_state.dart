@@ -54,6 +54,12 @@ class UserProfile {
     this.phone,
     this.image,
     this.role,
+    this.gender,
+    this.address,
+    this.city,
+    this.province,
+    this.district,
+    this.country,
   });
 
   /// Backend ids are UUID strings.
@@ -68,6 +74,14 @@ class UserProfile {
 
   /// 'CUSTOMER' or 'SHOP_OWNER'
   final String? role;
+
+  // Profile details from GET /auth/me (the login response does not have them).
+  final String? gender;
+  final String? address;
+  final String? city;
+  final String? province;
+  final String? district;
+  final String? country;
 
   static String nameFromEmail(String email) {
     final localPart = email.split('@').first.trim();
@@ -88,6 +102,12 @@ class UserProfile {
     String? phone,
     String? image,
     String? role,
+    String? gender,
+    String? address,
+    String? city,
+    String? province,
+    String? district,
+    String? country,
   }) {
     return UserProfile(
       id: id,
@@ -99,10 +119,18 @@ class UserProfile {
       phone: phone ?? this.phone,
       image: image ?? this.image,
       role: role ?? this.role,
+      gender: gender ?? this.gender,
+      address: address ?? this.address,
+      city: city ?? this.city,
+      province: province ?? this.province,
+      district: district ?? this.district,
+      country: country ?? this.country,
     );
   }
 
-  /// Backend user object: { id, fullName, email, phone, profileImg, role }
+  /// Backend user object:
+  /// { id, fullName, email, phone, profileImg, role, gender, address, city,
+  ///   province, district, country }
   factory UserProfile.fromApi(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id']?.toString(),
@@ -111,6 +139,12 @@ class UserProfile {
       phone: json['phone'] as String?,
       image: json['profileImg'] as String?,
       role: json['role'] as String?,
+      gender: json['gender'] as String?,
+      address: json['address'] as String?,
+      city: json['city'] as String?,
+      province: json['province'] as String?,
+      district: json['district'] as String?,
+      country: json['country'] as String?,
     );
   }
 }

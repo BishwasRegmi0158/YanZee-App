@@ -96,6 +96,18 @@ class CartShop {
 
   bool get allSelected => items.isNotEmpty && items.every((i) => i.isSelected);
 
+  /// Same shop with a new list of items (subtotal recalculated).
+  CartShop withItems(List<CartItem> newItems) {
+    return CartShop(
+      shopId: shopId,
+      shopName: shopName,
+      items: newItems,
+      shopSubtotal: newItems
+          .where((i) => i.isSelected)
+          .fold<double>(0, (sum, i) => sum + i.lineTotal),
+    );
+  }
+
   factory CartShop.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'];
     return CartShop(
@@ -144,25 +156,11 @@ class CartData {
   bool containsProduct(String productId) =>
       items.any((i) => i.productId == productId);
 
-  /// Returns a copy where every item went through [transform], with the
-  /// totals recalculated. Used for instant UI updates; the real numbers
-  /// from the server replace this right after.
-  CartData mapItems(CartItem Function(CartShop shop, CartItem item) transform) {
-    final newShops = shops.map((shop) {
-      final newItems = shop.items.map((i) => transform(shop, i)).toList();
-      return CartShop(
-        shopId: shop.shopId,
-        shopName: shop.shopName,
-        items: newItems,
-        shopSubtotal: newItems
-            .where((i) => i.isSelected)
-            .fold<double>(0, (sum, i) => sum + i.lineTotal),
-      );
-    }).toList();
-
-    final all = newShops.expand((s) => s.items);
+  /// Builds a CartData from shops and works out the totals itself.
+  factory CartData.fromShops(List<CartShop> shops) {
+    final all = shops.expand((s) => s.items);
     return CartData(
-      shops: newShops,
+      shops: shops,
       selectedCount: all
           .where((i) => i.isSelected)
           .fold<int>(0, (sum, i) => sum + i.quantity),
@@ -171,6 +169,31 @@ class CartData {
           .where((i) => i.isSelected)
           .fold<double>(0, (sum, i) => sum + i.lineTotal),
     );
+  }
+
+  /// Returns a copy where every item went through [transform], with the
+  /// totals recalculated. Used for instant UI updates; the real numbers
+  /// from the server replace this right after.
+  CartData mapItems(CartItem Function(CartShop shop, CartItem item) transform) {
+    return CartData.fromShops(
+      shops
+          .map((shop) => shop.withItems(
+                shop.items.map((i) => transform(shop, i)).toList(),
+              ))
+          .toList(),
+    );
+  }
+
+  /// Returns a copy without the items whose itemId is in [itemIds].
+  /// Shops that end up empty disappear.
+  CartData removeItems(Set<String> itemIds) {
+    final newShops = <CartShop>[];
+    for (final shop in shops) {
+      final kept =
+          shop.items.where((i) => !itemIds.contains(i.itemId)).toList();
+      if (kept.isNotEmpty) newShops.add(shop.withItems(kept));
+    }
+    return CartData.fromShops(newShops);
   }
 
   factory CartData.fromJson(Map<String, dynamic> json) {

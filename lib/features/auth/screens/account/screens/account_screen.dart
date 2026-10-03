@@ -11,6 +11,7 @@ import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
 import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
+import 'package:yanzee_app/data/services/user_api_service.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/my_address_screen.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/my_cards_screen.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/my_orders_screen.dart';
@@ -74,7 +75,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     ref.read(cartProvider.notifier).clear();
     ref.read(wishlistProvider.notifier).clear();
   }
-
   Future<void> _pickProfileImage() async {
     final picked = await _imagePicker.pickImage(
       source: ImageSource.gallery,
@@ -85,33 +85,31 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (picked == null || !mounted) return;
 
     setState(() => _isUpdatingPhoto = true);
-    final user = AuthState.instance.user;
+    String? error;
     try {
-      await AuthService.updateProfile(
-        name: user?.name ?? '',
-        email: user?.email ?? '',
-        phone: user?.phone ?? '',
-        image: picked.path,
-      );
-    } catch (_) {}
+      // POST /images/user, then the logged-in user gets the new photo URL.
+      await changeProfileImage(File(picked.path));
+    } catch (e) {
+      error = e is AuthException
+          ? e.message
+          : e.toString().replaceFirst('Exception: ', '');
+    }
     if (!mounted) return;
     setState(() => _isUpdatingPhoto = false);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
   }
 
-  Future<void> _deleteProfileImage() async {
-    setState(() => _isUpdatingPhoto = true);
-    final user = AuthState.instance.user;
-    try {
-      await AuthService.updateProfile(
-        name: user?.name ?? '',
-        email: user?.email ?? '',
-        phone: user?.phone ?? '',
-        image: '',
-      );
-    } catch (_) {}
-    if (!mounted) return;
-    setState(() => _isUpdatingPhoto = false);
-  }
+ Future<void> _deleteProfileImage() async {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text(
+        'Removing the photo is not available yet. Choose a new photo to replace it.',
+      ),
+    ),
+  );
+}
 
   void _showAvatarOptions(bool hasImage, String? imagePath) {
     showImageActionSheet(
@@ -128,7 +126,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         );
       },
       onChange: _pickProfileImage,
-      onDelete: hasImage ? _deleteProfileImage : null,
+      onDelete: null,
     );
   }
 

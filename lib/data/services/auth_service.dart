@@ -5,8 +5,13 @@ import 'package:yanzee_app/core/storage/token_storage.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 
 class AuthException implements Exception {
-  AuthException(this.message);
+  AuthException(this.message, {this.fieldErrors = const {}});
   final String message;
+
+  /// Backend field name -> message, from the `errors` list of a 400 response,
+  /// e.g. {'phone': 'Phone must be exactly 10 characters'}.
+  final Map<String, String> fieldErrors;
+
   @override
   String toString() => message;
 }
@@ -99,6 +104,101 @@ class AuthService {
     return profile;
   }
 
+  // ---------- PATCH /auth/me ----------
+  /// Saves name and phone. Email cannot be changed here: the backend rejects
+  /// it ("Unrecognized key: email"). The profile details we already know
+  /// (gender, address, city, ...) are sent back unchanged.
+  /// Throws AuthException; for a 400 it carries `fieldErrors`.
+  static Future<UserProfile> updateProfile({
+    required String name,
+    required String phone,
+  }) async {
+    final current = AuthState.instance.user;
+    if (current == null) throw AuthException('Not logged in.');
+
+    final body = <String, dynamic>{
+      'fullName': name.trim(),
+      'phone': _normalizePhone(phone),
+    };
+
+    void keep(String key, String? value) {
+      if (value != null && value.isNotEmpty) body[key] = value;
+    }
+
+    keep('gender', current.gender);
+    keep('address', current.address);
+    keep('city', current.city);
+    keep('province', current.province);
+    keep('district', current.district);
+    keep('country', current.country);
+
+    Future<http.Response> send() => http
+        .patch(
+          ApiConfig.me(),
+          headers: {
+            ..._json,
+            'Authorization': 'Bearer ${AuthState.instance.token}',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
+
+    late http.Response res;
+    try {
+      res = await send();
+      if (res.statusCode == 401 && await refreshToken()) {
+        res = await send();
+      }
+    } catch (_) {
+      throw AuthException('Could not reach the server. Check your connection.');
+    }
+
+    if (res.statusCode == 401) {
+      throw AuthException('Session expired. Please log in again.');
+    }
+    if (res.statusCode != 200) throw _updateError(res);
+
+    final data = jsonDecode(res.body)['data'];
+    final userJson = (data is Map && data['user'] is Map) ? data['user'] : data;
+    var profile = UserProfile.fromApi(userJson as Map<String, dynamic>);
+
+    if (profile.role == null && current.role != null) {
+      profile = profile.copyWith(role: current.role);
+    }
+
+    AuthState.instance.updateProfile(profile);
+    return profile;
+  }
+
+  /// "+977 98..." / "977..." -> the plain 10 digits the backend expects.
+  static String _normalizePhone(String raw) {
+    var digits = raw.replaceAll(RegExp(r'[\s-]'), '');
+    if (digits.startsWith('+977')) {
+      digits = digits.substring(4);
+    } else if (digits.startsWith('977') && digits.length > 10) {
+      digits = digits.substring(3);
+    }
+    return digits;
+  }
+
+  static AuthException _updateError(http.Response res) {
+    final fields = <String, String>{};
+    try {
+      final errors = jsonDecode(res.body)['errors'];
+      if (errors is List) {
+        for (final e in errors) {
+          if (e is Map && e['field'] != null && e['message'] != null) {
+            fields[e['field'].toString()] = e['message'].toString();
+          }
+        }
+      }
+    } catch (_) {}
+    return AuthException(
+      _msg(res, 'Could not save changes.'),
+      fieldErrors: fields,
+    );
+  }
+
   // ---------- POST /auth/refresh ----------
   static Future<bool> refreshToken() async {
     final rt = AuthState.instance.refreshToken;
@@ -164,23 +264,5 @@ class AuthService {
     }
     await TokenStorage.clear();
     AuthState.instance.logout();
-  }
-
-  // TEMPORARY: local-only until you have the real update-profile endpoint.
-  static Future<UserProfile> updateProfile({
-    required String name,
-    required String email,
-    required String phone,
-    String? image,
-  }) async {
-    final current = AuthState.instance.user;
-    final updated = (current ?? const UserProfile(name: '', email: '')).copyWith(
-      name: name,
-      email: email,
-      phone: phone,
-      image: image,
-    );
-    AuthState.instance.updateProfile(updated);
-    return updated;
   }
 }

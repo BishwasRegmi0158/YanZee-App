@@ -86,6 +86,22 @@ class CartApiService {
     _data(res, 'Could not update the selection');
   }
 
+  /// DELETE /carts/items/:itemId
+  Future<void> removeItem(String itemId) async {
+    final res = await ApiClient.send(
+      (auth) => http.delete(_uri('/items/$itemId'), headers: auth),
+    );
+    _data(res, 'Could not remove the item');
+  }
+
+  /// DELETE /carts  (removes everything)
+  Future<void> clearCart() async {
+    final res = await ApiClient.send(
+      (auth) => http.delete(_uri(''), headers: auth),
+    );
+    _data(res, 'Could not clear the cart');
+  }
+
   /// Unwraps {success, statusCode, message, data}. Some calls (select-all,
   /// select-shop) return no `data`, which is fine.
   Map<String, dynamic> _data(http.Response res, String fallback) {

@@ -10,6 +10,7 @@ import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
 import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
+import 'package:yanzee_app/data/services/user_api_service.dart';
 
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
@@ -21,29 +22,27 @@ class MyProfileScreen extends StatefulWidget {
 class _MyProfileScreenState extends State<MyProfileScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   late final TextEditingController _nameController;
-  late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
 
   bool _isEditing = false;
   bool _isSaving = false;
+
+  /// Red banner at the top: server / general errors only.
   String? _error;
-  String? _emailError;
+  String? _nameError;
   String? _phoneError;
-  String? _pendingImage;
 
   @override
   void initState() {
     super.initState();
     final user = AuthState.instance.user;
     _nameController = TextEditingController(text: user?.name ?? '');
-    _emailController = TextEditingController(text: user?.email ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
@@ -51,14 +50,13 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   void _toggleEdit() {
     setState(() {
       if (_isEditing) {
+        // Cancel: put the saved values back.
         final user = AuthState.instance.user;
         _nameController.text = user?.name ?? '';
-        _emailController.text = user?.email ?? '';
         _phoneController.text = user?.phone ?? '';
         _error = null;
-        _emailError = null;
+        _nameError = null;
         _phoneError = null;
-        _pendingImage = null;
       }
       _isEditing = !_isEditing;
     });
@@ -66,20 +64,19 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
   bool _validate() {
     final nameErr = FormValidators.name(_nameController.text);
-    final emailErr = FormValidators.email(_emailController.text);
     final phoneErr = FormValidators.phone(_phoneController.text);
 
     setState(() {
-      _error = nameErr;
-      _emailError = emailErr;
+      _error = null;
+      _nameError = nameErr;
       _phoneError = phoneErr;
     });
 
-    return nameErr == null && emailErr == null && phoneErr == null;
+    return nameErr == null && phoneErr == null;
   }
 
   Future<void> _showPhotoOptions() async {
-    final img = _currentImage();
+    final img = AuthState.instance.user?.image;
     final hasImage = img != null && img.isNotEmpty;
 
     await showImageActionSheet(
@@ -89,14 +86,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         if (img == null) return;
         pushFullScreen(
           context,
-          ImagePreviewScreen(
-            imagePath: img,
-            onDelete: _removeImage,
-          ),
+          ImagePreviewScreen(imagePath: img, onDelete: _removeImage),
         );
       },
       onChange: _pickImage,
-      onDelete: hasImage ? _removeImage : null,
+      // The backend has no "delete photo" API yet, so the option is hidden.
+      onDelete: null,
     );
   }
 
@@ -108,53 +103,42 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       imageQuality: 85,
     );
     if (picked == null || !mounted) return;
-    setState(() => _pendingImage = picked.path);
-    await _persistImageChange();
-  }
 
-  void _removeImage() {
-    setState(() => _pendingImage = '');
-    _persistImageChange();
-  }
-
-  Future<void> _persistImageChange() async {
-    if (_isEditing) return;
     setState(() => _isSaving = true);
+    String? error;
     try {
-      await AuthService.updateProfile(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
-        image: _pendingImage == '' ? null : _pendingImage,
-      );
-    } catch (_) {}
+      // POST /images/user, then the logged-in user gets the new photo URL.
+      await changeProfileImage(File(picked.path));
+    } catch (e) {
+      error = e is AuthException
+          ? e.message
+          : e.toString().replaceFirst('Exception: ', '');
+    }
     if (!mounted) return;
-    setState(() {
-      _isSaving = false;
-      _pendingImage = null;
-    });
+    setState(() => _isSaving = false);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
   }
 
-  String? _currentImage() {
-    if (_pendingImage == null) return AuthState.instance.user?.image;
-    return _pendingImage == '' ? null : _pendingImage;
+  /// No backend API for this yet (only reachable from the preview screen).
+  void _removeImage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Removing the photo is not available yet. Choose a new photo to replace it.',
+        ),
+      ),
+    );
   }
 
   ImageProvider? _getAvatarProvider(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) return null;
 
     if (imagePath.startsWith('http')) {
-      return ResizeImage(
-        NetworkImage(imagePath),
-        width: 300,
-        height: 300,
-      );
+      return ResizeImage(NetworkImage(imagePath), width: 300, height: 300);
     } else {
-      return ResizeImage(
-        FileImage(File(imagePath)),
-        width: 300,
-        height: 300,
-      );
+      return ResizeImage(FileImage(File(imagePath)), width: 300, height: 300);
     }
   }
 
@@ -166,20 +150,28 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       _isSaving = true;
     });
 
+    UserProfile updated;
     try {
-      await AuthService.updateProfile(
+      // PATCH /auth/me
+      updated = await AuthService.updateProfile(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
-        image: _pendingImage == ''
-            ? null
-            : (_pendingImage ?? AuthState.instance.user?.image),
       );
-    } catch (e) {
+    } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
         _isSaving = false;
-        _error = e is AuthException ? e.message : 'Could not save changes.';
+        _nameError = e.fieldErrors['fullName'];
+        _phoneError = e.fieldErrors['phone'];
+        final hasFieldError = _nameError != null || _phoneError != null;
+        _error = hasFieldError ? null : e.message;
+      });
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _error = 'Could not save changes.';
       });
       return;
     }
@@ -188,7 +180,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     setState(() {
       _isSaving = false;
       _isEditing = false;
-      _pendingImage = null;
+      // Show what the server saved (for example "+977 98.." becomes 10 digits).
+      _nameController.text = updated.name;
+      _phoneController.text = updated.phone ?? '';
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -198,8 +192,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentImage = _currentImage();
-    final avatarProvider = _getAvatarProvider(currentImage);
+    final avatarProvider = _getAvatarProvider(AuthState.instance.user?.image);
 
     return Scaffold(
       backgroundColor: AuthColors.pageBackground,
@@ -228,13 +221,19 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                     radius: 48,
                     backgroundColor: const Color(0xFFF0EEEA),
                     backgroundImage: avatarProvider,
-                    child: avatarProvider == null
-                        ? const Icon(
-                            Iconsax.profile_circle,
-                            size: 46,
-                            color: AuthColors.iconMuted,
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : null,
+                        : (avatarProvider == null
+                            ? const Icon(
+                                Iconsax.profile_circle,
+                                size: 46,
+                                color: AuthColors.iconMuted,
+                              )
+                            : null),
                   ),
                   Positioned(
                     right: 0,
@@ -288,21 +287,17 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               icon: Iconsax.user,
               label: 'Name',
               controller: _nameController,
-              errorText: _error,
+              errorText: _nameError,
               onChanged: (_) {
-                if (_error != null) setState(() => _error = null);
+                if (_nameError != null) setState(() => _nameError = null);
               },
             ),
             const SizedBox(height: 18),
-            _field(
+            _readOnlyField(
               icon: Iconsax.sms,
               label: 'Email',
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              errorText: _emailError,
-              onChanged: (_) {
-                if (_emailError != null) setState(() => _emailError = null);
-              },
+              value: AuthState.instance.user?.email ?? '',
+              note: 'Email cannot be changed.',
             ),
             const SizedBox(height: 18),
             _field(
@@ -339,6 +334,56 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _readOnlyField({
+    required IconData icon,
+    required String label,
+    required String value,
+    String? note,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Icon(icon, size: 20, color: AuthColors.iconMuted),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF9A9A9A)),
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  value.isEmpty ? '—' : value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: _isEditing
+                        ? const Color(0xFF9A9A9A)
+                        : AuthColors.textDark,
+                  ),
+                ),
+              ),
+              if (_isEditing && note != null)
+                Text(
+                  note,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF9A9A9A)),
+                ),
+              const SizedBox(height: 8),
+              const Divider(height: 1, color: Color(0xFFEDEBE7)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

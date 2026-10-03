@@ -102,7 +102,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
           ),
         );
       }
-      ref.read(wishlistProvider.notifier).toggle(widget.product.id);
+      ref.read(wishlistProvider.notifier).toggle(widget.product);
     });
   }
 
@@ -190,9 +190,9 @@ class _ProductImage extends StatelessWidget {
   final VoidCallback onToggleCart;
 
   Widget _placeholder() => Container(
-        color: Colors.grey.shade200,
-        child: const Icon(Iconsax.gallery_slash),
-      );
+    color: Colors.grey.shade200,
+    child: const Icon(Iconsax.gallery_slash),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -287,7 +287,10 @@ class _IconToggleButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(5),
-        decoration: BoxDecoration(color: backgroundColor, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          shape: BoxShape.circle,
+        ),
         child: Icon(icon, color: iconColor, size: 16),
       ),
     );

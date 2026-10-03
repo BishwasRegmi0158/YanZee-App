@@ -191,18 +191,37 @@ class CartNotifier extends Notifier<CartState> {
     );
   }
 
-  // The endpoints below are not connected yet (waiting for their URLs).
+  /// DELETE /carts/items/:itemId
+  Future<String?> removeItem(CartItem item) {
+    final current = _latest(item);
+    return _mutate(
+      optimistic: (d) => d.removeItems({current.itemId}),
+      request: () => _api.removeItem(current.itemId),
+    );
+  }
 
-  Future<String?> removeItem(CartItem item) => _notConnected('Remove item');
+  /// DELETE /carts/items/:itemId for every selected item.
+  Future<String?> removeSelected() {
+    final ids = state.data.items
+        .where((i) => i.isSelected)
+        .map((i) => i.itemId)
+        .toList();
+    if (ids.isEmpty) return Future.value(null);
 
-  Future<String?> removeSelected() => _notConnected('Remove selected items');
+    return _mutate(
+      optimistic: (d) => d.removeItems(ids.toSet()),
+      request: () async {
+        await Future.wait(ids.map(_api.removeItem));
+      },
+    );
+  }
 
-  Future<String?> emptyCart() => _notConnected('Clear cart');
-
-  Future<String?> _notConnected(String what) async {
-    const text = 'is not connected to the backend yet.';
-    state = state.copyWith(message: '$what $text');
-    return '$what $text';
+  /// DELETE /carts
+  Future<String?> emptyCart() {
+    return _mutate(
+      optimistic: (_) => CartData.empty,
+      request: _api.clearCart,
+    );
   }
 
   // ---------------------------------------------------------------------------
