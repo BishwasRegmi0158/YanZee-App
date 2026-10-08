@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/data/models/product.dart';
-import 'package:yanzee_app/data/models/auth_state.dart';
-import 'package:yanzee_app/features/auth/screens/account/screens/choose_address_screen.dart';
 import 'package:yanzee_app/features/checkout/models/checkout_totals.dart';
 import 'package:yanzee_app/features/checkout/widgets/cost_summary.dart';
 
@@ -32,10 +30,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _cityController = TextEditingController();
   final _streetController = TextEditingController();
   String? _province;
-  bool _saveAddress = true;
   bool _showPayment = false;
   String _paymentMethod = 'Cash on Delivery';
-  ShippingAddress? _savedAddress;
 
   static const _provinces = [
     'Koshi',
@@ -54,30 +50,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   CheckoutTotals get _totals => CheckoutTotals.fromSubtotal(_subtotal);
 
   @override
-  void initState() {
-    super.initState();
-    AuthState.instance.addListener(_onAuthChanged);
-    _loadSavedAddress();
-  }
-
-  void _onAuthChanged() {
-    if (mounted) setState(_loadSavedAddress);
-  }
-
-  void _loadSavedAddress() {
-    final address = AuthState.instance.defaultAddress;
-    if (address == null) return;
-    _savedAddress = address;
-    _nameController.text = address.fullName;
-    _phoneController.text = address.phone;
-    _province = address.province;
-    _cityController.text = address.city;
-    _streetController.text = address.street;
-  }
-
-  @override
   void dispose() {
-    AuthState.instance.removeListener(_onAuthChanged);
     _nameController.dispose();
     _phoneController.dispose();
     _cityController.dispose();
@@ -88,30 +61,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void _continueToPayment() {
     if (!_formKey.currentState!.validate()) return;
     if (_province == null) return;
-    if (_saveAddress) {
-      final address = ShippingAddress(
-        fullName: _nameController.text.trim(),
-        phone: _phoneController.text.trim(),
-        province: _province!,
-        city: _cityController.text.trim(),
-        street: _streetController.text.trim(),
-        isDefault: true,
-      );
-      if (_savedAddress != null && AuthState.instance.addresses.isNotEmpty) {
-        AuthState.instance.updateAddress(0, address);
-      } else {
-        AuthState.instance.saveAddress(address);
-      }
-      _savedAddress = address;
-    }
     setState(() => _showPayment = true);
-  }
-
-  Future<void> _chooseAddress() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const ChooseAddressScreen()));
-    if (mounted) setState(_loadSavedAddress);
   }
 
   @override
@@ -166,10 +116,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_savedAddress != null) ...[
-                  _savedAddressCard(),
-                  const SizedBox(height: 8),
-                ],
                 _label('Full Name'),
                 _field(
                   _nameController,
@@ -202,48 +148,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 _field(_cityController, 'e.g. Kathmandu'),
                 _label('Street / Area'),
                 _field(_streetController, 'House no, street, area'),
-                const SizedBox(height: 8),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _saveAddress,
-                  onChanged: (value) =>
-                      setState(() => _saveAddress = value ?? true),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: const Text(
-                    'Save this address for next time',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                ),
               ],
             ),
           ),
           const SizedBox(height: 14),
           _orderItemsCard(),
-        ],
-      ),
-    );
-  }
-
-  Widget _savedAddressCard() {
-    final address = _savedAddress!;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle, size: 19),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              '${address.fullName} · ${address.phone}\n${address.summary}',
-              style: const TextStyle(fontSize: 13, height: 1.4),
-            ),
-          ),
-          TextButton(onPressed: _chooseAddress, child: const Text('Change')),
         ],
       ),
     );

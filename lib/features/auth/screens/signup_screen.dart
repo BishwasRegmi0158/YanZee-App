@@ -6,11 +6,9 @@ import 'package:yanzee_app/core/theme/auth_theme.dart';
 import 'package:yanzee_app/core/utils/app_snackbar.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
-import 'package:yanzee_app/data/models/nepal_location_data.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/auth_visual_panel.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/pill_text_form_field.dart';
-import 'package:yanzee_app/features/auth/screens/widgets/searchable_select_field.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
 import 'login_screen.dart';
@@ -30,48 +28,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-
-  String _role = UserRole.customer;
-  String? _gender;
-  String? _province;
-  String? _district;
-  String? _city;
 
   bool _showPassword = false;
   bool _showConfirmPassword = false;
   bool _isLoading = false;
-
-  List<String> get _provinceOptions => nepalProvinces();
-  List<String> get _districtOptions => nepalDistricts(_province);
-  List<String> get _cityOptions => nepalCities(_province, _district);
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
-  }
-
-  void _onProvinceChanged(String? value) {
-    setState(() {
-      _province = value;
-      _district = null;
-      _city = null;
-    });
-  }
-
-  void _onDistrictChanged(String? value) {
-    setState(() {
-      _district = value;
-      _city = null;
-    });
   }
 
   void _showMessage(String message, {bool isError = false}) {
@@ -83,29 +54,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
   }
 
-  String _genderForApi(String g) {
-    switch (g) {
-      case 'Male':
-        return 'MALE';
-      case 'Female':
-        return 'FEMALE';
-      default:
-        return 'OTHER'; // confirm the exact value your backend accepts
-    }
-  }
-
   Future<void> _handleSubmit() async {
     FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    if (_gender == null) {
-      _showMessage('Please select a gender.', isError: true);
-      return;
-    }
-    if (_province == null || _district == null || _city == null) {
-      _showMessage('Please select your province, district and city.');
-      return;
-    }
     if (_passwordController.text != _confirmPasswordController.text) {
       _showMessage('Passwords do not match', isError: true);
       return;
@@ -114,18 +66,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Same body as the Postman request. The backend assigns the role (OWNER).
       await AuthService.register({
         'fullName': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'password': _passwordController.text,
         'phone': _phoneController.text.trim(),
-        'gender': _genderForApi(_gender!),
-        'role': _role, // CUSTOMER or SHOP_OWNER
-        'address': _addressController.text.trim(),
-        'city': _city,
-        'province': _province,
-        'district': _district,
-        'country': nepalCountry,
       });
 
       // register returns no tokens, so log in right away
@@ -144,18 +90,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
 
     ref.read(cartProvider.notifier).clear();
-    debugPrint(
-      'SIGNUP role=${AuthState.instance.user?.role} '
-      'isShopOwner=${AuthState.instance.isShopOwner} '
-      'route=${AuthState.instance.homeRoute}',
-    );
     ref.read(wishlistProvider.notifier).clear();
 
     if (!mounted) return;
     setState(() => _isLoading = false);
     _showMessage('Account created successfully!');
 
-    // CUSTOMER -> /home, SHOP_OWNER -> /seller-dashboard
+    // OWNER -> /seller-dashboard
     context.go(AuthState.instance.homeRoute);
   }
 
@@ -235,29 +176,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     );
   }
 
-  Widget _sectionLabel(String text, {bool required = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 6, bottom: 8),
-      child: Text.rich(
-        TextSpan(
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AuthColors.pillText,
-          ),
-          children: [
-            TextSpan(text: text),
-            if (required)
-              const TextSpan(
-                text: ' *',
-                style: TextStyle(color: AuthColors.required),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildFormPanel(double panelWidth) {
     // Scales text slightly on small phones so nothing overflows.
     final scale = (panelWidth / 390).clamp(0.85, 1.0);
@@ -304,30 +222,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
                 const SizedBox(height: 26),
 
-                // ---------- Role ----------
-                _sectionLabel('I want to sign up as'),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: authPillShadow,
-                  ),
-                  child: Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    spacing: 12,
-                    runSpacing: 0,
-                    children: [
-                      _roleOption(UserRole.customer, 'Customer'),
-                      _roleOption(UserRole.shopOwner, 'Shop Owner'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
                 // ---------- Full name ----------
                 PillTextFormField(
                   controller: _nameController,
@@ -364,76 +258,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     }
                     return null;
                   },
-                ),
-                const SizedBox(height: 20),
-
-                // ---------- Gender ----------
-                _sectionLabel('Gender', required: true),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: authPillShadow,
-                  ),
-                  child: Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    spacing: 12,
-                    runSpacing: 0,
-                    children: [
-                      _genderOption('Male'),
-                      _genderOption('Female'),
-                      _genderOption('Others'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // ---------- Province / District / City (Nepal only) ----------
-                // NOTE: still old style until searchable_select_field.dart is restyled
-                SearchableSelectField(
-                  label: 'Province',
-                  options: _provinceOptions,
-                  value: _province,
-                  onChanged: _onProvinceChanged,
-                  placeholder: 'Search or select province...',
-                ),
-                const SizedBox(height: 16),
-
-                SearchableSelectField(
-                  label: 'District',
-                  options: _districtOptions,
-                  value: _district,
-                  onChanged: _onDistrictChanged,
-                  enabled: _province != null,
-                  placeholder: 'Search or select district...',
-                  disabledPlaceholder: 'Select a province first',
-                ),
-                const SizedBox(height: 16),
-
-                SearchableSelectField(
-                  label: 'City',
-                  options: _cityOptions,
-                  value: _city,
-                  onChanged: (v) => setState(() => _city = v),
-                  enabled: _district != null,
-                  placeholder: 'Search or select city...',
-                  disabledPlaceholder: 'Select a district first',
-                ),
-                const SizedBox(height: 16),
-
-                // ---------- Street address ----------
-                PillTextFormField(
-                  controller: _addressController,
-                  hint: 'Street address (e.g. 123 Main Street)',
-                  icon: Icons.location_on_rounded,
-                  textInputAction: TextInputAction.next,
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Address is required'
-                      : null,
                 ),
                 const SizedBox(height: 16),
 
@@ -551,54 +375,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _roleOption(String value, String label) {
-    return InkWell(
-      onTap: () => setState(() => _role = value),
-      borderRadius: BorderRadius.circular(8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Radio<String>(
-            value: value,
-            groupValue: _role,
-            activeColor: AuthColors.primary,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-            onChanged: (v) => setState(() => _role = v ?? _role),
-          ),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 13.5, color: AuthColors.pillText),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _genderOption(String option) {
-    return InkWell(
-      onTap: () => setState(() => _gender = option),
-      borderRadius: BorderRadius.circular(8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Radio<String>(
-            value: option,
-            groupValue: _gender,
-            activeColor: AuthColors.primary,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-            onChanged: (v) => setState(() => _gender = v),
-          ),
-          Text(
-            option,
-            style: const TextStyle(fontSize: 13.5, color: AuthColors.pillText),
-          ),
-        ],
       ),
     );
   }

@@ -6,12 +6,14 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
+import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/my_shop_provider.dart';
-import 'package:yanzee_app/features/shop/services/shop_api_service.dart';
 
 class CreateShopScreen extends ConsumerStatefulWidget {
-  const CreateShopScreen({super.key});
+  /// true when opened from the drawer to add another shop.
+  final bool isAdditional;
+  const CreateShopScreen({super.key, this.isAdditional = false});
 
   @override
   ConsumerState<CreateShopScreen> createState() => _CreateShopScreenState();
@@ -20,21 +22,14 @@ class CreateShopScreen extends ConsumerStatefulWidget {
 class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
-  final _description = TextEditingController();
-  final _returnPolicy = TextEditingController();
   final _address = TextEditingController();
   late final TextEditingController _email =
       TextEditingController(text: AuthState.instance.user?.email ?? '');
   late final TextEditingController _phone =
       TextEditingController(text: AuthState.instance.user?.phone ?? '');
+  String? _category;
   File? _logo;
   bool _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _prefillFromSignup();
-  }
 
   @override
   void dispose() {
@@ -42,21 +37,7 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
     _email.dispose();
     _phone.dispose();
     _address.dispose();
-    _description.dispose();
-    _returnPolicy.dispose();
     super.dispose();
-  }
-
-  /// Pre-fill address / phone with what the owner entered at signup.
-  Future<void> _prefillFromSignup() async {
-    try {
-      final me = await ref.read(shopApiServiceProvider).getMe();
-      if (!mounted) return;
-      if (_address.text.isEmpty) _address.text = signupAddress(me);
-      if (_phone.text.isEmpty) _phone.text = me['phone']?.toString() ?? '';
-    } catch (_) {
-      // Fields stay empty; the owner can type them.
-    }
   }
 
   Future<void> _pickLogo() async {
@@ -76,32 +57,22 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
       final api = ref.read(shopApiServiceProvider);
       final shop = await api.createShop(
         name: _name.text.trim(),
+        category: _category!,
         contactEmail: _email.text.trim(),
-        description: _description.text.trim(),
-        returnPolicy: _returnPolicy.text.trim(),
-        address: _address.text.trim(),
         contactPhone: _phone.text.trim(),
+        storeAddress: _address.text.trim(),
       );
 
-      // Optional logo: upload it, then save its URL on the new shop.
+      // Optional logo: the server saves it on the store that was just made.
       if (_logo != null) {
         try {
-          final url = await api.uploadShopImage(_logo!);
-          await api.updateMyShop(
-            name: shop.name,
-            contactEmail: shop.contactEmail,
-            description: shop.description,
-            returnPolicy: shop.returnPolicy,
-            address: shop.address,
-            contactPhone: shop.contactPhone,
-            image: url,
-          );
+          await api.uploadStoreLogo(shop.id, _logo!);
         } catch (_) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  'Shop created, but the logo could not be uploaded. '
+                  'Store created, but the logo could not be uploaded. '
                   'You can add it later in the Store tab.',
                 ),
               ),
@@ -110,8 +81,19 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
         }
       }
 
-      // The gate reloads the shop and switches to the dashboard.
-      ref.invalidate(myShopProvider);
+      if (widget.isAdditional) {
+        if (!mounted) return;
+        // Make the new shop the active one, then reload the list.
+        ref.read(selectedShopIdProvider.notifier).state = shop.id;
+        ref.invalidate(myShopsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Shop created')),
+        );
+        Navigator.of(context).pop();
+      } else {
+        // The gate reloads the store and switches to the dashboard.
+        ref.invalidate(myShopsProvider);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -136,6 +118,21 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
     return ok ? null : 'Enter a valid email';
   }
 
+  String? _phoneRule(String? v) {
+    final s = (v ?? '').trim();
+    if (s.isEmpty) return 'This field is required';
+    return RegExp(r'^\d{10}$').hasMatch(s)
+        ? null
+        : 'Enter a valid 10-digit phone number';
+  }
+
+  InputDecoration _decoration(String label) => InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      );
+
   Widget _field(
     TextEditingController c,
     String label,
@@ -150,12 +147,27 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
         validator: validator,
         maxLines: maxLines,
         keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+        decoration: _decoration(label),
+      ),
+    );
+  }
+
+  Widget _categoryField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: DropdownButtonFormField<String>(
+        initialValue: _category,
+        decoration: _decoration('Category'),
+        items: kStoreCategories
+            .map(
+              (c) => DropdownMenuItem(
+                value: c,
+                child: Text(storeCategoryLabel(c)),
+              ),
+            )
+            .toList(),
+        onChanged: (v) => setState(() => _category = v),
+        validator: (v) => v == null ? 'Select a category' : null,
       ),
     );
   }
@@ -196,7 +208,7 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Shop logo (optional)',
+          'Store logo (optional)',
           style: TextStyle(color: Colors.black54, fontSize: 12),
         ),
       ],
@@ -210,22 +222,28 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7F5F2),
         elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Set up your shop',
-          style: TextStyle(
+        iconTheme: const IconThemeData(color: Colors.black),
+        automaticallyImplyLeading: widget.isAdditional,
+        title: Text(
+          widget.isAdditional ? 'Create new shop' : 'Set up your store',
+          style: const TextStyle(
             fontFamily: AppFonts.brand,
             fontSize: 22,
             color: Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : _logout,
-            child: const Text('Log out', style: TextStyle(color: Colors.black87)),
-          ),
-        ],
+        actions: widget.isAdditional
+            ? null
+            : [
+                TextButton(
+                  onPressed: _saving ? null : _logout,
+                  child: const Text(
+                    'Log out',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+              ],
       ),
       body: SafeArea(
         child: ListView(
@@ -233,23 +251,24 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
           children: [
             Center(child: _logoPicker()),
             const SizedBox(height: 20),
-            const Text(
-              'Create your shop to start selling. You can edit these details later in the Store tab.',
-              style: TextStyle(color: Colors.black54),
+            Text(
+              widget.isAdditional
+                  ? 'Add another store to your account. You can edit these details later in the Store tab.'
+                  : 'Create your store to start selling. You can edit these details later in the Store tab.',
+              style: const TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 20),
             Form(
               key: _formKey,
               child: Column(
                 children: [
-                  _field(_name, 'Shop name', _required),
+                  _field(_name, 'Store name', _required),
+                  _categoryField(),
                   _field(_email, 'Contact email', _emailRule,
                       keyboardType: TextInputType.emailAddress),
-                  _field(_phone, 'Contact phone', _required,
+                  _field(_phone, 'Contact phone', _phoneRule,
                       keyboardType: TextInputType.phone),
-                  _field(_address, 'Pickup address', _required, maxLines: 2),
-                  _field(_description, 'Description', _required, maxLines: 3),
-                  _field(_returnPolicy, 'Return policy', _required, maxLines: 3),
+                  _field(_address, 'Store address', _required, maxLines: 2),
                 ],
               ),
             ),
@@ -274,7 +293,7 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
                         ),
                       )
                     : const Text(
-                        'Create shop',
+                        'Create store',
                         style: TextStyle(color: Colors.white),
                       ),
               ),

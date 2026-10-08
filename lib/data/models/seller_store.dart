@@ -2,43 +2,40 @@ import 'dart:io';
 
 class SellerStore {
   final String name;
-  final String description;
-  final String contactEmail;
-  final String address;
-  final String contactPhone;
-  final String returnPolicy;
+  final String category; // backend value, e.g. PET_SUPPLIES ('' = not set)
+
+  /// null until the owner sets one: the backend never returns it.
+  final String? contactEmail;
+
+  final String status; // e.g. ACTIVE
+  final bool isPublished;
   final File? logoImage; // freshly picked file (instant preview)
   final String? logoUrl; // saved logo URL from the backend
 
   const SellerStore({
     this.name = '',
-    this.description = '',
-    this.contactEmail = 'Not set',
-    this.address = 'Not set',
-    this.contactPhone = 'Not set',
-    this.returnPolicy = 'Not set',
+    this.category = '',
+    this.contactEmail,
+    this.status = '',
+    this.isPublished = false,
     this.logoImage,
     this.logoUrl,
   });
 
   SellerStore copyWith({
     String? name,
-    String? description,
+    String? category,
     String? contactEmail,
-    String? address,
-    String? contactPhone,
-    String? returnPolicy,
     File? logoImage,
     String? logoUrl,
     bool clearLogo = false, // clears both the file and the URL
   }) {
     return SellerStore(
       name: name ?? this.name,
-      description: description ?? this.description,
+      category: category ?? this.category,
       contactEmail: contactEmail ?? this.contactEmail,
-      address: address ?? this.address,
-      contactPhone: contactPhone ?? this.contactPhone,
-      returnPolicy: returnPolicy ?? this.returnPolicy,
+      status: status,
+      isPublished: isPublished,
       logoImage: clearLogo ? null : (logoImage ?? this.logoImage),
       logoUrl: clearLogo ? null : (logoUrl ?? this.logoUrl),
     );

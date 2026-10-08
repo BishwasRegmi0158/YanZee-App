@@ -5,86 +5,159 @@ import 'package:yanzee_app/core/api/api_client.dart';
 import 'package:yanzee_app/core/api/api_config.dart';
 import 'package:yanzee_app/data/models/seller_shop.dart';
 
+// Multipart field name for POST /images/store-logo.
+// Check the Body tab of that Postman request and change it if it differs.
+const _logoField = 'image';
+
 class ShopApiService {
-  /// Uploads a shop image and returns its public URL.
-  Future<String> uploadShopImage(File file) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/images/shop');
-    final res = await ApiClient.send((h) async {
-      // Built fresh on every call: a MultipartRequest can't be re-sent,
-      // and ApiClient may retry once after refreshing the token.
-      final req = http.MultipartRequest('POST', url)
-        ..headers.addAll(h)
-        ..headers.remove('Content-Type') // let multipart set its boundary
-        ..files.add(await http.MultipartFile.fromPath('image', file.path));
-      return http.Response.fromStream(await req.send());
-    });
+  Uri get _stores => Uri.parse('${ApiConfig.baseUrl}/stores');
 
-    if (res.statusCode != 200 && res.statusCode != 201) {
-      throw Exception(_message(res, 'Image upload failed (${res.statusCode})'));
-    }
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    return (body['data'] as Map<String, dynamic>)['url'] as String;
-  }
+  Map<String, String> _withStore(Map<String, String> h, String storeId) => {
+        ...h,
+        'x-store-id': storeId,
+      };
 
-  /// DELETE /shops/my
-  Future<void> deleteMyShop() async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/shops/my');
-    final res = await ApiClient.send((h) => http.delete(url, headers: h));
-    if (res.statusCode != 200 && res.statusCode != 204) {
-      throw Exception(
-        _message(res, 'Could not delete shop (${res.statusCode})'),
-      );
-    }
-  }
+  Map<String, String> _json(Map<String, String> h) => {
+        ...h,
+        'Content-Type': 'application/json',
+      };
 
-  /// Returns null when the owner has no shop yet (404).
-  Future<SellerShop?> getMyShop() async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/shops/my');
-    final res = await ApiClient.send((h) => http.get(url, headers: h));
+  /// GET /stores. Returns every store the owner has (empty list if none).
+  Future<List<SellerShop>> getMyShops() async {
+    final res = await ApiClient.send((h) => http.get(_stores, headers: h));
 
-    if (res.statusCode == 404) return null;
+    if (res.statusCode == 404) return [];
     if (res.statusCode != 200) {
-      throw Exception(_message(res, 'Failed to load shop (${res.statusCode})'));
+      throw Exception(_message(res, 'Failed to load stores (${res.statusCode})'));
     }
-    return _parseShop(res);
+
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final data = body['data'];
+    final stores = data is Map ? data['stores'] : null;
+    if (stores is! List) return [];
+    return stores
+        .map((s) => SellerShop.fromJson(Map<String, dynamic>.from(s as Map)))
+        .toList();
   }
 
+  /// The first store, or null when the owner has none.
+  /// Kept for any old code that still calls it.
+  Future<SellerShop?> getMyShop() async {
+    final shops = await getMyShops();
+    return shops.isEmpty ? null : shops.first;
+  }
+
+  /// POST /stores
   Future<SellerShop> createShop({
     required String name,
+    required String category,
     required String contactEmail,
-    required String description,
-    required String returnPolicy,
-    required String address,
     required String contactPhone,
+    required String storeAddress,
   }) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/shops');
     final res = await ApiClient.send(
       (h) => http.post(
-        url,
-        headers: {...h, 'Content-Type': 'application/json'},
+        _stores,
+        headers: _json(h),
         body: jsonEncode({
           'name': name,
+          'category': category,
           'contactEmail': contactEmail,
-          'description': description,
-          'returnPolicy': returnPolicy,
-          'address': address,
           'contactPhone': contactPhone,
+          'storeAddress': storeAddress,
         }),
       ),
     );
 
     if (res.statusCode != 201 && res.statusCode != 200) {
       throw Exception(
-        _message(res, 'Could not create shop (${res.statusCode})'),
+        _message(res, 'Could not create store (${res.statusCode})'),
       );
     }
-    return _parseShop(res);
+
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final store = (body['data'] as Map<String, dynamic>)['store']
+        as Map<String, dynamic>;
+    // The response only has id, name and slug, so keep what was just entered.
+    return SellerShop(
+      id: store['id']?.toString() ?? '',
+      name: store['name']?.toString() ?? name,
+      slug: store['slug']?.toString() ?? '',
+      category: category,
+      contactEmail: contactEmail,
+      contactPhone: contactPhone,
+      storeAddress: storeAddress,
+    );
   }
 
-  SellerShop _parseShop(http.Response res) {
+  /// PATCH /stores with the x-store-id header.
+  /// The backend only accepts name, category and contactEmail here.
+  /// Only non-null fields are sent.
+  Future<void> updateMyShop(
+    String storeId, {
+    String? name,
+    String? category,
+    String? contactEmail,
+  }) async {
+    final body = <String, dynamic>{
+      if (name != null) 'name': name,
+      if (category != null) 'category': category,
+      if (contactEmail != null) 'contactEmail': contactEmail,
+    };
+
+    final res = await ApiClient.send(
+      (h) => http.patch(
+        _stores,
+        headers: _withStore(_json(h), storeId),
+        body: jsonEncode(body),
+      ),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception(
+        _message(res, 'Could not update store (${res.statusCode})'),
+      );
+    }
+  }
+
+  /// POST /images/store-logo with the x-store-id header.
+  /// The server saves the logo itself and returns its URL.
+  Future<String> uploadStoreLogo(String storeId, File file) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/images/store-logo');
+    final res = await ApiClient.send((h) async {
+      // Built fresh on every call: a MultipartRequest can't be re-sent,
+      // and ApiClient may retry once after refreshing the token.
+      final req = http.MultipartRequest('POST', url)
+        ..headers.addAll(_withStore(h, storeId))
+        ..headers.remove('Content-Type') // let multipart set its boundary
+        ..files.add(await http.MultipartFile.fromPath(_logoField, file.path));
+      return http.Response.fromStream(await req.send());
+    });
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception(_message(res, 'Image upload failed (${res.statusCode})'));
+    }
+
     final body = jsonDecode(res.body) as Map<String, dynamic>;
-    final data = body['data'] as Map<String, dynamic>;
-    return SellerShop.fromJson(data['shop'] as Map<String, dynamic>);
+    final store = (body['data'] as Map<String, dynamic>)['store']
+        as Map<String, dynamic>;
+    final logo = store['logo']?.toString();
+    if (logo == null || logo.isEmpty) {
+      throw Exception('Upload worked but no logo URL came back.');
+    }
+    return logo;
+  }
+
+  /// DELETE /stores with the x-store-id header.
+  Future<void> deleteStore(String storeId) async {
+    final res = await ApiClient.send(
+      (h) => http.delete(_stores, headers: _withStore(h, storeId)),
+    );
+    if (res.statusCode != 200 && res.statusCode != 204) {
+      throw Exception(
+        _message(res, 'Could not delete store (${res.statusCode})'),
+      );
+    }
   }
 
   String _message(http.Response res, String fallback) {
@@ -96,7 +169,7 @@ class ShopApiService {
     return fallback;
   }
 
-  /// Signup details of the logged-in user (phone, address, city, ...).
+  /// Logged-in user details (GET /auth/me).
   Future<Map<String, dynamic>> getMe() async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/me');
     final res = await ApiClient.send((h) => http.get(url, headers: h));
@@ -108,45 +181,4 @@ class ShopApiService {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return body['data'] as Map<String, dynamic>;
   }
-
-  Future<SellerShop> updateMyShop({
-    required String name,
-    required String contactEmail,
-    required String description,
-    required String returnPolicy,
-    String? address,
-    String? contactPhone,
-    String? image, // null clears the shop image
-  }) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/shops/my');
-    final res = await ApiClient.send(
-      (h) => http.patch(
-        url,
-        headers: {...h, 'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'contactEmail': contactEmail,
-          'description': description,
-          'returnPolicy': returnPolicy,
-          'image': image,
-          if (address != null) 'address': address,
-          if (contactPhone != null) 'contactPhone': contactPhone,
-        }),
-      ),
-    );
-    if (res.statusCode != 200) {
-      throw Exception(
-        _message(res, 'Could not update shop (${res.statusCode})'),
-      );
-    }
-    return _parseShop(res);
-  }
-}
-
-/// One-line address from the /auth/me signup data.
-String signupAddress(Map<String, dynamic> me) {
-  return [me['address'], me['city'], me['district'], me['province']]
-      .map((e) => e?.toString().trim() ?? '')
-      .where((s) => s.isNotEmpty)
-      .join(', ');
 }

@@ -10,6 +10,7 @@ class SellerGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ref.watch(myShopProvider).when(
+          skipLoadingOnReload: true,
           loading: () => const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           ),
@@ -26,7 +27,7 @@ class SellerGate extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: () => ref.invalidate(myShopProvider),
+                      onPressed: () => ref.invalidate(myShopsProvider),
                       child: const Text('Retry'),
                     ),
                   ],

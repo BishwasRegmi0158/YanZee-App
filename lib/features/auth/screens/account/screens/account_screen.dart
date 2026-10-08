@@ -12,7 +12,6 @@ import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/data/services/user_api_service.dart';
-import 'package:yanzee_app/features/auth/screens/account/screens/my_address_screen.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/my_cards_screen.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/my_orders_screen.dart';
 import 'package:yanzee_app/features/auth/screens/account/screens/my_profile_screen.dart';
@@ -20,7 +19,6 @@ import 'package:yanzee_app/features/auth/screens/account/screens/settings_screen
 import 'package:yanzee_app/features/auth/screens/login_screen.dart';
 import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
 import 'package:yanzee_app/features/auth/screens/order_screen.dart';
-import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
 
@@ -59,22 +57,20 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
   void _onAuthChanged() => setState(() {});
 
-  Future<void> _openOrderStages({int initialTab = 0}) async {
-    final ok = await requireLogin(context);
-    if (!ok || !mounted) return;
+  void _openOrderStages({int initialTab = 0}) {
     pushFullScreen(context, OrdersScreen(initialTabIndex: initialTab));
   }
 
-  Future<void> _openScreen(Widget screen) async {
-    final ok = await requireLogin(context);
-    if (!ok || !mounted) return;
+  void _openScreen(Widget screen) {
     pushFullScreen(context, screen);
   }
+
   Future<void> _logout() async {
-    await AuthService.logout(); 
+    await AuthService.logout();
     ref.read(cartProvider.notifier).clear();
     ref.read(wishlistProvider.notifier).clear();
   }
+
   Future<void> _pickProfileImage() async {
     final picked = await _imagePicker.pickImage(
       source: ImageSource.gallery,
@@ -101,15 +97,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     }
   }
 
- Future<void> _deleteProfileImage() async {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text(
-        'Removing the photo is not available yet. Choose a new photo to replace it.',
+  Future<void> _deleteProfileImage() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Removing the photo is not available yet. Choose a new photo to replace it.',
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _showAvatarOptions(bool hasImage, String? imagePath) {
     showImageActionSheet(
@@ -142,10 +138,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             _buildHeader(isLoggedIn, user),
-            if (isLoggedIn) ...[
-              const SizedBox(height: 16),
-              _buildPrimaryAddressCard(),
-            ],
             const SizedBox(height: 16),
             _buildOrdersCard(),
             const SizedBox(height: 16),
@@ -281,76 +273,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 
-  Widget _buildPrimaryAddressCard() {
-    final address = AuthState.instance.defaultAddress;
-    if (address == null) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Icon(Iconsax.location, size: 18, color: AuthColors.textDark),
-                  SizedBox(width: 8),
-                  Text(
-                    'Primary Address',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AuthColors.textDark,
-                    ),
-                  ),
-                ],
-              ),
-              if (address.isDefault)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDEBE7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'PRIMARY',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            address.fullName,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Iconsax.call, size: 13, color: Color(0xFF9A9A9A)),
-              const SizedBox(width: 6),
-              Text(
-                address.phone,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF6B6B6B)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            address.summary,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF6B6B6B), height: 1.4),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildOrdersCard() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -422,18 +344,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          _linkTile(
-            Iconsax.user,
-            'My Profile',
-            () => _openScreen(const MyProfileScreen()),
-          ),
-          _divider(),
-          _linkTile(
-            Iconsax.location,
-            'My Address',
-            () => _openScreen(const MyAddressScreen()),
-          ),
-          _divider(),
+          if (isLoggedIn) ...[
+            _linkTile(
+              Iconsax.user,
+              'My Profile',
+              () => _openScreen(const MyProfileScreen()),
+            ),
+            _divider(),
+          ],
           _linkTile(
             Iconsax.truck,
             'My Orders',

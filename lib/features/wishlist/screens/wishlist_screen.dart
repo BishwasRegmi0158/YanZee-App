@@ -1,9 +1,8 @@
-// lib/features/wishlist/screens/wishlist_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yanzee_app/core/provider/main_tab_provider.dart';
 import 'package:yanzee_app/data/models/product.dart';
-import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart';
 import 'package:yanzee_app/features/home/screens/widgets/product_card.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
 
@@ -87,10 +86,7 @@ class _EmptyWishlist extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () async {
-                final loggedIn = await requireLogin(context);
-                if (!loggedIn) return;
-
+              onPressed: () {
                 ref.read(mainTabIndexProvider.notifier).state = kShopTabIndex;
               },
               child: const Padding(

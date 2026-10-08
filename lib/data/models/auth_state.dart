@@ -1,46 +1,15 @@
 import 'package:flutter/foundation.dart';
 
+/// Must match the backend enum exactly.
 class UserRole {
-  static const customer = 'CUSTOMER';
-  static const shopOwner = 'SHOP_OWNER';
-}
+  static const owner = 'OWNER';
+  static const manager = 'MANAGER';
+  static const orderManager = 'ORDER_MANAGER';
+  static const viewer = 'VIEWER';
+  static const superAdmin = 'SUPER_ADMIN';
 
-class ShippingAddress {
-  const ShippingAddress({
-    required this.fullName,
-    required this.phone,
-    required this.province,
-    required this.city,
-    required this.street,
-    this.isDefault = false,
-  });
-
-  final String fullName;
-  final String phone;
-  final String province;
-  final String city;
-  final String street;
-  final bool isDefault;
-
-  String get summary => '$street, $city, $province';
-
-  ShippingAddress copyWith({
-    String? fullName,
-    String? phone,
-    String? province,
-    String? city,
-    String? street,
-    bool? isDefault,
-  }) {
-    return ShippingAddress(
-      fullName: fullName ?? this.fullName,
-      phone: phone ?? this.phone,
-      province: province ?? this.province,
-      city: city ?? this.city,
-      street: street ?? this.street,
-      isDefault: isDefault ?? this.isDefault,
-    );
-  }
+  /// Roles that belong in the seller dashboard.
+  static const staff = {owner, manager, orderManager, viewer};
 }
 
 class UserProfile {
@@ -48,40 +17,25 @@ class UserProfile {
     required this.name,
     required this.email,
     this.id,
-    this.username,
-    this.firstName,
-    this.lastName,
     this.phone,
     this.image,
     this.role,
-    this.gender,
-    this.address,
-    this.city,
-    this.province,
-    this.district,
-    this.country,
+    this.isActive,
   });
 
-  /// Backend ids are UUID strings.
   final String? id;
-  final String? username;
+
+  /// Backend field: fullName
   final String name;
   final String email;
-  final String? firstName;
-  final String? lastName;
   final String? phone;
+
+  /// Backend field: profileImg
   final String? image;
 
-  /// 'CUSTOMER' or 'SHOP_OWNER'
+  /// OWNER, MANAGER, ORDER_MANAGER, VIEWER or SUPER_ADMIN
   final String? role;
-
-  // Profile details from GET /auth/me (the login response does not have them).
-  final String? gender;
-  final String? address;
-  final String? city;
-  final String? province;
-  final String? district;
-  final String? country;
+  final bool? isActive;
 
   static String nameFromEmail(String email) {
     final localPart = email.split('@').first.trim();
@@ -102,35 +56,21 @@ class UserProfile {
     String? phone,
     String? image,
     String? role,
-    String? gender,
-    String? address,
-    String? city,
-    String? province,
-    String? district,
-    String? country,
+    bool? isActive,
   }) {
     return UserProfile(
       id: id,
-      username: username,
-      firstName: firstName,
-      lastName: lastName,
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
       image: image ?? this.image,
       role: role ?? this.role,
-      gender: gender ?? this.gender,
-      address: address ?? this.address,
-      city: city ?? this.city,
-      province: province ?? this.province,
-      district: district ?? this.district,
-      country: country ?? this.country,
+      isActive: isActive ?? this.isActive,
     );
   }
 
-  /// Backend user object:
-  /// { id, fullName, email, phone, profileImg, role, gender, address, city,
-  ///   province, district, country }
+  /// login: { id, fullName, email, phone, role }
+  /// /auth/me: { id, fullName, email, phone, profileImg, isActive, role }
   factory UserProfile.fromApi(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id']?.toString(),
@@ -139,12 +79,7 @@ class UserProfile {
       phone: json['phone'] as String?,
       image: json['profileImg'] as String?,
       role: json['role'] as String?,
-      gender: json['gender'] as String?,
-      address: json['address'] as String?,
-      city: json['city'] as String?,
-      province: json['province'] as String?,
-      district: json['district'] as String?,
-      country: json['country'] as String?,
+      isActive: json['isActive'] as bool?,
     );
   }
 }
@@ -156,25 +91,18 @@ class AuthState extends ChangeNotifier {
   UserProfile? _user;
   String? _token; // access token, memory only
   String? _refreshToken;
-  final List<ShippingAddress> _addresses = [];
 
   UserProfile? get user => _user;
   String? get token => _token;
   String? get refreshToken => _refreshToken;
   bool get isLoggedIn => _user != null;
-  bool get isShopOwner => _user?.role == UserRole.shopOwner;
+
+  /// True for any seller-side staff role (OWNER, MANAGER, ORDER_MANAGER, VIEWER).
+  bool get isShopOwner => UserRole.staff.contains(_user?.role);
   bool get isCustomer => isLoggedIn && !isShopOwner;
 
   /// Where this user should land after login/signup/app start.
   String get homeRoute => isShopOwner ? '/seller-dashboard' : '/home';
-
-  List<ShippingAddress> get addresses => List.unmodifiable(_addresses);
-  ShippingAddress? get defaultAddress {
-    for (final address in _addresses) {
-      if (address.isDefault) return address;
-    }
-    return _addresses.isEmpty ? null : _addresses.first;
-  }
 
   void login(UserProfile user, {String? token, String? refreshToken}) {
     _user = user;
@@ -198,44 +126,6 @@ class AuthState extends ChangeNotifier {
     _user = null;
     _token = null;
     _refreshToken = null;
-    _addresses.clear();
-    notifyListeners();
-  }
-
-  void saveAddress(ShippingAddress address) {
-    final shouldBeDefault = _addresses.isEmpty || address.isDefault;
-    if (shouldBeDefault) {
-      for (var i = 0; i < _addresses.length; i++) {
-        if (_addresses[i].isDefault) {
-          _addresses[i] = _addresses[i].copyWith(isDefault: false);
-        }
-      }
-    }
-    _addresses.add(address.copyWith(isDefault: shouldBeDefault));
-    notifyListeners();
-  }
-
-  void updateAddress(int index, ShippingAddress address) {
-    if (index < 0 || index >= _addresses.length) return;
-    if (address.isDefault) {
-      for (var i = 0; i < _addresses.length; i++) {
-        if (i != index && _addresses[i].isDefault) {
-          _addresses[i] = _addresses[i].copyWith(isDefault: false);
-        }
-      }
-    }
-    _addresses[index] = address;
-    if (!_addresses.any((a) => a.isDefault) && _addresses.isNotEmpty) {
-      _addresses[0] = _addresses[0].copyWith(isDefault: true);
-    }
-    notifyListeners();
-  }
-
-  void setDefaultAddress(int index) {
-    if (index < 0 || index >= _addresses.length) return;
-    for (var i = 0; i < _addresses.length; i++) {
-      _addresses[i] = _addresses[i].copyWith(isDefault: i == index);
-    }
     notifyListeners();
   }
 }

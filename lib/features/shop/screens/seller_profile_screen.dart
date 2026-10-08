@@ -6,19 +6,31 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/data/models/seller_shop.dart';
+import 'package:yanzee_app/data/models/seller_store.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_reviews_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_store_provider.dart';
 
 class SellerProfileScreen extends ConsumerWidget {
   const SellerProfileScreen({super.key});
 
-  ImageProvider? _getLogoProvider(File? logoFile) {
-    if (logoFile == null) return null;
-    return ResizeImage(
-      FileImage(logoFile),
-      width: 300,
-      height: 300,
-    );
+  /// A freshly picked file wins (instant preview); otherwise the saved URL.
+  ImageProvider? _getLogoProvider(File? logoFile, String? logoUrl) {
+    if (logoFile != null) {
+      return ResizeImage(FileImage(logoFile), width: 300, height: 300);
+    }
+    if (logoUrl != null && logoUrl.isNotEmpty) {
+      return ResizeImage(NetworkImage(logoUrl), width: 300, height: 300);
+    }
+    return null;
+  }
+
+  /// "ACTIVE" + published -> "Active · Published".
+  String _statusText(SellerStore store) {
+    final status = store.status.isEmpty
+        ? 'Unknown'
+        : '${store.status[0]}${store.status.substring(1).toLowerCase()}';
+    return '$status · ${store.isPublished ? 'Published' : 'Not published'}';
   }
 
   @override
@@ -27,7 +39,8 @@ class SellerProfileScreen extends ConsumerWidget {
     final reviews = ref.watch(sellerReviewsProvider);
     final avg = averageRating(reviews);
     final dateFmt = DateFormat('dd MMM yyyy');
-    final logoProvider = _getLogoProvider(store.logoImage);
+    final logoProvider = _getLogoProvider(store.logoImage, store.logoUrl);
+    final email = store.contactEmail;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F5F2),
@@ -96,14 +109,13 @@ class SellerProfileScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  store.description,
-                  style: const TextStyle(fontSize: 13.5),
-                ),
-                const Divider(height: 24),
-                _infoRow(Iconsax.location, store.address),
+                _infoRow(Iconsax.category, storeCategoryLabel(store.category)),
                 const SizedBox(height: 8),
-                _infoRow(Iconsax.percentage_square, store.returnPolicy),
+                _infoRow(Iconsax.tick_circle, _statusText(store)),
+                if (email != null) ...[
+                  const SizedBox(height: 8),
+                  _infoRow(Iconsax.sms, email),
+                ],
               ],
             ),
           ),

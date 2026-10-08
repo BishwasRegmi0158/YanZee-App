@@ -5,75 +5,36 @@ import 'package:yanzee_app/features/seller/widgets/providers/my_shop_provider.da
 import 'package:yanzee_app/features/shop/services/shop_api_service.dart';
 
 class SellerStoreNotifier extends StateNotifier<SellerStore> {
-  SellerStoreNotifier(this._api, SellerStore initial) : super(initial) {
-    _fillFromSignup();
-  }
+  SellerStoreNotifier(this._api, this._storeId, SellerStore initial)
+      : super(initial);
 
   final ShopApiService _api;
-
-  /// For shops that have no address / phone yet, show the signup values.
-  /// They get saved to the shop the next time the owner edits anything.
-  Future<void> _fillFromSignup() async {
-    if (state.address != 'Not set' && state.contactPhone != 'Not set') return;
-    try {
-      final me = await _api.getMe();
-      if (!mounted) return;
-
-      final address = signupAddress(me);
-      final phone = me['phone']?.toString().trim() ?? '';
-
-      state = state.copyWith(
-        address: (state.address == 'Not set' && address.isNotEmpty)
-            ? address
-            : null,
-        contactPhone: (state.contactPhone == 'Not set' && phone.isNotEmpty)
-            ? phone
-            : null,
-      );
-    } catch (_) {
-      // Keep "Not set"; the owner can still type the values in.
-    }
-  }
-
-  String? _sendable(String v) => (v.isEmpty || v == 'Not set') ? null : v;
-
-  /// Sends the whole store to PATCH /shops/my.
-  Future<void> _push(SellerStore s) {
-    return _api.updateMyShop(
-      name: s.name,
-      contactEmail: s.contactEmail,
-      description: s.description,
-      returnPolicy: s.returnPolicy,
-      address: _sendable(s.address),
-      contactPhone: _sendable(s.contactPhone),
-      image: s.logoUrl,
-    );
-  }
+  final String _storeId;
 
   String _msg(Object e) => e.toString().replaceFirst('Exception: ', '');
 
-  /// Returns null on success, or an error message to show the user.
+
   Future<String?> updateField({
     String? name,
-    String? description,
+    String? category,
     String? contactEmail,
-    String? returnPolicy,
-    String? address,
-    String? contactPhone,
   }) async {
+    if (_storeId.isEmpty) return 'No store loaded.';
+
     final previous = state;
-    final next = state.copyWith(
+    state = state.copyWith(
       name: name,
-      description: description,
+      category: category,
       contactEmail: contactEmail,
-      returnPolicy: returnPolicy,
-      address: address,
-      contactPhone: contactPhone,
-    );
-    state = next; // show the change immediately
+    ); // show the change immediately
 
     try {
-      await _push(next);
+      await _api.updateMyShop(
+        _storeId,
+        name: name,
+        category: category,
+        contactEmail: contactEmail,
+      );
       return null;
     } catch (e) {
       if (mounted) state = previous; // roll back
@@ -81,16 +42,16 @@ class SellerStoreNotifier extends StateNotifier<SellerStore> {
     }
   }
 
-  /// Upload a new logo, then save its URL on the shop.
+  /// POST /images/store-logo. The server saves the logo and returns its URL.
   Future<String?> updateLogo(File file) async {
+    if (_storeId.isEmpty) return 'No store loaded.';
+
     final previous = state;
     state = state.copyWith(logoImage: file); // instant preview
 
     try {
-      final url = await _api.uploadShopImage(file);
-      final withUrl = state.copyWith(logoUrl: url);
-      await _push(withUrl);
-      if (mounted) state = withUrl;
+      final url = await _api.uploadStoreLogo(_storeId, file);
+      if (mounted) state = state.copyWith(logoUrl: url);
       return null;
     } catch (e) {
       if (mounted) state = previous;
@@ -98,22 +59,12 @@ class SellerStoreNotifier extends StateNotifier<SellerStore> {
     }
   }
 
+  /// Not supported by the backend yet. When a remove-logo endpoint exists,
+  /// call it here (this is the only place that needs to change).
   Future<String?> removeLogo() async {
-    final previous = state;
-    final next = state.copyWith(clearLogo: true);
-    state = next;
-
-    try {
-      await _push(next); // image: null
-      return null;
-    } catch (e) {
-      if (mounted) state = previous;
-      return _msg(e);
-    }
+    return 'Removing the logo is not available yet. Choose a new image to replace it.';
   }
 }
-
-String _orNotSet(String? v) => (v == null || v.isEmpty) ? 'Not set' : v;
 
 // autoDispose: leaving the seller area (e.g. logout) clears this, so the
 // next owner never sees the previous owner's store.
@@ -124,14 +75,14 @@ final sellerStoreProvider =
 
   return SellerStoreNotifier(
     api,
+    shop?.id ?? '',
     SellerStore(
       name: shop?.name ?? '',
-      description: shop?.description ?? '',
-      contactEmail: _orNotSet(shop?.contactEmail),
-      returnPolicy: _orNotSet(shop?.returnPolicy),
-      address: _orNotSet(shop?.address),
-      contactPhone: _orNotSet(shop?.contactPhone),
-      logoUrl: shop?.image,
+      category: shop?.category ?? '',
+      contactEmail: shop?.contactEmail,
+      status: shop?.status ?? '',
+      isPublished: shop?.isPublished ?? false,
+      logoUrl: shop?.logo,
     ),
   );
 });

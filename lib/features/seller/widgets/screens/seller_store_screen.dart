@@ -10,11 +10,13 @@ import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
 import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/core/widgets/keyboard_safe_sheet.dart';
+import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/data/models/seller_store.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/my_shop_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_products_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_store_provider.dart';
+import 'package:yanzee_app/features/seller/widgets/seller_drawer.dart';
 
 class SellerStoreScreen extends ConsumerWidget {
   const SellerStoreScreen({super.key});
@@ -79,16 +81,14 @@ class SellerStoreScreen extends ConsumerWidget {
     SellerStore store,
   ) {
     final hasImage = store.logoImage != null || store.logoUrl != null;
-    final notifier = ref.read(sellerStoreProvider.notifier);
 
     showImageActionSheet(
       context: context,
       hasImage: hasImage,
       onPreview: () => _previewLogo(context, ref, store),
       onChange: () => _pickLogo(context, ref),
-      onDelete: hasImage
-          ? () => _save(context, () => notifier.removeLogo())
-          : null,
+      // The backend has no "remove logo" API yet, so the option is hidden.
+      onDelete: null,
     );
   }
 
@@ -113,12 +113,50 @@ class SellerStoreScreen extends ConsumerWidget {
     }
   }
 
+  bool _isEmail(String v) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v);
+
+  Future<void> _pickCategory(
+    BuildContext context,
+    WidgetRef ref,
+    SellerStore store,
+  ) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Select category',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            for (final c in kStoreCategories)
+              ListTile(
+                title: Text(storeCategoryLabel(c)),
+                trailing: c == store.category
+                    ? const Icon(Icons.check, color: Colors.black)
+                    : null,
+                onTap: () => Navigator.of(ctx).pop(c),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (picked == null || picked == store.category || !context.mounted) return;
+    final notifier = ref.read(sellerStoreProvider.notifier);
+    _save(context, () => notifier.updateField(category: picked));
+  }
+
   Future<void> _confirmLogout(BuildContext context) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Log out?'),
-        content: const Text('You will need to log in again to open your shop.'),
+        content: const Text('You will need to log in again to open your store.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -151,10 +189,19 @@ class SellerStoreScreen extends ConsumerWidget {
     String shopName,
   ) async {
     const red = Color(0xFFE05A47);
+
+    final storeId = ref.read(myShopProvider).value?.id;
+    if (storeId == null || storeId.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No store loaded.')));
+      return;
+    }
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete shop?'),
+        title: const Text('Delete store?'),
         content: Text(
           '"$shopName" will be permanently deleted. This cannot be undone.',
         ),
@@ -185,7 +232,8 @@ class SellerStoreScreen extends ConsumerWidget {
 
     String? error;
     try {
-      await ref.read(shopApiServiceProvider).deleteMyShop();
+      // DELETE /stores with the x-store-id header
+      await ref.read(shopApiServiceProvider).deleteStore(storeId);
     } catch (e) {
       error = e.toString().replaceFirst('Exception: ', '');
     }
@@ -200,10 +248,11 @@ class SellerStoreScreen extends ConsumerWidget {
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Shop deleted')));
-    // The gate asks GET /shops/my again, gets 404 and shows Create Shop.
+    ).showSnackBar(const SnackBar(content: Text('Store deleted')));
+    // Reload the list of shops. If another shop is left, the gate falls back
+    // to it; if none is left, the gate shows Create Store.
     ref.invalidate(sellerProductsProvider);
-    ref.invalidate(myShopProvider);
+    ref.invalidate(myShopsProvider);
   }
 
   /// A freshly picked file wins (instant preview); otherwise the saved URL.
@@ -217,6 +266,14 @@ class SellerStoreScreen extends ConsumerWidget {
     return null;
   }
 
+  /// "ACTIVE" + published -> "Active · Published".
+  String _statusText(SellerStore store) {
+    final status = store.status.isEmpty
+        ? 'Unknown'
+        : '${store.status[0]}${store.status.substring(1).toLowerCase()}';
+    return '$status · ${store.isPublished ? 'Published' : 'Not published'}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final store = ref.watch(sellerStoreProvider);
@@ -228,6 +285,7 @@ class SellerStoreScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7F5F2),
         elevation: 0,
+        leading: const SellerMenuButton(),
         title: const Text(
           'Store',
           style: TextStyle(
@@ -296,46 +354,36 @@ class SellerStoreScreen extends ConsumerWidget {
           ),
           _tile(
             context,
-            Iconsax.document_text,
-            'Description',
-            store.description,
-            onEdit: (v) =>
-                _save(context, () => notifier.updateField(description: v)),
-            maxLines: 3,
+            Iconsax.category,
+            'Category',
+            storeCategoryLabel(store.category),
+            onTap: () => _pickCategory(context, ref, store),
           ),
+          // The backend never returns the email, so show a hint until the
+          // owner sets one in this session.
           _tile(
             context,
             Iconsax.sms,
             'Contact email',
-            store.contactEmail,
-            onEdit: (v) =>
-                _save(context, () => notifier.updateField(contactEmail: v)),
+            store.contactEmail ?? 'Tap to update',
+            muted: store.contactEmail == null,
+            editStartsEmpty: store.contactEmail == null,
+            onEdit: (v) {
+              if (!_isEmail(v)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter a valid email.')),
+                );
+                return;
+              }
+              _save(context, () => notifier.updateField(contactEmail: v));
+            },
           ),
           _tile(
             context,
-            Iconsax.location,
-            'Pickup address',
-            store.address,
-            onEdit: (v) =>
-                _save(context, () => notifier.updateField(address: v)),
-            maxLines: 2,
-          ),
-          _tile(
-            context,
-            Iconsax.call,
-            'Contact number',
-            store.contactPhone,
-            onEdit: (v) =>
-                _save(context, () => notifier.updateField(contactPhone: v)),
-          ),
-          _tile(
-            context,
-            Iconsax.percentage_square,
-            'Return policy',
-            store.returnPolicy,
-            onEdit: (v) =>
-                _save(context, () => notifier.updateField(returnPolicy: v)),
-            maxLines: 3,
+            Iconsax.tick_circle,
+            'Status',
+            _statusText(store),
+            readOnly: true,
           ),
           const SizedBox(height: 14),
 
@@ -344,7 +392,7 @@ class SellerStoreScreen extends ConsumerWidget {
             child: TextButton(
               onPressed: () => _confirmDeleteShop(context, ref, store.name),
               child: const Text(
-                'Delete shop',
+                'Delete store',
                 style: TextStyle(
                   color: Color(0xFFE05A47),
                   fontWeight: FontWeight.w600,
@@ -380,13 +428,19 @@ class SellerStoreScreen extends ConsumerWidget {
     );
   }
 
+  /// Tapping opens a text editor (onEdit) or a custom action (onTap).
+  /// readOnly tiles show no arrow and do nothing when tapped.
   Widget _tile(
     BuildContext context,
     IconData icon,
     String label,
     String value, {
-    required void Function(String) onEdit,
+    void Function(String)? onEdit,
+    VoidCallback? onTap,
     int maxLines = 1,
+    bool readOnly = false,
+    bool muted = false,
+    bool editStartsEmpty = false,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -395,13 +449,16 @@ class SellerStoreScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: () => _editField(
-            context: context,
-            label: label,
-            currentValue: value,
-            onSave: onEdit,
-            maxLines: maxLines,
-          ),
+          onTap: readOnly
+              ? null
+              : (onTap ??
+                  () => _editField(
+                        context: context,
+                        label: label,
+                        currentValue: editStartsEmpty ? '' : value,
+                        onSave: onEdit!,
+                        maxLines: maxLines,
+                      )),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -426,15 +483,17 @@ class SellerStoreScreen extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         value,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
+                          color: muted ? Colors.grey : Colors.black,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Iconsax.arrow_right_3, color: Colors.grey, size: 18),
+                if (!readOnly)
+                  const Icon(Iconsax.arrow_right_3, color: Colors.grey, size: 18),
               ],
             ),
           ),
@@ -466,9 +525,7 @@ class _EditFieldFormState extends State<_EditFieldForm> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(
-      text: widget.currentValue == 'Not set' ? '' : widget.currentValue,
-    );
+    _controller = TextEditingController(text: widget.currentValue);
 
     // Prevents focus race condition during sheet animation on Android OEM devices
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -106,10 +106,7 @@ class AuthService {
 
   // ---------- PATCH /auth/me ----------
   /// Saves name and phone. Email cannot be changed here: the backend rejects
-  /// it ("Unrecognized key: email"). The profile details we already know
-  /// (gender, address, city, ...) are sent back unchanged.
-  /// Throws AuthException; for a 400 it carries `fieldErrors`.
-  static Future<UserProfile> updateProfile({
+   static Future<UserProfile> updateProfile({
     required String name,
     required String phone,
   }) async {
@@ -120,17 +117,6 @@ class AuthService {
       'fullName': name.trim(),
       'phone': _normalizePhone(phone),
     };
-
-    void keep(String key, String? value) {
-      if (value != null && value.isNotEmpty) body[key] = value;
-    }
-
-    keep('gender', current.gender);
-    keep('address', current.address);
-    keep('city', current.city);
-    keep('province', current.province);
-    keep('district', current.district);
-    keep('country', current.country);
 
     Future<http.Response> send() => http
         .patch(

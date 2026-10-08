@@ -7,6 +7,7 @@ import 'package:yanzee_app/features/seller/widgets/screens/seller_dashboard_scre
 import 'package:yanzee_app/features/seller/widgets/screens/seller_orders_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_products_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_store_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/seller_drawer.dart';
 
 class SellerShell extends ConsumerStatefulWidget {
   const SellerShell({super.key});
@@ -67,22 +68,27 @@ class _SellerShellState extends ConsumerState<SellerShell> {
 
   @override
   Widget build(BuildContext context) {
-    return PersistentTabView.custom(
-      context,
-      controller: _controller,
-      itemCount: _items.length,
-      screens: _buildScreens(),
-      customWidget: _PillNavBar(
-        items: _items,
-        selectedIndex: _controller.index,
-        onItemSelected: _onItemSelected,
+    // The Scaffold only owns the side drawer; each tab keeps its own Scaffold.
+    return Scaffold(
+      key: sellerShellScaffoldKey,
+      drawer: const SellerDrawer(),
+      body: PersistentTabView.custom(
+        context,
+        controller: _controller,
+        itemCount: _items.length,
+        screens: _buildScreens(),
+        customWidget: _PillNavBar(
+          items: _items,
+          selectedIndex: _controller.index,
+          onItemSelected: _onItemSelected,
+        ),
+        navBarHeight: 64,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        confineToSafeArea: true,
+        handleAndroidBackButtonPress: true,
+        resizeToAvoidBottomInset: true,
+        stateManagement: true,
       ),
-      navBarHeight: 64,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      confineToSafeArea: true,
-      handleAndroidBackButtonPress: true,
-      resizeToAvoidBottomInset: true,
-      stateManagement: true,
     );
   }
 }
