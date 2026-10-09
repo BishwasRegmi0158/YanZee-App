@@ -3,8 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/seller_form_theme.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
@@ -23,10 +24,12 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _address = TextEditingController();
-  late final TextEditingController _email =
-      TextEditingController(text: AuthState.instance.user?.email ?? '');
-  late final TextEditingController _phone =
-      TextEditingController(text: AuthState.instance.user?.phone ?? '');
+  late final TextEditingController _email = TextEditingController(
+    text: AuthState.instance.user?.email ?? '',
+  );
+  late final TextEditingController _phone = TextEditingController(
+    text: AuthState.instance.user?.phone ?? '',
+  );
   String? _category;
   File? _logo;
   bool _saving = false;
@@ -86,9 +89,9 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
         // Make the new shop the active one, then reload the list.
         ref.read(selectedShopIdProvider.notifier).state = shop.id;
         ref.invalidate(myShopsProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Shop created')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Shop created')));
         Navigator.of(context).pop();
       } else {
         // The gate reloads the store and switches to the dashboard.
@@ -126,180 +129,322 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
         : 'Enter a valid 10-digit phone number';
   }
 
-  InputDecoration _decoration(String label) => InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      );
-
-  Widget _field(
-    TextEditingController c,
-    String label,
-    String? Function(String?) validator, {
-    int maxLines = 1,
-    TextInputType? keyboardType,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: TextFormField(
-        controller: c,
-        validator: validator,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        decoration: _decoration(label),
-      ),
-    );
-  }
-
-  Widget _categoryField() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: DropdownButtonFormField<String>(
-        initialValue: _category,
-        decoration: _decoration('Category'),
-        items: kStoreCategories
-            .map(
-              (c) => DropdownMenuItem(
-                value: c,
-                child: Text(storeCategoryLabel(c)),
-              ),
-            )
-            .toList(),
-        onChanged: (v) => setState(() => _category = v),
-        validator: (v) => v == null ? 'Select a category' : null,
-      ),
-    );
-  }
-
-  Widget _logoPicker() {
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: _saving ? null : _pickLogo,
-          child: Stack(
+  @override
+  Widget build(BuildContext context) {
+    return SellerFormTheme(
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: widget.isAdditional,
+          title: Text(
+            widget.isAdditional ? 'Create new shop' : 'Set up your store',
+          ),
+          actions: widget.isAdditional
+              ? null
+              : [
+                  TextButton(
+                    onPressed: _saving ? null : _logout,
+                    child: const Text('Log out'),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+        ),
+        body: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
             children: [
-              CircleAvatar(
-                radius: 42,
-                backgroundColor: Colors.white,
-                backgroundImage: _logo == null ? null : FileImage(_logo!),
-                child: _logo == null
-                    ? const Icon(Icons.storefront_outlined, size: 36)
-                    : null,
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: Colors.black,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt_outlined,
-                    color: Colors.white,
-                    size: 14,
-                  ),
+              Expanded(
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  children: [
+                    SellerReveal(
+                      index: 0,
+                      child: _ImagePickerHeader(
+                        logo: _logo,
+                        enabled: !_saving,
+                        onPick: _pickLogo,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SellerReveal(
+                      index: 1,
+                      child: _IntroText(
+                        widget.isAdditional
+                            ? 'Add another store to your account. You can edit these details later in the Store tab.'
+                            : 'Create your store to start selling. You can edit these details later in the Store tab.',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SellerReveal(
+                      index: 2,
+                      child: SellerSectionCard(
+                        icon: Iconsax.shop,
+                        title: 'Basic info',
+                        child: TextFormField(
+                          controller: _name,
+                          validator: _required,
+                          keyboardType: TextInputType.text,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'Store name',
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SellerReveal(
+                      index: 3,
+                      child: SellerSectionCard(
+                        icon: Iconsax.category,
+                        title: 'Category',
+                        child: _CategoryChips(
+                          selected: _category,
+                          onSelected: (c) => setState(() => _category = c),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SellerReveal(
+                      index: 4,
+                      child: SellerSectionCard(
+                        icon: Iconsax.call,
+                        title: 'Contact',
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _email,
+                              validator: _emailRule,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Contact email',
+                                prefixIcon: Icon(Iconsax.sms),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _phone,
+                              validator: _phoneRule,
+                              keyboardType: TextInputType.phone,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Contact phone',
+                                prefixIcon: Icon(Iconsax.call),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SellerReveal(
+                      index: 5,
+                      child: SellerSectionCard(
+                        icon: Iconsax.location,
+                        title: 'Location',
+                        child: TextFormField(
+                          controller: _address,
+                          validator: _required,
+                          minLines: 2,
+                          maxLines: 3,
+                          keyboardType: TextInputType.streetAddress,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.done,
+                          decoration: const InputDecoration(
+                            labelText: 'Store address',
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              SellerBottomBar(
+                label: 'Create shop',
+                saving: _saving,
+                onPressed: _submit,
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Round logo picker (no banner behind it).
+class _ImagePickerHeader extends StatelessWidget {
+  const _ImagePickerHeader({
+    required this.logo,
+    required this.enabled,
+    required this.onPick,
+  });
+
+  final File? logo;
+  final bool enabled;
+  final VoidCallback onPick;
+
+  static const double _avatarSize = 96;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final ring = theme.scaffoldBackgroundColor;
+
+    return Column(
+      children: [
+        Semantics(
+          button: true,
+          label: 'Choose store logo',
+          child: GestureDetector(
+            onTap: enabled ? onPick : null,
+            child: SizedBox(
+              width: _avatarSize,
+              height: _avatarSize,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CircleAvatar(
+                      backgroundColor: scheme.surfaceContainerHighest,
+                      backgroundImage: logo == null ? null : FileImage(logo!),
+                      child: logo == null
+                          ? Icon(
+                              Iconsax.shop,
+                              size: 32,
+                              color: scheme.onSurfaceVariant,
+                            )
+                          : null,
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: scheme.primary,
+                        border: Border.all(color: ring, width: 2),
+                      ),
+                      child: Icon(
+                        Iconsax.camera,
+                        size: 14,
+                        color: scheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Store logo (optional)',
-          style: TextStyle(color: Colors.black54, fontSize: 12),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
   }
+}
+
+class _IntroText extends StatelessWidget {
+  const _IntroText(this.text);
+
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F5F2),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F5F2),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        automaticallyImplyLeading: widget.isAdditional,
-        title: Text(
-          widget.isAdditional ? 'Create new shop' : 'Set up your store',
-          style: const TextStyle(
-            fontFamily: AppFonts.brand,
-            fontSize: 22,
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: widget.isAdditional
-            ? null
-            : [
-                TextButton(
-                  onPressed: _saving ? null : _logout,
-                  child: const Text(
-                    'Log out',
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                ),
-              ],
+    final theme = Theme.of(context);
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
       ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Center(child: _logoPicker()),
-            const SizedBox(height: 20),
-            Text(
-              widget.isAdditional
-                  ? 'Add another store to your account. You can edit these details later in the Store tab.'
-                  : 'Create your store to start selling. You can edit these details later in the Store tab.',
-              style: const TextStyle(color: Colors.black54),
+    );
+  }
+}
+/// Category picker as a dropdown. a category is required.
+class _CategoryChips extends StatelessWidget {
+  const _CategoryChips({required this.selected, required this.onSelected});
+
+  final String? selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    // Softer hover/press colors inside the open menu (instead of dark grey).
+    final menuTheme = theme.copyWith(
+      highlightColor: scheme.primary.withValues(alpha: 0.06),
+      splashColor: scheme.primary.withValues(alpha: 0.08),
+      hoverColor: Colors.transparent,
+      focusColor: Colors.transparent,
+    );
+
+    return Theme(
+      data: menuTheme,
+      child: DropdownButtonFormField<String>(
+        initialValue: selected,
+        isExpanded: true,
+        borderRadius: BorderRadius.circular(16),
+        dropdownColor: scheme.surfaceContainerLowest,
+        elevation: 3,
+        menuMaxHeight: 320,
+        icon: Icon(Iconsax.arrow_down_1, size: 18, color: scheme.onSurfaceVariant),
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: scheme.onSurface,
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: const InputDecoration(labelText: 'Category'),
+        // What the closed field shows: just the name.
+        selectedItemBuilder: (context) => [
+          for (final c in kStoreCategories)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                storeCategoryLabel(c),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const SizedBox(height: 20),
-            Form(
-              key: _formKey,
-              child: Column(
+        ],
+        // What the open list shows: name + a tick on the chosen one.
+        items: [
+          for (final c in kStoreCategories)
+            DropdownMenuItem(
+              value: c,
+              child: Row(
                 children: [
-                  _field(_name, 'Store name', _required),
-                  _categoryField(),
-                  _field(_email, 'Contact email', _emailRule,
-                      keyboardType: TextInputType.emailAddress),
-                  _field(_phone, 'Contact phone', _phoneRule,
-                      keyboardType: TextInputType.phone),
-                  _field(_address, 'Store address', _required, maxLines: 2),
+                  Expanded(
+                    child: Text(
+                      storeCategoryLabel(c),
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight:
+                            c == selected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (c == selected)
+                    Icon(Iconsax.tick_circle5, size: 18, color: scheme.primary),
                 ],
               ),
             ),
-            const SizedBox(height: 6),
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: _saving ? null : _submit,
-                child: _saving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Create store',
-                        style: TextStyle(color: Colors.white),
-                      ),
-              ),
-            ),
-          ],
-        ),
+        ],
+        onChanged: (v) {
+          if (v != null) onSelected(v);
+        },
+        validator: (v) => v == null ? 'Select a category' : null,
       ),
     );
   }

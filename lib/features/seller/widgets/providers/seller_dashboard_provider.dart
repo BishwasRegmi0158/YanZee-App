@@ -5,8 +5,7 @@ import 'package:yanzee_app/features/seller/widgets/providers/seller_products_pro
 
 const _monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-final sellerDashboardProvider = FutureProvider<DashboardStats>((ref) async {
-  final products = await ref.watch(sellerProductsProvider.future);
+final sellerDashboardProvider = FutureProvider.autoDispose<DashboardStats>((ref) async {  final products = await ref.watch(sellerProductsProvider.future);
   final orders = await ref.watch(sellerOrdersProvider.future);
 
   final activeProducts = products.where((p) => p.isActive).length;

@@ -17,6 +17,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "12.1.0"
+  animated_toggle_switch:
+    dependency: "direct main"
+    description:
+      name: animated_toggle_switch
+      sha256: faecb2339cde5e7d299389cf7e01cf35305a3ba212ae8ff51c02ce8385d1d273
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.7"
   args:
     dependency: transitive
     description:

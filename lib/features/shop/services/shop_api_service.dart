@@ -22,9 +22,16 @@ class ShopApiService {
         'Content-Type': 'application/json',
       };
 
+  /// ApiClient adds x-store-id to every request. Listing shops and creating
+  /// a shop are not about one particular shop, so we take it off here.
+  Map<String, String> _noStore(Map<String, String> h) =>
+      {...h}..remove('x-store-id');
+
   /// GET /stores. Returns every store the owner has (empty list if none).
   Future<List<SellerShop>> getMyShops() async {
-    final res = await ApiClient.send((h) => http.get(_stores, headers: h));
+    final res = await ApiClient.send(
+      (h) => http.get(_stores, headers: _noStore(h)),
+    );
 
     if (res.statusCode == 404) return [];
     if (res.statusCode != 200) {
@@ -41,7 +48,6 @@ class ShopApiService {
   }
 
   /// The first store, or null when the owner has none.
-  /// Kept for any old code that still calls it.
   Future<SellerShop?> getMyShop() async {
     final shops = await getMyShops();
     return shops.isEmpty ? null : shops.first;
@@ -58,7 +64,7 @@ class ShopApiService {
     final res = await ApiClient.send(
       (h) => http.post(
         _stores,
-        headers: _json(h),
+        headers: _json(_noStore(h)),
         body: jsonEncode({
           'name': name,
           'category': category,
@@ -92,7 +98,6 @@ class ShopApiService {
 
   /// PATCH /stores with the x-store-id header.
   /// The backend only accepts name, category and contactEmail here.
-  /// Only non-null fields are sent.
   Future<void> updateMyShop(
     String storeId, {
     String? name,
@@ -121,12 +126,9 @@ class ShopApiService {
   }
 
   /// POST /images/store-logo with the x-store-id header.
-  /// The server saves the logo itself and returns its URL.
   Future<String> uploadStoreLogo(String storeId, File file) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/images/store-logo');
     final res = await ApiClient.send((h) async {
-      // Built fresh on every call: a MultipartRequest can't be re-sent,
-      // and ApiClient may retry once after refreshing the token.
       final req = http.MultipartRequest('POST', url)
         ..headers.addAll(_withStore(h, storeId))
         ..headers.remove('Content-Type') // let multipart set its boundary

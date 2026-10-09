@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/core/utils/currency_format.dart';
@@ -173,25 +172,6 @@ class _Header extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        OutlinedButton.icon(
-          onPressed: onBuyerView,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.ink,
-            side: const BorderSide(color: AppColors.gold),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-          ),
-          icon: const Icon(Iconsax.shop, size: 16, color: AppColors.gold),
-          label: Text(
-            'Buyer view',
-            style: TextStyle(
-              fontSize: Responsive.font(context, 13, capSystemScale: true),
-            ),
           ),
         ),
       ],

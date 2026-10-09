@@ -21,6 +21,8 @@ import 'package:yanzee_app/features/seller/widgets/seller_drawer.dart';
 class SellerStoreScreen extends ConsumerWidget {
   const SellerStoreScreen({super.key});
 
+  static const Color _red = Color(0xFFE05A47);
+
   /// Runs a save and shows the error (if any) in a snackbar.
   Future<void> _save(
     BuildContext context,
@@ -156,7 +158,9 @@ class SellerStoreScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Log out?'),
-        content: const Text('You will need to log in again to open your store.'),
+        content: const Text(
+          'You will need to log in again to open your store.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -166,7 +170,7 @@ class SellerStoreScreen extends ConsumerWidget {
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text(
               'Log out',
-              style: TextStyle(color: Color(0xFFE05A47)),
+              style: TextStyle(color: _red),
             ),
           ),
         ],
@@ -188,8 +192,6 @@ class SellerStoreScreen extends ConsumerWidget {
     WidgetRef ref,
     String shopName,
   ) async {
-    const red = Color(0xFFE05A47);
-
     final storeId = ref.read(myShopProvider).value?.id;
     if (storeId == null || storeId.isEmpty) {
       ScaffoldMessenger.of(
@@ -212,7 +214,7 @@ class SellerStoreScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete', style: TextStyle(color: red)),
+            child: const Text('Delete', style: TextStyle(color: _red)),
           ),
         ],
       ),
@@ -295,18 +297,6 @@ class SellerStoreScreen extends ConsumerWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => context.push('/seller-profile'),
-            child: const Text(
-              'Preview as customer',
-              style: TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -385,41 +375,66 @@ class SellerStoreScreen extends ConsumerWidget {
             _statusText(store),
             readOnly: true,
           ),
-          const SizedBox(height: 14),
-
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton(
-              onPressed: () => _confirmDeleteShop(context, ref, store.name),
-              child: const Text(
-                'Delete store',
-                style: TextStyle(
-                  color: Color(0xFFE05A47),
-                  fontWeight: FontWeight.w600,
-                ),
+          const SizedBox(height: 28),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'DELETE',
+              style: TextStyle(
+                fontSize: 11,
+                letterSpacing: 1.1,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade600,
               ),
             ),
           ),
+          _deleteButton(context, ref, store.name),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
 
+  /// Full-width outlined destructive button.
+  Widget _deleteButton(BuildContext context, WidgetRef ref, String shopName) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton.icon(
+        onPressed: () => _confirmDeleteShop(context, ref, shopName),
+        icon: const Icon(Iconsax.trash, size: 18, color: _red),
+        label: const Text(
+          'Delete store',
+          style: TextStyle(
+            color: _red,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: _red, width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _logoutButton(BuildContext context) {
-    const red = Color(0xFFE05A47);
     return SizedBox(
       width: double.infinity,
       height: 48,
       child: OutlinedButton.icon(
         onPressed: () => _confirmLogout(context),
-        icon: const Icon(Iconsax.logout, size: 18, color: red),
+        icon: const Icon(Iconsax.logout, size: 18, color: _red),
         label: const Text(
           'Log out',
-          style: TextStyle(color: red, fontWeight: FontWeight.w600),
+          style: TextStyle(color: _red, fontWeight: FontWeight.w600),
         ),
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: red),
+          side: const BorderSide(color: _red),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -452,13 +467,13 @@ class SellerStoreScreen extends ConsumerWidget {
           onTap: readOnly
               ? null
               : (onTap ??
-                  () => _editField(
-                        context: context,
-                        label: label,
-                        currentValue: editStartsEmpty ? '' : value,
-                        onSave: onEdit!,
-                        maxLines: maxLines,
-                      )),
+                    () => _editField(
+                      context: context,
+                      label: label,
+                      currentValue: editStartsEmpty ? '' : value,
+                      onSave: onEdit!,
+                      maxLines: maxLines,
+                    )),
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -493,7 +508,11 @@ class SellerStoreScreen extends ConsumerWidget {
                   ),
                 ),
                 if (!readOnly)
-                  const Icon(Iconsax.arrow_right_3, color: Colors.grey, size: 18),
+                  const Icon(
+                    Iconsax.arrow_right_3,
+                    color: Colors.grey,
+                    size: 18,
+                  ),
               ],
             ),
           ),

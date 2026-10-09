@@ -26,7 +26,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   List<CustomNavBarScreen> _buildScreens() => const [
         CustomNavBarScreen(screen: HomeScreen()),
-        CustomNavBarScreen(screen: ShopScreen()),
+         CustomNavBarScreen(screen: ShopScreen()),
         CustomNavBarScreen(screen: WishlistScreen()),
         CustomNavBarScreen(screen: CartScreen()),
         CustomNavBarScreen(screen: AccountScreen()),

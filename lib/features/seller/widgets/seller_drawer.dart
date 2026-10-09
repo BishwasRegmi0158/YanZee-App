@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:yanzee_app/core/navigation/full_screen_nav.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/my_shop_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_store_provider.dart';
-import 'package:yanzee_app/features/seller/widgets/screens/create_category_screen.dart';
-import 'package:yanzee_app/features/seller/widgets/screens/create_shop_screen.dart';
 
 /// Lets any seller screen open the drawer owned by SellerShell.
 final GlobalKey<ScaffoldState> sellerShellScaffoldKey =
@@ -76,151 +73,157 @@ class SellerDrawer extends ConsumerWidget {
       if (role.isNotEmpty) role,
     ].join(' · ');
 
-    return Drawer(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      width: 300,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _panel,
-              borderRadius: BorderRadius.circular(28),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ---- store profile ----
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 26,
-                      backgroundColor: Colors.white,
-                      backgroundImage: logo,
-                      child: logo == null
-                          ? const Icon(Iconsax.shop, color: _text)
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+  
+
+   return Drawer(
+  backgroundColor: Colors.transparent,
+  elevation: 0,
+  width: 300,
+  child: SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 0, 8),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _panel,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ---- store profile ----
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: Colors.white,
+                    backgroundImage: logo,
+                    child: logo == null
+                        ? const Icon(Iconsax.shop, color: _text)
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          store.name.isEmpty ? 'Your store' : store.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: _text,
+                          ),
+                        ),
+                        if (subtitle.isNotEmpty)
                           Text(
-                            store.name.isEmpty ? 'Your store' : store.name,
+                            subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: _text,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: _text.withOpacity(0.7),
                             ),
-                          ),
-                          if (subtitle.isNotEmpty)
-                            Text(
-                              subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                color: _text.withOpacity(0.7),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-
-                // ---- menu ----
-                _item(
-                  Iconsax.add_square,
-                  'Create category',
-                  () => _run(
-                    context,
-                    (c) => pushFullScreen(c, const CreateCategoryScreen()),
-                  ),
-                  highlighted: true,
-                ),
-                _item(
-                  Iconsax.shop_add,
-                  'Create shop',
-                  () => _run(
-                    context,
-                    (c) => pushFullScreen(
-                      c,
-                      const CreateShopScreen(isAdditional: true),
-                    ),
-                  ),
-                ),
-                _item(
-                  Iconsax.eye,
-                  'Preview as customer',
-                  () => _run(
-                    context,
-                    (c) => GoRouter.of(c).push('/seller-profile'),
-                  ),
-                ),
-
-                // ---- shop switcher (only with 2+ shops) ----
-                if (shops.length > 1) ...[
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 6, bottom: 6),
-                    child: Text(
-                      'YOUR SHOPS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        letterSpacing: 1.1,
-                        fontWeight: FontWeight.w700,
-                        color: _text.withOpacity(0.6),
-                      ),
-                    ),
-                  ),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 180),
-                    child: ListView(
-                      shrinkWrap: true,
-                      padding: EdgeInsets.zero,
-                      children: [
-                        for (final s in shops)
-                          _item(
-                            s.id == currentId
-                                ? Iconsax.tick_circle
-                                : Iconsax.shop,
-                            s.name,
-                            () {
-                              ref.read(selectedShopIdProvider.notifier).state =
-                                  s.id;
-                              Navigator.of(context).pop();
-                            },
-                            highlighted: s.id == currentId,
                           ),
                       ],
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 18),
 
-                const Spacer(),
-                Divider(color: _text.withOpacity(0.15), height: 1),
-                const SizedBox(height: 6),
-                _item(
-                  Iconsax.logout,
-                  'Log out',
-                  () => _run(context, (c) async {
-                    await AuthService.logout();
-                    if (c.mounted) GoRouter.of(c).go('/home');
-                  }),
-                  color: const Color(0xFFE05A47),
+              // ---- menu ----
+              _item(
+                Iconsax.category,
+                'Categories',
+                () => _run(
+                  context,
+                  (c) => GoRouter.of(c).push('/seller/categories'),
+                ),
+              ),
+              _item(
+                Iconsax.tag,
+                'Brands',
+                () => _run(
+                  context,
+                  (c) => GoRouter.of(c).push('/seller/brands'),
+                ),
+              ),
+              _item(
+                Iconsax.shop,
+                'My shops',
+                () => _run(
+                  context,
+                  (c) => GoRouter.of(c).push('/seller/shops'),
+                ),
+              ),
+              _item(
+                Iconsax.eye,
+                'Preview as customer',
+                () => _run(
+                  context,
+                  (c) => GoRouter.of(c).push('/seller-profile'),
+                ),
+              ),
+
+              // ---- shop switcher (only with 2+ shops) ----
+              if (shops.length > 1) ...[
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.only(left: 6, bottom: 6),
+                  child: Text(
+                    'YOUR SHOPS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      letterSpacing: 1.1,
+                      fontWeight: FontWeight.w700,
+                      color: _text.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 180),
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    children: [
+                      for (final s in shops)
+                        _item(
+                          s.id == currentId
+                              ? Iconsax.tick_circle
+                              : Iconsax.shop,
+                          s.name,
+                          () {
+                            ref.read(selectedShopIdProvider.notifier).state =
+                                s.id;
+                            Navigator.of(context).pop();
+                          },
+                          highlighted: s.id == currentId,
+                        ),
+                    ],
+                  ),
                 ),
               ],
-            ),
+
+              const Spacer(),
+              Divider(color: _text.withOpacity(0.15), height: 1),
+              const SizedBox(height: 6),
+              _item(
+                Iconsax.logout,
+                'Log out',
+                () => _run(context, (c) async {
+                  await AuthService.logout();
+                  if (c.mounted) GoRouter.of(c).go('/home');
+                }),
+                color: const Color(0xFFE05A47),
+              ),
+            ],
           ),
         ),
       ),
+  )
     );
   }
 
@@ -235,7 +238,9 @@ class SellerDrawer extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
-        color: highlighted ? Colors.white.withOpacity(0.55) : Colors.transparent,
+        color: highlighted
+            ? Colors.white.withOpacity(0.55)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),

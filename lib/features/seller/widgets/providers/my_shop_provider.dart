@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:yanzee_app/core/api/api_client.dart';
 import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/features/shop/services/shop_api_service.dart';
 
@@ -13,11 +14,14 @@ final myShopsProvider = FutureProvider.autoDispose<List<SellerShop>>(
 /// The shop the owner picked in the drawer. null = use the first one.
 final selectedShopIdProvider = StateProvider.autoDispose<String?>((ref) => null);
 
-// Same shape as before (one shop, or null), so the gate and
-// sellerStoreProvider keep working unchanged.
 final myShopProvider = FutureProvider.autoDispose<SellerShop?>((ref) async {
   final shops = await ref.watch(myShopsProvider.future);
-  if (shops.isEmpty) return null;
+  if (shops.isEmpty) {
+    ApiClient.storeId = null;
+    return null;
+  }
   final id = ref.watch(selectedShopIdProvider);
-  return shops.firstWhere((s) => s.id == id, orElse: () => shops.first);
+  final shop = shops.firstWhere((s) => s.id == id, orElse: () => shops.first);
+  ApiClient.storeId = shop.id; // every request now carries x-store-id
+  return shop;
 });

@@ -2,13 +2,17 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yanzee_app/data/models/seller_models.dart';
 import 'package:yanzee_app/features/seller/services/seller_product_api_service.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/my_shop_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_repository_provider.dart';
 
 final sellerProductApiProvider = Provider((ref) => SellerProductApiService());
 
 class SellerProductsNotifier extends AsyncNotifier<List<SellerProduct>> {
   @override
-  Future<List<SellerProduct>> build() {
+  Future<List<SellerProduct>> build() async {
+    // NEW: wait for the selected shop. When the shop changes, this whole
+    // method runs again, so the list reloads for the new shop.
+    await ref.watch(myShopProvider.future);
     return ref.watch(sellerRepositoryProvider).getProducts();
   }
 
@@ -75,6 +79,7 @@ class SellerProductsNotifier extends AsyncNotifier<List<SellerProduct>> {
   }
 }
 
+// NEW: autoDispose, so leaving the seller area (e.g. logout) clears the data.
 final sellerProductsProvider =
-    AsyncNotifierProvider<SellerProductsNotifier, List<SellerProduct>>(
+    AsyncNotifierProvider.autoDispose<SellerProductsNotifier, List<SellerProduct>>(
         SellerProductsNotifier.new);
