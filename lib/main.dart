@@ -6,7 +6,12 @@ import 'core/router/app_router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await TokenStorage.init();
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    ProviderScope(
+      retry: (retryCount, error) => null, // never retry, show errors at once
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

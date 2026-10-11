@@ -24,6 +24,7 @@ import 'package:yanzee_app/features/seller/widgets/screens/category_detail_scree
 import 'package:yanzee_app/features/seller/widgets/screens/category_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/create_category_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/create_shop_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/product_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_shops_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_gate.dart';
 import 'package:yanzee_app/features/shop/screens/seller_profile_screen.dart';
@@ -174,6 +175,12 @@ final appRouter = GoRouter(
         }
         return CategoryFormScreen(initial: c);
       },
+
+    ),
+        GoRoute(
+      path: '/seller/products/add',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ProductFormScreen(),
     ),
     GoRoute(
       path: '/seller/categories/detail',

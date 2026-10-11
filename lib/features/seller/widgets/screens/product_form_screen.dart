@@ -1,31 +1,99 @@
-// features/seller/screens/product_form_screen.dart
+// features/seller/widgets/screens/product_form_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/data/models/seller_models.dart';
+import 'package:yanzee_app/features/seller/widgets/product_form_widgets.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/seller_brands_provider.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/seller_categories_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_products_provider.dart';
 
-/// The three text fields of one variant row.
-class _VariantRow {
-  _VariantRow({String size = '', String stock = '', String sku = ''})
-      : size = TextEditingController(text: size),
-        stock = TextEditingController(text: stock),
-        sku = TextEditingController(text: sku);
+// ---- helpers for this form ---------------------------------------------
 
-  final TextEditingController size;
-  final TextEditingController stock;
-  final TextEditingController sku;
+/// 149.99 stays 149.99, 150.0 shows as 150, null shows as empty.
+String fmtNum(double? v) {
+  if (v == null) return '';
+  return v == v.truncateToDouble() ? v.toStringAsFixed(0) : v.toString();
+}
+
+String? optStr(TextEditingController c) {
+  final t = c.text.trim();
+  return t.isEmpty ? null : t;
+}
+
+double? optNum(TextEditingController c) {
+  final t = c.text.trim();
+  return t.isEmpty ? null : double.tryParse(t);
+}
+
+/// null when empty or valid, otherwise an error message.
+String? numError(TextEditingController c, String label) {
+  final t = c.text.trim();
+  if (t.isEmpty) return null;
+  final v = double.tryParse(t);
+  if (v == null || v < 0) return '$label must be a valid number';
+  return null;
+}
+
+String shortError(Object e) => e.toString().replaceFirst('Exception: ', '');
+
+/// All the fields of one variant row.
+class VariantRow {
+  VariantRow({this.id});
+
+  factory VariantRow.fromVariant(SellerVariant v) {
+    final r = VariantRow(id: v.id);
+    r.name.text = v.name;
+    r.size.text = v.size;
+    for (final c in v.colorCodes) {
+      final hex = normalizeHex(c) ?? c;
+      if (!r.colorCodes.contains(hex)) r.colorCodes.add(hex);
+    }
+    r.price.text = fmtNum(v.sellingPrice);
+    r.crossed.text = fmtNum(v.crossedPrice);
+    r.cost.text = fmtNum(v.costPrice);
+    r.qty.text = '${v.quantity}';
+    r.weight.text = fmtNum(v.weight);
+    r.sku.text = v.sku ?? '';
+    r.hs.text = v.hsCode ?? '';
+    r.barcode.text = v.altBarcode ?? '';
+    return r;
+  }
+
+  final String? id; // null = new variant, not saved yet
+  final name = TextEditingController();
+  final size = TextEditingController();
+  final List<String> colorCodes = []; // hex codes, for example #ff0000
+  final price = TextEditingController();
+  final crossed = TextEditingController();
+  final cost = TextEditingController();
+  final qty = TextEditingController();
+  final weight = TextEditingController();
+  final sku = TextEditingController();
+  final hs = TextEditingController();
+  final barcode = TextEditingController();
 
   void dispose() {
-    size.dispose();
-    stock.dispose();
-    sku.dispose();
+    for (final c in [
+      name, size, price, crossed, cost, qty, weight, sku, hs, barcode,
+    ]) {
+      c.dispose();
+    }
   }
 }
+
+// features/seller/widgets/screens/product_form_screen.dart
+
+
+
+// ----------------------------------------------------------------- screen
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final SellerProduct? initial;
@@ -40,85 +108,84 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   // spaces and the characters - . /
   static final _sizeRule = RegExp(r'^[A-Za-z0-9 \-./]+$');
 
-  late final TextEditingController _name;
-  late final TextEditingController _price;
-  late final TextEditingController _discount;
-  late final TextEditingController _description;
-  late String _category;
-  late ProductStatus _status;
-  late ProductAudience _audience;
-  final List<_VariantRow> _variants = [];
-  File? _pickedImage;
-  String? _existingImageUrl;
+  // text fields
+  final _name = TextEditingController();
+  final _shortDesc = TextEditingController();
+  final _longDesc = TextEditingController();
+  final _price = TextEditingController();
+  final _crossed = TextEditingController();
+  final _cost = TextEditingController();
+  final _qty = TextEditingController();
+  final _weight = TextEditingController();
+  final _sku = TextEditingController();
+  final _hs = TextEditingController();
+  final _barcode = TextEditingController();
+  final _tags = TextEditingController();
+  final _seoTitle = TextEditingController();
+  final _seoDesc = TextEditingController();
+
+  // dropdown values
+  final _brandNotifier = ValueNotifier<String?>(null);
+  final _categoryNotifier = ValueNotifier<List<String>>([]);
+  final _audienceNotifier =
+      ValueNotifier<ProductAudience?>(ProductAudience.unisex);
+
+  // other state
+  ProductStatus _status = ProductStatus.active;
+  bool _isAvailable = true;
+  DateTime? _releaseDate;
+  List<String> _similarIds = [];
+  List<ProductImageEntry> _images = [];
+  File? _seoPicked;
+  String? _seoUrl;
+  final List<VariantRow> _variants = [];
+
   bool _saving = false;
 
-  /// The full product from GET /products/:id (the list has no description).
+  /// The full product from GET /products/:id (the list has no descriptions).
   SellerProduct? _base;
   bool _loadingDetails = false;
   bool _detailsFailed = false;
 
-  final FocusNode _descriptionFocus = FocusNode();
+  final FocusNode _shortFocus = FocusNode();
+  final FocusNode _longFocus = FocusNode();
+  final GlobalKey _shortKey = GlobalKey();
+  final GlobalKey _longKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
-  final GlobalKey _descriptionKey = GlobalKey();
 
   bool get _isEditing => widget.initial != null;
-
-  /// 149.99 stays 149.99, 150.0 shows as 150.
-  String _fmt(double v) =>
-      v == v.truncateToDouble() ? v.toStringAsFixed(0) : v.toString();
+  bool get _canSave => !_saving && !_loadingDetails && !_detailsFailed;
 
   @override
   void initState() {
     super.initState();
-    final p = widget.initial;
-    _base = p;
-    _name = TextEditingController(text: p?.name ?? '');
-    _price = TextEditingController(text: p != null ? _fmt(p.price) : '');
-    _discount = TextEditingController(
-      text: p?.discountPrice != null ? _fmt(p!.discountPrice!) : '',
-    );
-    _description = TextEditingController(text: p?.description ?? '');
-    _category = (p != null && kSellerCategories.contains(p.category))
-        ? p.category
-        : kSellerCategories.first;
-    _status = p?.status ?? ProductStatus.active;
-    _audience = p?.audience ?? ProductAudience.unisex;
-    _existingImageUrl = p?.imageUrl;
+    _scrollOnFocus(_shortFocus, _shortKey);
+    _scrollOnFocus(_longFocus, _longKey);
 
-    if (p != null && p.variants.isNotEmpty) {
-      for (final v in p.variants) {
-        _variants.add(
-          _VariantRow(size: v.size, stock: v.stock.toString(), sku: v.sku),
-        );
-      }
-    } else {
-      _variants.add(_VariantRow());
-    }
-
-    _descriptionFocus.addListener(() {
-      if (_descriptionFocus.hasFocus) {
-        // Give the keyboard animation time to finish so viewInsets.bottom
-        // has settled to its final value before we scroll.
-        Future.delayed(const Duration(milliseconds: 260), () {
-          final ctx = _descriptionKey.currentContext;
-          if (ctx != null && mounted) {
-            Scrollable.ensureVisible(
-              ctx,
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOut,
-              alignment: 0.0,
-            );
-          }
-        });
-      }
-    });
-
-    // When editing, load the full product first. The list does not contain
-    // the description, so saving without it would erase it on the server.
+    // When editing, load the full product first: the list does not contain
+    // descriptions, tags, SEO and so on, so saving without it would erase them.
     if (_isEditing) {
       _loadingDetails = true;
       _fetchDetails();
     }
+  }
+
+  void _scrollOnFocus(FocusNode node, GlobalKey key) {
+    node.addListener(() {
+      if (!node.hasFocus) return;
+      // Wait for the keyboard animation so the insets have settled.
+      Future.delayed(const Duration(milliseconds: 260), () {
+        final ctx = key.currentContext;
+        if (ctx != null && mounted) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            alignment: 0.1,
+          );
+        }
+      });
+    });
   }
 
   Future<void> _fetchDetails() async {
@@ -129,7 +196,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       if (!mounted) return;
       setState(() {
         _base = full;
-        if (_description.text.isEmpty) _description.text = full.description;
+        _applyProduct(full);
         _loadingDetails = false;
         _detailsFailed = false;
       });
@@ -150,39 +217,114 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _fetchDetails();
   }
 
-  @override
-  void dispose() {
-    _name.dispose();
-    _price.dispose();
-    _discount.dispose();
-    _description.dispose();
+  /// Fills every field from a loaded product (call inside setState).
+  void _applyProduct(SellerProduct p) {
+    _name.text = p.name;
+    _shortDesc.text = p.productDescription;
+    _longDesc.text = p.longDescription;
+    _price.text = p.hasVariants ? '' : fmtNum(p.sellingPrice);
+    _crossed.text = fmtNum(p.crossedPrice);
+    _cost.text = fmtNum(p.costPrice);
+    _qty.text = p.hasVariants ? '' : '${p.quantity}';
+    _weight.text = fmtNum(p.weight);
+    _sku.text = p.sku ?? '';
+    _hs.text = p.hsCode ?? '';
+    _barcode.text = p.altBarcode ?? '';
+    _tags.text = p.tags.join(', ');
+    _seoTitle.text = p.seoTitle ?? '';
+    _seoDesc.text = p.seoDescription ?? '';
+
+    _brandNotifier.value = p.brandId;
+    _categoryNotifier.value = [...p.categoryIds];
+    _audienceNotifier.value = p.audience;
+    _status = p.status;
+    _isAvailable = p.isAvailable;
+    _releaseDate = p.releaseDate;
+    _similarIds = [...p.similarProductIds];
+    _images = [for (final u in p.imageUrls) ProductImageEntry.remote(u)];
+    _seoUrl = p.seoImage;
+    _seoPicked = null;
+
     for (final v in _variants) {
       v.dispose();
     }
-    _descriptionFocus.dispose();
+    _variants
+      ..clear()
+      ..addAll(p.variants.map(VariantRow.fromVariant));
+  }
+
+  @override
+  void dispose() {
+    for (final c in [
+      _name, _shortDesc, _longDesc, _price, _crossed, _cost, _qty, _weight,
+      _sku, _hs, _barcode, _tags, _seoTitle, _seoDesc,
+    ]) {
+      c.dispose();
+    }
+    for (final v in _variants) {
+      v.dispose();
+    }
+    _brandNotifier.dispose();
+    _categoryNotifier.dispose();
+    _audienceNotifier.dispose();
+    _shortFocus.dispose();
+    _longFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
+  // ---------------------------------------------------------------- pickers
+
+  Future<void> _pickImages() async {
+    final picked = await ImagePicker().pickMultiImage(imageQuality: 80);
+    if (picked.isEmpty || !mounted) return;
+    setState(() {
+      _images.addAll(picked.map((x) => ProductImageEntry.local(File(x.path))));
+    });
+  }
+
+  Future<void> _pickSeoImage() async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 80,
     );
-    if (picked != null) setState(() => _pickedImage = File(picked.path));
+    if (picked != null && mounted) {
+      setState(() => _seoPicked = File(picked.path));
+    }
   }
 
-  void _removeImage() {
-    setState(() {
-      _pickedImage = null;
-      _existingImageUrl = null;
-    });
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final current = _releaseDate;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current != null
+          ? DateTime(current.year, current.month, current.day)
+          : now,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _releaseDate = DateTime.utc(picked.year, picked.month, picked.day);
+      });
+    }
   }
 
-  void _addVariant() => setState(() => _variants.add(_VariantRow()));
+  Future<void> _pickSimilar(List<SellerProduct> candidates) async {
+    final result = await showSimilarProductsSheet(
+      context,
+      candidates: candidates,
+      selected: _similarIds,
+    );
+    if (result != null && mounted) setState(() => _similarIds = result);
+  }
+
+  void _addVariant() => setState(() => _variants.add(VariantRow()));
 
   void _removeVariant(int index) {
-    if (_variants.length <= 1) return; // at least one variant is required
+    // Saved variants have no delete endpoint here, only new rows can go.
+    if (_variants[index].id != null) return;
     setState(() => _variants.removeAt(index).dispose());
   }
 
@@ -192,116 +334,234 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  bool get _canSave => !_saving && !_loadingDetails && !_detailsFailed;
+  // ------------------------------------------------------ collect + validate
+
+  SellerProduct? _collect() {
+    final name = _name.text.trim();
+    if (name.isEmpty) {
+      _showError('Enter a product name');
+      return null;
+    }
+    final brandId = _brandNotifier.value;
+    if (brandId == null) {
+      _showError('Choose a brand');
+      return null;
+    }
+    final categoryIds = _categoryNotifier.value;
+    if (categoryIds.isEmpty) {
+      _showError('Choose at least one category');
+      return null;
+    }
+    final shortDesc = _shortDesc.text.trim();
+    if (shortDesc.isEmpty) {
+      _showError('Enter a short description');
+      return null;
+    }
+
+    // variants
+    final variants = <SellerVariant>[];
+    final seenSkus = <String>{};
+    for (var i = 0; i < _variants.length; i++) {
+      final r = _variants[i];
+      final label = 'Variant ${i + 1}';
+      final vName = r.name.text.trim();
+      final size = r.size.text.trim();
+      final price = double.tryParse(r.price.text.trim());
+      final qty = int.tryParse(r.qty.text.trim());
+
+      if (vName.isEmpty || size.isEmpty) {
+        _showError('$label needs a name and a size');
+        return null;
+      }
+      if (!_sizeRule.hasMatch(size)) {
+        _showError(
+          '$label: size "$size" is not allowed. Use only letters, numbers, spaces and - . /',
+        );
+        return null;
+      }
+      if (price == null || price <= 0) {
+        _showError('$label needs a valid selling price');
+        return null;
+      }
+      if (qty == null || qty < 0) {
+        _showError('$label needs a valid quantity');
+        return null;
+      }
+      final problem = numError(r.crossed, '$label crossed price') ??
+          numError(r.cost, '$label cost price') ??
+          numError(r.weight, '$label weight');
+      if (problem != null) {
+        _showError(problem);
+        return null;
+      }
+      final crossed = optNum(r.crossed);
+      if (crossed != null && crossed <= price) {
+        _showError('$label: crossed price must be higher than the selling price');
+        return null;
+      }
+
+      final sku = optStr(r.sku);
+      if (sku != null && !seenSkus.add(sku.toLowerCase())) {
+        _showError('SKU "$sku" is used twice. Each SKU must be unique');
+        return null;
+      }
+
+      variants.add(
+        SellerVariant(
+          id: r.id,
+          name: vName,
+          size: size,
+          colorCodes: [...r.colorCodes],
+          sellingPrice: price,
+          crossedPrice: crossed,
+          costPrice: optNum(r.cost),
+          quantity: qty,
+          weight: optNum(r.weight),
+          sku: sku,
+          hsCode: optStr(r.hs),
+          altBarcode: optStr(r.barcode),
+        ),
+      );
+    }
+
+    // product-level price and stock (only when there are no variants)
+    var sellingPrice = 0.0;
+    var quantity = 0;
+    double? crossedPrice, costPrice, weight;
+    String? sku, hsCode, altBarcode;
+
+    if (variants.isEmpty) {
+      final price = double.tryParse(_price.text.trim());
+      if (price == null || price <= 0) {
+        _showError('Enter a valid selling price');
+        return null;
+      }
+      final qty = int.tryParse(_qty.text.trim());
+      if (qty == null || qty < 0) {
+        _showError('Enter a valid quantity');
+        return null;
+      }
+      final problem = numError(_crossed, 'Crossed price') ??
+          numError(_cost, 'Cost price') ??
+          numError(_weight, 'Weight');
+      if (problem != null) {
+        _showError(problem);
+        return null;
+      }
+      crossedPrice = optNum(_crossed);
+      if (crossedPrice != null && crossedPrice <= price) {
+        _showError('Crossed price must be higher than the selling price');
+        return null;
+      }
+      sellingPrice = price;
+      quantity = qty;
+      costPrice = optNum(_cost);
+      weight = optNum(_weight);
+      sku = optStr(_sku);
+      hsCode = optStr(_hs);
+      altBarcode = optStr(_barcode);
+    }
+
+    final tags = <String>[];
+    for (final t in _tags.text.split(',')) {
+      final tag = t.trim();
+      if (tag.isNotEmpty && !tags.contains(tag)) tags.add(tag);
+    }
+
+    return SellerProduct(
+      id: _base?.id ?? '',
+      name: name,
+      slug: _base?.slug ?? '',
+      channel: _base?.channel ?? 'WEBSITE',
+      audience: _audienceNotifier.value ?? ProductAudience.unisex,
+      status: _status,
+      isAvailable: _isAvailable,
+      hasVariants: variants.isNotEmpty,
+      brandId: brandId,
+      categoryIds: [...categoryIds],
+      productDescription: shortDesc,
+      longDescription: _longDesc.text.trim(),
+      tags: tags,
+      similarProductIds: [..._similarIds],
+      releaseDate: _releaseDate,
+      sellingPrice: sellingPrice,
+      crossedPrice: crossedPrice,
+      costPrice: costPrice,
+      quantity: quantity,
+      weight: weight,
+      sku: sku,
+      hsCode: hsCode,
+      altBarcode: altBarcode,
+      seoTitle: optStr(_seoTitle),
+      seoDescription: optStr(_seoDesc),
+      seoImage: _seoUrl,
+      variants: variants,
+    );
+  }
 
   Future<void> _submit() async {
     if (!_canSave) return;
     FocusScope.of(context).unfocus();
 
-    final name = _name.text.trim();
-    if (name.isEmpty) return _showError('Enter a product name');
-
-    final price = double.tryParse(_price.text.trim());
-    if (price == null || price <= 0) return _showError('Enter a valid price');
-
-    double? discount;
-    if (_discount.text.trim().isNotEmpty) {
-      discount = double.tryParse(_discount.text.trim());
-      if (discount == null || discount <= 0 || discount >= price) {
-        return _showError('Discount price must be lower than the price');
-      }
-    }
-
-    final variants = <SellerVariant>[];
-    final seenSkus = <String>{};
-    for (final row in _variants) {
-      final size = row.size.text.trim();
-      final sku = row.sku.text.trim();
-      final stock = int.tryParse(row.stock.text.trim());
-      if (size.isEmpty || sku.isEmpty || stock == null || stock < 0) {
-        return _showError('Every variant needs a size, a stock number and a SKU');
-      }
-      if (!_sizeRule.hasMatch(size)) {
-        return _showError(
-          'Size "$size" is not allowed. Use only letters, numbers, spaces and - . /',
-        );
-      }
-      if (!seenSkus.add(sku.toLowerCase())) {
-        return _showError('SKU "$sku" is used twice. Each SKU must be unique');
-      }
-      variants.add(SellerVariant(size: size, stock: stock, sku: sku));
-    }
+    final product = _collect();
+    if (product == null) return;
 
     final notifier = ref.read(sellerProductsProvider.notifier);
-    final description = _description.text.trim();
-
-    final SellerProduct product;
-    if (_isEditing) {
-      product = _base!.copyWith(
-        name: name,
-        price: price,
-        discountPrice: discount,
-        clearDiscount: discount == null,
-        category: _category,
-        audience: _audience,
-        status: _status,
-        description: description,
-        variants: variants,
-        imageUrl: _existingImageUrl ?? '', // '' clears the image
-      );
-    } else {
-      product = SellerProduct(
-        id: '',
-        name: name,
-        price: price,
-        discountPrice: discount,
-        category: _category,
-        audience: _audience,
-        status: _status,
-        description: description,
-        variants: variants,
-      );
-    }
-
     setState(() => _saving = true);
-    final error = _isEditing
-        ? await notifier.updateProduct(product, image: _pickedImage)
-        : await notifier.addProduct(product, image: _pickedImage);
+
+    final result = _isEditing
+        ? await notifier.updateProduct(
+            _base!,
+            product,
+            images: _images,
+            seoImage: _seoPicked,
+          )
+        : await notifier.addProduct(
+            product,
+            images: _images,
+            seoImage: _seoPicked,
+          );
     if (!mounted) return;
 
-    if (error != null) {
+    if (!result.saved) {
       setState(() => _saving = false);
-      _showError(error);
+      _showError(result.message ?? 'Could not save the product');
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_isEditing ? 'Product updated' : 'Product published')),
+      SnackBar(
+        content: Text(
+          result.message ??
+              (_isEditing ? 'Product updated' : 'Product published'),
+        ),
+      ),
     );
     Navigator.of(context).pop();
   }
 
+  // ------------------------------------------------------------------ build
+
   @override
   Widget build(BuildContext context) {
-    final hasImage =
-        _pickedImage != null || (_existingImageUrl?.isNotEmpty ?? false);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final imageSize = Responsive.isSmallPhone(context) ? 130.0 : 160.0;
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      // Handling the inset manually below gives us reliable control over
-      // exactly how much extra scroll room the fields get.
+      backgroundColor: kPageBg,
+      // The bottom bar is lifted by hand so it sits right above the keyboard.
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: kPageBg,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
         ),
         title: Text(
-          _isEditing ? 'Edit product' : 'Add new product',
+          _isEditing ? 'Edit Product' : 'Create Product',
           style: TextStyle(
             fontFamily: AppFonts.brand,
             fontSize: Responsive.font(context, 18),
@@ -315,416 +575,605 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           Expanded(
             child: SingleChildScrollView(
               controller: _scrollController,
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset + 220),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_loadingDetails)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: LinearProgressIndicator(
-                        color: AppColors.ink,
-                        backgroundColor: Colors.grey.shade300,
-                      ),
-                    ),
-                  if (_detailsFailed)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFAF9F7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Could not load the full product details, so saving is disabled.',
-                              style: TextStyle(fontSize: 12.5),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: _retryDetails,
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  _label(context, 'Product image'),
-                  GestureDetector(
-                    onTap: _saving ? null : _pickImage,
-                    child: Container(
-                      width: imageSize,
-                      height: imageSize,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFAF9F7),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: hasImage
-                          ? Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                _pickedImage != null
-                                    ? Image.file(_pickedImage!, fit: BoxFit.cover)
-                                    : Image.network(
-                                        _existingImageUrl!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            Container(color: Colors.grey.shade200),
-                                      ),
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: InkWell(
-                                          onTap: _saving ? null : _pickImage,
-                                          child: Container(
-                                            color: Colors.black.withOpacity(0.55),
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 8,
-                                            ),
-                                            child: Text(
-                                              'Replace',
-                                              textAlign: TextAlign.center,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize:
-                                                    Responsive.font(context, 12),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      InkWell(
-                                        onTap: _saving ? null : _removeImage,
-                                        child: Container(
-                                          width: 44,
-                                          color: Colors.black.withOpacity(0.55),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 8,
-                                          ),
-                                          child: const Icon(
-                                            Icons.close,
-                                            color: Colors.white,
-                                            size: 18,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const CircleAvatar(
-                                  backgroundColor: AppColors.ink,
-                                  radius: 22,
-                                  child: Icon(Icons.add, color: Colors.white),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Upload photo',
-                                  style: TextStyle(
-                                    fontSize: Responsive.font(context, 13),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 16),
-                                  child: Text(
-                                    'Tap to choose from your device',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: Responsive.font(context, 11),
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _label(context, 'Product name'),
-                  TextField(
-                    controller: _name,
-                    textInputAction: TextInputAction.next,
-                    decoration: _inputDecoration('e.g. Silk Slip Dress'),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label(context, 'Price (\$)'),
-                            TextField(
-                              controller: _price,
-                              keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
-                              textInputAction: TextInputAction.next,
-                              decoration: _inputDecoration('0'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label(context, 'Discount price'),
-                            TextField(
-                              controller: _discount,
-                              keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
-                              textInputAction: TextInputAction.next,
-                              decoration: _inputDecoration('Optional'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label(context, 'Category'),
-                            DropdownButtonFormField<String>(
-                              initialValue: _category,
-                              isExpanded: true,
-                              decoration: _inputDecoration(null),
-                              items: kSellerCategories
-                                  .map(
-                                    (c) => DropdownMenuItem(
-                                      value: c,
-                                      child: Text(c, overflow: TextOverflow.ellipsis),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (v) => setState(() => _category = v!),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label(context, 'Audience'),
-                            DropdownButtonFormField<ProductAudience>(
-                              initialValue: _audience,
-                              isExpanded: true,
-                              decoration: _inputDecoration(null),
-                              items: ProductAudience.values
-                                  .map(
-                                    (a) => DropdownMenuItem(
-                                      value: a,
-                                      child: Text(
-                                        a.label,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (v) => setState(() => _audience = v!),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _label(context, 'Status'),
-                  DropdownButtonFormField<ProductStatus>(
-                    initialValue: _status,
-                    isExpanded: true,
-                    decoration: _inputDecoration(null),
-                    items: ProductStatus.values
-                        .map(
-                          (s) => DropdownMenuItem(
-                            value: s,
-                            child: Text(s.label, overflow: TextOverflow.ellipsis),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => _status = v!),
-                  ),
-                  const SizedBox(height: 24),
-                  _label(context, 'Variants (size, stock and SKU)'),
-                  for (var i = 0; i < _variants.length; i++) _variantCard(i),
-                  const SizedBox(height: 4),
-                  OutlinedButton.icon(
-                    onPressed: _saving ? null : _addVariant,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add variant'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.ink,
-                      side: BorderSide(color: Colors.grey.shade300),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _label(context, 'Description'),
-                  TextField(
-                    key: _descriptionKey,
-                    controller: _description,
-                    focusNode: _descriptionFocus,
-                    maxLines: 4,
-                    minLines: 4,
-                    textInputAction: TextInputAction.newline,
-                    decoration: _inputDecoration(
-                      'Describe the product for your buyers...',
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: AnimatedPadding(
-              duration: const Duration(milliseconds: 100),
-              padding: EdgeInsets.only(bottom: bottomInset),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                child: Row(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+              child: AbsorbPointer(
+                absorbing: _loadingDetails || _saving,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                    if (_loadingDetails)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            color: AppColors.ink,
+                            backgroundColor: Colors.grey.shade300,
+                          ),
                         ),
-                        child: const Text('Cancel'),
                       ),
+                    if (_detailsFailed) _detailsFailedBanner(),
+                    _mediaCard(),
+                    _basicCard(),
+                    _organizationCard(),
+                    if (_variants.isEmpty) _priceCard(),
+                    _variantsCard(),
+                    CollapsibleCard(
+                      icon: Iconsax.tag,
+                      title: 'Tags, release and similar products',
+                      subtitle: 'Optional',
+                      child: _extrasBody(),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: _canSave ? _submit : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.ink,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: _saving
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                _isEditing ? 'Save changes' : 'Publish product',
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
+                    CollapsibleCard(
+                      icon: Icons.search,
+                      title: 'SEO',
+                      subtitle: 'Optional',
+                      child: _seoBody(),
                     ),
                   ],
                 ),
               ),
             ),
           ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Colors.grey.shade200)),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              12 + (bottomInset > 0 ? bottomInset : safeBottom),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.ink,
+                      side: BorderSide(color: Colors.grey.shade400),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: _canSave ? _submit : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.ink,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _isEditing ? 'Save changes' : 'Add Product',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  /// One variant: size + stock on the first line, SKU + remove on the second.
+  // ------------------------------------------------------------------ cards
+
+  Widget _detailsFailedBanner() => Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Could not load the full product details, so saving is disabled.',
+                style: TextStyle(fontSize: 12.5),
+              ),
+            ),
+            TextButton(onPressed: _retryDetails, child: const Text('Retry')),
+          ],
+        ),
+      );
+
+  Widget _mediaCard() {
+    return SectionCard(
+      icon: Iconsax.gallery_add,
+      title: 'Media',
+      trailing: _images.isEmpty
+          ? null
+          : TextButton(
+              onPressed: _saving ? null : _pickImages,
+              child: const Text('Add more'),
+            ),
+      child: _images.isEmpty
+          ? AddMediaRow(onTap: _saving ? null : _pickImages)
+          : ProductImagesRow(
+              images: _images,
+              enabled: !_saving,
+              onAdd: _pickImages,
+              onRemove: (i) => setState(() => _images.removeAt(i)),
+            ),
+    );
+  }
+
+  Widget _basicCard() {
+    return SectionCard(
+      icon: Iconsax.info_circle,
+      title: 'Basic information',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _field('Product title', _name,
+              hint: 'Enter product title',
+              required: true,
+              caps: TextCapitalization.words),
+          const SizedBox(height: 16),
+          _label('Status'),
+          Row(
+            children: [
+              for (var i = 0; i < ProductStatus.values.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: ChoiceBox(
+                    label: ProductStatus.values[i].label,
+                    selected: ProductStatus.values[i] == _status,
+                    onTap: () =>
+                        setState(() => _status = ProductStatus.values[i]),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _isAvailable,
+            activeColor: AppColors.ink,
+            onChanged: (v) => setState(() => _isAvailable = v),
+            title: const Text(
+              'Available to customers',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 6),
+          _field(
+            'Short description',
+            _shortDesc,
+            hint: 'Write a short description',
+            required: true,
+            minLines: 3,
+            maxLines: 4,
+            focusNode: _shortFocus,
+            fieldKey: _shortKey,
+            caps: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 16),
+          _field(
+            'Long description',
+            _longDesc,
+            hint: 'Describe the product for your buyers (optional)',
+            minLines: 4,
+            maxLines: 6,
+            focusNode: _longFocus,
+            fieldKey: _longKey,
+            caps: TextCapitalization.sentences,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _organizationCard() {
+    return SectionCard(
+      icon: Iconsax.category,
+      title: 'Organization',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _label('Brand', required: true),
+          _brandField(),
+          const SizedBox(height: 16),
+          _label('Categories', required: true),
+          _categoryField(),
+          const SizedBox(height: 16),
+          _label('Audience'),
+          FormDropdown<ProductAudience>(
+            notifier: _audienceNotifier,
+            hint: 'Select audience',
+            items: [
+              for (final a in ProductAudience.values)
+                DropdownItem<ProductAudience>(
+                  value: a,
+                  height: 44,
+                  child: formItemText(a.label),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _priceCard() {
+    return SectionCard(
+      icon: Icons.payments_outlined,
+      title: 'Price and stock',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _pair(
+            _field('Selling price', _price,
+                hint: '0', required: true, decimal: true),
+            _field('Cost per item', _cost, hint: 'Optional', decimal: true),
+          ),
+          const SizedBox(height: 16),
+          _pair(
+            _field('Crossed price', _crossed, hint: 'Optional', decimal: true),
+            _field('Quantity', _qty, hint: '0', required: true, integer: true),
+          ),
+          const SizedBox(height: 14),
+          _marginTiles(),
+          const SizedBox(height: 6),
+          CollapsibleCard(
+            plain: true,
+            title: 'More details',
+            subtitle: 'Optional',
+            child: Column(
+              children: [
+                _pair(
+                  _field('Weight (kg)', _weight,
+                      hint: 'Optional', decimal: true),
+                  _field('SKU', _sku,
+                      hint: 'Optional', caps: TextCapitalization.characters),
+                ),
+                const SizedBox(height: 16),
+                _pair(
+                  _field('HS code', _hs, hint: 'Optional'),
+                  _field('Barcode', _barcode, hint: 'Optional'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _marginTiles() {
+    return ListenableBuilder(
+      listenable: Listenable.merge([_price, _cost]),
+      builder: (context, _) {
+        final price = double.tryParse(_price.text.trim());
+        final cost = double.tryParse(_cost.text.trim());
+        var profit = '-';
+        var margin = '-';
+        if (price != null && price > 0 && cost != null) {
+          final p = price - cost;
+          profit = formatPrice(p);
+          margin = '${(p / price * 100).toStringAsFixed(1)}%';
+        }
+        return _pair(
+          MetricTile(label: 'Margin', value: margin),
+          MetricTile(label: 'Profit', value: profit),
+        );
+      },
+    );
+  }
+
+  Widget _variantsCard() {
+    return SectionCard(
+      icon: Icons.layers_outlined,
+      title: 'Variants',
+      subtitle: 'Optional. Each variant has its own price and stock.',
+      trailing: TextButton.icon(
+        onPressed: _saving ? null : _addVariant,
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('Add'),
+      ),
+      child: _variants.isEmpty
+          ? const Text(
+              'No variants. Add one if this product comes in different sizes or colours.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textGray),
+            )
+          : Column(
+              children: [
+                for (var i = 0; i < _variants.length; i++) _variantCard(i),
+              ],
+            ),
+    );
+  }
+
   Widget _variantCard(int index) {
-    final row = _variants[index];
+    final r = _variants[index];
+    final saved = r.id != null;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAF9F7),
+        color: kPageBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: row.size,
-                  textInputAction: TextInputAction.next,
-                  decoration: _inputDecoration('Size (e.g. M, 500g)'),
+                child: Text(
+                  'Variant ${index + 1}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: row.stock,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.next,
-                  decoration: _inputDecoration('Stock'),
-                ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: (_saving || saved) ? null : () => _removeVariant(index),
+                icon: const Icon(Icons.delete_outline),
+                color: Colors.red,
+                tooltip: saved
+                    ? 'Saved variants cannot be removed here'
+                    : 'Remove variant',
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: row.sku,
-                  textCapitalization: TextCapitalization.characters,
-                  textInputAction: TextInputAction.next,
-                  decoration: _inputDecoration('SKU (e.g. JCK-LTHR-BLK-M)'),
+          _field('Name', r.name,
+              hint: 'Variant name',
+              required: true,
+              caps: TextCapitalization.words),
+          const SizedBox(height: 14),
+          _field('Size', r.size, hint: 'Size', required: true),
+          const SizedBox(height: 14),
+          _label('Colours'),
+          VariantColorPicker(
+            selected: r.colorCodes,
+            onChanged: (v) => setState(() {
+              r.colorCodes
+                ..clear()
+                ..addAll(v);
+            }),
+          ),
+          const SizedBox(height: 14),
+          _pair(
+            _field('Selling price', r.price,
+                hint: '0', required: true, decimal: true),
+            _field('Quantity', r.qty, hint: '0', required: true, integer: true),
+          ),
+          CollapsibleCard(
+            plain: true,
+            title: 'More details',
+            subtitle: 'Optional',
+            child: Column(
+              children: [
+                _pair(
+                  _field('Crossed price', r.crossed,
+                      hint: 'Optional', decimal: true),
+                  _field('Cost price', r.cost, hint: 'Optional', decimal: true),
                 ),
-              ),
-              const SizedBox(width: 6),
-              IconButton(
-                onPressed:
-                    (_saving || _variants.length <= 1) ? null : () => _removeVariant(index),
-                icon: const Icon(Icons.delete_outline),
-                color: Colors.red,
-                tooltip: 'Remove variant',
-              ),
-            ],
+                const SizedBox(height: 14),
+                _pair(
+                  _field('Weight (kg)', r.weight,
+                      hint: 'Optional', decimal: true),
+                  _field('SKU', r.sku,
+                      hint: 'Optional', caps: TextCapitalization.characters),
+                ),
+                const SizedBox(height: 14),
+                _pair(
+                  _field('HS code', r.hs, hint: 'Optional'),
+                  _field('Barcode', r.barcode, hint: 'Optional'),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _label(BuildContext context, String text) => Padding(
+  Widget _extrasBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _field('Tags', _tags, hint: 'Separate tags with commas'),
+        const SizedBox(height: 16),
+        _label('Release date'),
+        ReleaseDateField(
+          date: _releaseDate,
+          onTap: _pickDate,
+          onClear: () => setState(() => _releaseDate = null),
+        ),
+        const SizedBox(height: 16),
+        _label('Similar products'),
+        _similarField(),
+      ],
+    );
+  }
+
+  Widget _seoBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _field('SEO title', _seoTitle, hint: 'Shown in search results'),
+        const SizedBox(height: 16),
+        _field('SEO description', _seoDesc,
+            hint: 'Short summary for search engines', minLines: 2, maxLines: 3),
+        const SizedBox(height: 16),
+        _label('SEO image'),
+        SeoImageTile(
+          picked: _seoPicked,
+          url: _seoUrl,
+          enabled: !_saving,
+          onTap: _pickSeoImage,
+        ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------- dropdowns
+
+  Widget _brandField() {
+    final async = ref.watch(sellerBrandsProvider);
+    return async.when(
+      skipLoadingOnReload: true,
+      loading: () => const FormDisabledField('Loading brands...', loading: true),
+      error: (e, _) => FormErrorField(
+        'Could not load brands: ${shortError(e)}',
+        () => ref.invalidate(sellerBrandsProvider),
+      ),
+      data: (brands) {
+        if (brands.isEmpty) {
+          return const FormDisabledField('No brands yet. Create one from the Brands page.');
+        }
+        final items = <DropdownItem<String>>[
+          for (final b in brands)
+            DropdownItem<String>(value: b.id, height: 44, child: formItemText(b.name)),
+        ];
+        // A product can point at a brand that is no longer in the list.
+        final current = _brandNotifier.value;
+        if (current != null && !brands.any((b) => b.id == current)) {
+          items.add(
+            DropdownItem<String>(
+              value: current,
+              height: 44,
+              child: formItemText(_base?.brandName ?? 'Current brand'),
+            ),
+          );
+        }
+        return FormDropdown<String>(
+          notifier: _brandNotifier,
+          hint: 'Select brand',
+          items: items,
+        );
+      },
+    );
+  }
+
+  Widget _categoryField() {
+    final async = ref.watch(sellerCategoriesProvider);
+    return async.when(
+      skipLoadingOnReload: true,
+      loading: () => const FormDisabledField('Loading categories...', loading: true),
+      error: (e, _) => FormErrorField(
+        'Could not load categories: ${shortError(e)}',
+        () => ref.invalidate(sellerCategoriesProvider),
+      ),
+      data: (categories) {
+        if (categories.isEmpty) {
+          return const FormDisabledField(
+            'No categories yet. Create one from the Categories page.',
+          );
+        }
+        final names = {for (final c in categories) c.id: c.name};
+        for (final c in _base?.categories ?? const <SellerRef>[]) {
+          names.putIfAbsent(c.id, () => c.name);
+        }
+        return CategoryMultiSelect(
+          categories: categories,
+          names: names,
+          notifier: _categoryNotifier,
+        );
+      },
+    );
+  }
+
+  // ----------------------------------------------------------- other fields
+
+  Widget _similarField() {
+    final all = ref.watch(sellerProductsProvider).value ?? const <SellerProduct>[];
+    final byId = {for (final p in all) p.id: p};
+    final selfId = _base?.id ?? '';
+    final candidates = all.where((p) => p.id != selfId).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_similarIds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final id in _similarIds)
+                  BlackChip(
+                    label: byId[id]?.name ?? 'Product',
+                    onRemove: () => setState(() => _similarIds.remove(id)),
+                  ),
+              ],
+            ),
+          ),
+        OutlinedButton(
+          onPressed: candidates.isEmpty ? null : () => _pickSimilar(candidates),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.ink,
+            side: BorderSide(color: Colors.grey.shade300),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: const Text('Choose products'),
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------- small building blocks
+
+  /// Two fields side by side; stacked on very narrow screens.
+  Widget _pair(Widget a, Widget b) => LayoutBuilder(
+        builder: (context, c) {
+          if (c.maxWidth < 300) {
+            return Column(children: [a, const SizedBox(height: 14), b]);
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: a),
+              const SizedBox(width: 12),
+              Expanded(child: b),
+            ],
+          );
+        },
+      );
+
+  Widget _label(String text, {bool required = false}) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
+        child: Text.rich(
+          TextSpan(
+            text: text,
+            children: [
+              if (required)
+                const TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+            ],
+          ),
           style: TextStyle(
             fontSize: Responsive.font(context, 13),
             fontWeight: FontWeight.w600,
@@ -732,23 +1181,61 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         ),
       );
 
-  InputDecoration _inputDecoration(String? hint) => InputDecoration(
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    String? hint,
+    bool required = false,
+    bool decimal = false,
+    bool integer = false,
+    int minLines = 1,
+    int maxLines = 1,
+    FocusNode? focusNode,
+    Key? fieldKey,
+    TextCapitalization caps = TextCapitalization.none,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label, required: required),
+        TextField(
+          key: fieldKey,
+          controller: controller,
+          focusNode: focusNode,
+          minLines: minLines,
+          maxLines: maxLines,
+          textCapitalization: caps,
+          keyboardType: decimal
+              ? const TextInputType.numberWithOptions(decimal: true)
+              : integer
+                  ? TextInputType.number
+                  : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
+          textInputAction:
+              maxLines > 1 ? TextInputAction.newline : TextInputAction.next,
+          decoration: _decoration(hint),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _decoration(String? hint) => InputDecoration(
         hintText: hint,
+        hintStyle: const TextStyle(fontSize: 14, color: AppColors.textGray),
         isDense: true,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: kFieldBg,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.ink),
+          borderSide: const BorderSide(color: AppColors.ink, width: 1.2),
         ),
       );
 }

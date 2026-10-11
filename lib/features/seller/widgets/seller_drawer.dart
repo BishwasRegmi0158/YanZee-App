@@ -159,6 +159,14 @@ class SellerDrawer extends ConsumerWidget {
                   (c) => GoRouter.of(c).push('/seller/shops'),
                 ),
               ),
+                            _item(
+                Iconsax.add,
+                'Add product',
+                () => _run(
+                  context,
+                  (c) => GoRouter.of(c).push('/seller/products/add'),
+                ),
+              ),
               _item(
                 Iconsax.eye,
                 'Preview as customer',

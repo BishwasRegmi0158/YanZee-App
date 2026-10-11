@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:yanzee_app/data/models/seller_models.dart';
 import 'package:yanzee_app/features/seller/services/seller_product_api_service.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/my_shop_provider.dart';
@@ -7,63 +9,172 @@ import 'package:yanzee_app/features/seller/widgets/providers/seller_repository_p
 
 final sellerProductApiProvider = Provider((ref) => SellerProductApiService());
 
+/// The category picked in the products filter (null = all categories).
+final productCategoryFilterProvider =
+    StateProvider.autoDispose<String?>((ref) => null);
+
+/// One image in the product form: an already-uploaded URL, or a new file
+/// that still has to be uploaded when the product is saved.
+class ProductImageEntry {
+  final String? url;
+  final File? file;
+  const ProductImageEntry.remote(String this.url) : file = null;
+  const ProductImageEntry.local(File this.file) : url = null;
+}
+
+typedef SaveResult = ({bool saved, String? message});
+
 class SellerProductsNotifier extends AsyncNotifier<List<SellerProduct>> {
   @override
   Future<List<SellerProduct>> build() async {
-    // NEW: wait for the selected shop. When the shop changes, this whole
-    // method runs again, so the list reloads for the new shop.
+    // Reloads when the filter changes or when the selected shop changes.
+    final categoryId = ref.watch(productCategoryFilterProvider);
     await ref.watch(myShopProvider.future);
-    return ref.watch(sellerRepositoryProvider).getProducts();
+    return ref
+        .watch(sellerRepositoryProvider)
+        .getProducts(categoryId: categoryId);
   }
 
   SellerProductApiService get _api => ref.read(sellerProductApiProvider);
 
   String _msg(Object e) => e.toString().replaceFirst('Exception: ', '');
 
-  /// Re-reads the list from the server so new products get their real ids.
   Future<void> _reload() async {
     try {
-      final fresh = await ref.read(sellerRepositoryProvider).getProducts();
+      final fresh = await ref
+          .read(sellerRepositoryProvider)
+          .getProducts(categoryId: ref.read(productCategoryFilterProvider));
       state = AsyncData(fresh);
     } catch (_) {
       // The save itself worked; keep showing the old list.
     }
   }
 
-  /// POST /products. Returns null on success, or an error message.
-  Future<String?> addProduct(SellerProduct draft, {File? image}) async {
-    try {
-      var product = draft;
-      if (image != null) {
-        final url = await _api.uploadCoverImage(image);
-        product = product.copyWith(imageUrl: url);
+  /// Uploads new files and returns the final ordered list of URLs.
+  Future<List<String>> _resolveImages(List<ProductImageEntry> entries) async {
+    final urls = <String>[];
+    for (final e in entries) {
+      if (e.file != null) {
+        urls.add(await _api.uploadProductImage(e.file!));
+      } else if (e.url != null) {
+        urls.add(e.url!);
       }
-      await _api.createProduct(product.toApiJson());
-    } catch (e) {
-      return _msg(e);
     }
-    await _reload();
-    return null;
+    return urls;
   }
 
-  /// PATCH /products/:id. Returns null on success, or an error message.
-  Future<String?> updateProduct(SellerProduct updated, {File? image}) async {
+  bool _same(Map<String, dynamic> a, Map<String, dynamic> b) =>
+      jsonEncode(a) == jsonEncode(b);
+
+  /// POST /products, then PATCH /seo when SEO details were filled in.
+  Future<SaveResult> addProduct(
+    SellerProduct draft, {
+    List<ProductImageEntry> images = const [],
+    File? seoImage,
+  }) async {
+    var id = '';
+    String? seoUrl = draft.seoImage;
     try {
-      var product = updated;
-      if (image != null) {
-        final url = await _api.uploadCoverImage(image);
-        product = product.copyWith(imageUrl: url);
-      }
-      await _api.updateProduct(product.id, product.toApiJson());
+      final urls = await _resolveImages(images);
+      if (seoImage != null) seoUrl = await _api.uploadSeoImage(seoImage);
+      id = await _api.createProduct(draft.toCreateJson(imageUrls: urls));
     } catch (e) {
-      return _msg(e);
+      return (saved: false, message: _msg(e));
+    }
+
+    String? warning;
+    final seo = draft.seoJson(image: seoUrl);
+    if (seo.isNotEmpty) {
+      try {
+        await _api.updateSeo(id, seo);
+      } catch (e) {
+        warning =
+            'Product created, but the SEO details could not be saved: ${_msg(e)}';
+      }
     }
     await _reload();
-    return null;
+    return (saved: true, message: warning);
   }
 
-  /// DELETE /products/:id. Removes it from the list at once and puts it back
+  /// Saves only the sections that changed, each with its own endpoint.
+  Future<SaveResult> updateProduct(
+    SellerProduct original,
+    SellerProduct edited, {
+    List<ProductImageEntry> images = const [],
+    File? seoImage,
+  }) async {
+    final id = original.id;
+    var urls = <String>[];
+    String? seoUrl = edited.seoImage;
+
+    try {
+      urls = await _resolveImages(images);
+      if (seoImage != null) seoUrl = await _api.uploadSeoImage(seoImage);
+    } catch (e) {
+      return (saved: false, message: _msg(e));
+    }
+
+    final steps = <(String, Future<void> Function())>[];
+
+    final general = edited.generalJson(imageUrls: urls);
+    if (!_same(general, original.generalJson())) {
+      steps.add(('Details', () => _api.updateGeneral(id, general)));
+    }
+
+    final inventory = edited.inventoryJson();
+    if (!_same(inventory, original.inventoryJson())) {
+      steps.add(('Pricing and stock', () => _api.updateInventory(id, inventory)));
+    }
+
+    if (edited.status != original.status) {
+      steps.add(('Status', () => _api.updateStatus(id, edited.status)));
+    }
+
+    final custom = edited.customJson();
+    if (!_same(custom, original.customJson())) {
+      steps.add(('Tags and release date', () => _api.updateCustom(id, custom)));
+    }
+
+    final seo = edited.seoJson(image: seoUrl);
+    if (seo.isNotEmpty && !_same(seo, original.seoJson())) {
+      steps.add(('SEO', () => _api.updateSeo(id, seo)));
+    }
+
+    for (final (label, run) in steps) {
+      try {
+        await run();
+      } catch (e) {
+        await _reload();
+        return (saved: false, message: '$label could not be saved: ${_msg(e)}');
+      }
+    }
+
+    await _reload();
+    return (
+      saved: true,
+      message: steps.isEmpty ? 'No changes to save' : null,
+    );
+  }
+
+  /// PATCH /products/:id/status. Changes the list at once and puts it back
   /// if the server refuses. Returns null on success, or an error message.
+  Future<String?> setStatus(String id, ProductStatus status) async {
+    final previous = state.asData?.value;
+    if (previous != null) {
+      state = AsyncData([
+        for (final p in previous) p.id == id ? p.copyWith(status: status) : p,
+      ]);
+    }
+    try {
+      await _api.updateStatus(id, status);
+      return null;
+    } catch (e) {
+      if (previous != null) state = AsyncData(previous);
+      return _msg(e);
+    }
+  }
+
+  /// DELETE /products/:id. Removes it at once and puts it back if refused.
   Future<String?> deleteProduct(String id) async {
     final previous = state.asData?.value;
     if (previous != null) {
@@ -79,7 +190,10 @@ class SellerProductsNotifier extends AsyncNotifier<List<SellerProduct>> {
   }
 }
 
-// NEW: autoDispose, so leaving the seller area (e.g. logout) clears the data.
-final sellerProductsProvider =
-    AsyncNotifierProvider.autoDispose<SellerProductsNotifier, List<SellerProduct>>(
-        SellerProductsNotifier.new);
+// autoDispose, so leaving the seller area (e.g. logout) clears the data.
+// retry: null, so a failed request shows an error instead of loading forever.
+final sellerProductsProvider = AsyncNotifierProvider.autoDispose<
+    SellerProductsNotifier, List<SellerProduct>>(
+  SellerProductsNotifier.new,
+  retry: (retryCount, error) => null,
+);
