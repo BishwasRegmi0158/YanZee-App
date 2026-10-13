@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_dashboard_visit_provider.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/seller_tab_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_dashboard_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_orders_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_products_screen.dart';
@@ -55,19 +56,34 @@ class _SellerShellState extends ConsumerState<SellerShell> {
     ];
   }
 
+  /// Called when the user taps a tab in the bottom bar.
   void _onItemSelected(int index) {
-    // Every Dashboard selection gets a fresh chart key so the line animation
-    // plays both when returning to Dashboard and when tapping it again.
-    if (index == 0) {
+    final current = ref.read(sellerTabIndexProvider);
+
+    // Tapping Dashboard while already on it replays the chart animation.
+    // (Arriving at Dashboard from another tab is handled in the listener.)
+    if (index == 0 && current == 0) {
       ref.read(sellerDashboardVisitProvider.notifier).state++;
     }
-    setState(() {
-      _controller.index = index; // required by the package
-    });
+
+    ref.read(sellerTabIndexProvider.notifier).state = index;
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = ref.watch(sellerTabIndexProvider);
+
+    // Single place that moves the tab view. It reacts to the bottom bar AND
+    // to anything else (e.g. the side drawer) that sets the provider.
+    ref.listen<int>(sellerTabIndexProvider, (previous, next) {
+      if (next == 0 && previous != 0) {
+        ref.read(sellerDashboardVisitProvider.notifier).state++;
+      }
+      setState(() {
+        _controller.index = next; // required by the package
+      });
+    });
+
     // The Scaffold only owns the side drawer; each tab keeps its own Scaffold.
     return Scaffold(
       key: sellerShellScaffoldKey,
@@ -79,7 +95,7 @@ class _SellerShellState extends ConsumerState<SellerShell> {
         screens: _buildScreens(),
         customWidget: _PillNavBar(
           items: _items,
-          selectedIndex: _controller.index,
+          selectedIndex: selectedIndex,
           onItemSelected: _onItemSelected,
         ),
         navBarHeight: 64,
@@ -90,6 +106,12 @@ class _SellerShellState extends ConsumerState<SellerShell> {
         stateManagement: true,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }
 

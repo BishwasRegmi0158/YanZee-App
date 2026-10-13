@@ -34,7 +34,7 @@ class SellerToggle extends StatelessWidget {
         current: value,
         first: false,
         second: true,
-        spacing: 20,
+        spacing: 5,
         height: 32,
         borderWidth: 3,
         indicatorSize: const Size.square(24),

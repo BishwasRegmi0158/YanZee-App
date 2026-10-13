@@ -74,7 +74,7 @@ class SellerDashboardScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 20),
-       
+
               ChartCard(
                 title: 'Revenue trend',
                 subtitle: 'Monthly net revenue · Rs',
@@ -94,7 +94,8 @@ class SellerDashboardScreen extends ConsumerWidget {
               RecentOrdersCard(
                 orders: stats.recentOrders,
                 totalCount: stats.totalOrders,
-                onOrderTap: (order) => showOrderDetailSheet(context, ref, order),
+                onOrderTap: (order) =>
+                    showOrderDetailSheet(context, ref, order),
               ),
             ],
           ),
@@ -118,9 +119,7 @@ class _StatRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isNarrow) {
-      return Column(
-        children: [left, const SizedBox(height: 12), right],
-      );
+      return Column(children: [left, const SizedBox(height: 12), right]);
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +164,11 @@ class _Header extends StatelessWidget {
                   maxLines: 1,
                   style: TextStyle(
                     fontFamily: AppFonts.brand,
-                    fontSize: Responsive.font(context, 26, capSystemScale: true),
+                    fontSize: Responsive.font(
+                      context,
+                      26,
+                      capSystemScale: true,
+                    ),
                     fontWeight: FontWeight.bold,
                     color: AppColors.ink,
                   ),
