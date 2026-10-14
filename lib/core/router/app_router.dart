@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/core/widgets/main_shell.dart';
 import 'package:yanzee_app/data/models/brand.dart';
+import 'package:yanzee_app/data/models/outlet.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/data/models/shop_category.dart';
 import 'package:yanzee_app/features/auth/screens/login_screen.dart';
@@ -24,11 +25,15 @@ import 'package:yanzee_app/features/seller/widgets/screens/category_detail_scree
 import 'package:yanzee_app/features/seller/widgets/screens/category_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/create_category_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/create_shop_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/outlet_detail_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/outlet_form_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/outlets_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/product_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_shops_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_gate.dart';
 import 'package:yanzee_app/features/shop/screens/seller_profile_screen.dart';
-import 'package:yanzee_app/features/shop/screens/shop_detail_screen.dart' as seller_shop;
+import 'package:yanzee_app/features/shop/screens/shop_detail_screen.dart'
+    as seller_shop;
 import 'package:yanzee_app/features/splash/screens/splash_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -153,6 +158,41 @@ final appRouter = GoRouter(
         return seller_shop.ShopDetailScreen(shopId: id);
       },
     ),
+
+    // ---- outlets ----
+    GoRoute(
+      path: '/seller/outlets',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const OutletsScreen(),
+    ),
+    GoRoute(
+      path: '/seller/outlets/add',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const OutletFormScreen(),
+    ),
+    GoRoute(
+      path: '/seller/outlets/edit',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final outlet = state.extra as Outlet?;
+        if (outlet == null) {
+          return const Scaffold(body: Center(child: Text('Outlet not found')));
+        }
+        return OutletFormScreen(initial: outlet);
+      },
+    ),
+    GoRoute(
+      path: '/seller/outlets/detail',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final outlet = state.extra as Outlet?;
+        if (outlet == null) {
+          return const Scaffold(body: Center(child: Text('Outlet not found')));
+        }
+        return OutletDetailScreen(outlet: outlet);
+      },
+    ),
+
     GoRoute(
       path: '/seller/categories',
       parentNavigatorKey: _rootNavigatorKey,
@@ -175,9 +215,8 @@ final appRouter = GoRouter(
         }
         return CategoryFormScreen(initial: c);
       },
-
     ),
-        GoRoute(
+    GoRoute(
       path: '/seller/products/add',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ProductFormScreen(),

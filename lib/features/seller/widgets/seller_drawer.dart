@@ -192,11 +192,12 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                                               s.name,
                                               () {
                                                 ref
-                                                    .read(
-                                                      selectedShopIdProvider
-                                                          .notifier,
-                                                    )
-                                                    .state = s.id;
+                                                        .read(
+                                                          selectedShopIdProvider
+                                                              .notifier,
+                                                        )
+                                                        .state =
+                                                    s.id;
                                                 setState(
                                                   () => _shopsExpanded = false,
                                                 );
@@ -211,6 +212,15 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                                 : const SizedBox(width: double.infinity),
                           ),
                         ],
+
+                        _item(
+                          Iconsax.location,
+                          'Outlets',
+                          () => _run(
+                            context,
+                            (c) => GoRouter.of(c).push('/seller/outlets'),
+                          ),
+                        ),
 
                         _item(
                           Iconsax.category,
@@ -230,22 +240,19 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                         ),
                         _item(
                           Iconsax.shop,
-                          'My shops',
+                          'Shops',
                           () => _run(
                             context,
                             (c) => GoRouter.of(c).push('/seller/shops'),
                           ),
                         ),
+                        
 
                         // Opens the Products tab (edit / delete / add live there).
-                        _item(
-                          Iconsax.box,
-                          'Products',
-                          () {
-                            Navigator.of(context).pop(); // close the drawer
-                            ref.read(sellerTabIndexProvider.notifier).state = 1;
-                          },
-                        ),
+                        _item(Iconsax.box, 'Products', () {
+                          Navigator.of(context).pop(); // close the drawer
+                          ref.read(sellerTabIndexProvider.notifier).state = 1;
+                        }),
                         _item(
                           Iconsax.eye,
                           'Preview as customer',
