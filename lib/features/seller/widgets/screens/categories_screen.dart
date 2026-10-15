@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/shop_category.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_categories_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_detail_widgets.dart';
+
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
 
@@ -17,15 +19,9 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   String _query = '';
 
-  void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _toggle(ShopCategory c) async {
     final error = await ref.read(sellerCategoriesProvider.notifier).toggle(c);
-    if (error != null && mounted) _snack(error);
+    if (error != null && mounted) AppToast.error(context, error);
   }
 
   Future<void> _confirmDelete(ShopCategory c) async {
@@ -52,7 +48,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     if (ok != true || !mounted) return;
     final error = await ref.read(sellerCategoriesProvider.notifier).delete(c);
     if (!mounted) return;
-    _snack(error ?? '"${c.name}" deleted');
+    AppToast.result(
+      context,
+      error: error,
+      success: '"${c.name}" deleted successfully',
+    );
   }
 
   @override

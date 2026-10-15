@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/brand.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_brands_provider.dart';
 
@@ -44,12 +45,6 @@ class _BrandFormScreenState extends ConsumerState<BrandFormScreen> {
     if (picked != null && mounted) setState(() => _logo = File(picked.path));
   }
 
-  void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
@@ -78,10 +73,13 @@ class _BrandFormScreenState extends ConsumerState<BrandFormScreen> {
     if (!mounted) return;
     if (error != null) {
       setState(() => _saving = false);
-      _snack(error);
+      AppToast.error(context, error);
       return;
     }
-    _snack(_isEditing ? 'Brand updated' : 'Brand created');
+    AppToast.success(
+      context,
+      _isEditing ? 'Brand updated successfully' : 'Brand created successfully',
+    );
     Navigator.of(context).pop();
   }
 

@@ -13,6 +13,9 @@ import 'package:yanzee_app/features/home/screens/category_products_screen.dart';
 import 'package:yanzee_app/features/home/screens/new_arrivals_screen.dart';
 import 'package:yanzee_app/features/home/screens/product_detail_screen.dart';
 import 'package:yanzee_app/features/home/screens/search_screen.dart';
+import 'package:yanzee_app/data/models/customer.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/customer_form_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/customers_screen.dart';
 
 import 'package:yanzee_app/features/home/screens/widgets/categories_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/brand_detail_screen.dart';
@@ -25,11 +28,14 @@ import 'package:yanzee_app/features/seller/widgets/screens/category_detail_scree
 import 'package:yanzee_app/features/seller/widgets/screens/category_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/create_category_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/create_shop_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/inventory_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/outlet_detail_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/outlet_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/outlets_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/product_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_shops_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/stock_in_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/stock_movements_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_gate.dart';
 import 'package:yanzee_app/features/shop/screens/seller_profile_screen.dart';
 import 'package:yanzee_app/features/shop/screens/shop_detail_screen.dart'
@@ -192,7 +198,47 @@ final appRouter = GoRouter(
         return OutletDetailScreen(outlet: outlet);
       },
     ),
+    // ---- inventory ----
+    GoRoute(
+      path: '/seller/inventory',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const InventoryScreen(),
+    ),
+    GoRoute(
+      path: '/seller/inventory/stock-in',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const StockInScreen(),
+    ),
+    GoRoute(
+      path: '/seller/inventory/movements',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const StockMovementsScreen(),
+    ),
 
+    // ---- customers ----
+    GoRoute(
+      path: '/seller/customers',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CustomersScreen(),
+    ),
+    GoRoute(
+      path: '/seller/customers/add',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CustomerFormScreen(),
+    ),
+    GoRoute(
+      path: '/seller/customers/edit',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final customer = state.extra as Customer?;
+        if (customer == null) {
+          return const Scaffold(
+            body: Center(child: Text('Customer not found')),
+          );
+        }
+        return CustomerFormScreen(initial: customer);
+      },
+    ),
     GoRoute(
       path: '/seller/categories',
       parentNavigatorKey: _rootNavigatorKey,

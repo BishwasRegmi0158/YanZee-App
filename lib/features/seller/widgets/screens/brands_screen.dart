@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/brand.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_brands_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_toggle.dart';
@@ -18,12 +19,6 @@ class BrandsScreen extends ConsumerStatefulWidget {
 class _BrandsScreenState extends ConsumerState<BrandsScreen> {
   String _query = '';
 
-  void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   void _openForm({Brand? initial}) {
     if (initial == null) {
       context.push('/seller/brands/add');
@@ -34,7 +29,7 @@ class _BrandsScreenState extends ConsumerState<BrandsScreen> {
 
   Future<void> _toggle(Brand brand) async {
     final error = await ref.read(sellerBrandsProvider.notifier).toggle(brand);
-    if (error != null && mounted) _snack(error);
+    if (error != null && mounted) AppToast.error(context, error);
   }
 
   Future<void> _confirmDelete(Brand brand) async {
@@ -66,7 +61,11 @@ class _BrandsScreenState extends ConsumerState<BrandsScreen> {
         .read(sellerBrandsProvider.notifier)
         .deleteBrand(brand);
     if (!mounted) return;
-    _snack(error ?? '"${brand.name}" deleted');
+    AppToast.result(
+      context,
+      error: error,
+      success: '"${brand.name}" deleted successfully',
+    );
   }
 
   @override
@@ -250,6 +249,7 @@ class _BrandCard extends StatelessWidget {
                 onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  const PopupMenuDivider(height: 1),
                   PopupMenuItem(
                     value: 'delete',
                     child: Text(

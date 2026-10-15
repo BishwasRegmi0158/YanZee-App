@@ -221,6 +221,22 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                             (c) => GoRouter.of(c).push('/seller/outlets'),
                           ),
                         ),
+                        _item(
+                          Icons.inventory_2_outlined,
+                          'Inventory',
+                          () => _run(
+                            context,
+                            (c) => GoRouter.of(c).push('/seller/inventory'),
+                          ),
+                        ),
+                        _item(
+                          Iconsax.user,
+                          'Customers',
+                          () => _run(
+                            context,
+                            (c) => GoRouter.of(c).push('/seller/customers'),
+                          ),
+                        ),
 
                         _item(
                           Iconsax.category,
@@ -246,7 +262,6 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                             (c) => GoRouter.of(c).push('/seller/shops'),
                           ),
                         ),
-                        
 
                         // Opens the Products tab (edit / delete / add live there).
                         _item(Iconsax.box, 'Products', () {

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
@@ -67,42 +68,38 @@ class _CreateShopScreenState extends ConsumerState<CreateShopScreen> {
       );
 
       // Optional logo: the server saves it on the store that was just made.
+      var logoFailed = false;
       if (_logo != null) {
         try {
           await api.uploadStoreLogo(shop.id, _logo!);
         } catch (_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Store created, but the logo could not be uploaded. '
-                  'You can add it later in the Store tab.',
-                ),
-              ),
-            );
-          }
+          logoFailed = true;
         }
       }
+      const logoWarning =
+          'Shop created, but the logo could not be uploaded. '
+          'You can add it later in the Store tab.';
 
       if (widget.isAdditional) {
         if (!mounted) return;
         // Make the new shop the active one, then reload the list.
         ref.read(selectedShopIdProvider.notifier).state = shop.id;
         ref.invalidate(myShopsProvider);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Shop created')));
+        if (logoFailed) {
+          AppToast.warning(context, logoWarning);
+        } else {
+          AppToast.success(context, 'Shop created successfully');
+        }
         Navigator.of(context).pop();
       } else {
+        if (logoFailed && mounted) AppToast.warning(context, logoWarning);
         // The gate reloads the store and switches to the dashboard.
         ref.invalidate(myShopsProvider);
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      AppToast.error(context, e);
     }
   }
 
@@ -372,6 +369,7 @@ class _IntroText extends StatelessWidget {
     );
   }
 }
+
 /// Category picker as a dropdown. a category is required.
 class _CategoryChips extends StatelessWidget {
   const _CategoryChips({required this.selected, required this.onSelected});

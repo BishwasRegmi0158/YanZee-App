@@ -7,6 +7,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/navigation/full_screen_nav.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
 import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/core/widgets/keyboard_safe_sheet.dart';
@@ -23,16 +24,14 @@ class SellerStoreScreen extends ConsumerWidget {
 
   static const Color _red = Color(0xFFE05A47);
 
-  /// Runs a save and shows the error (if any) in a snackbar.
+  /// Runs a save and shows the error (if any) as a pop-up.
   Future<void> _save(
     BuildContext context,
     Future<String?> Function() action,
   ) async {
     final error = await action();
     if (error != null && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
+      AppToast.error(context, error);
     }
   }
 
@@ -194,9 +193,7 @@ class SellerStoreScreen extends ConsumerWidget {
   ) async {
     final storeId = ref.read(myShopProvider).value?.id;
     if (storeId == null || storeId.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No store loaded.')));
+      AppToast.error(context, 'No store loaded.');
       return;
     }
 
@@ -243,14 +240,10 @@ class SellerStoreScreen extends ConsumerWidget {
 
     if (!context.mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
+      AppToast.error(context, error);
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Store deleted')));
+    AppToast.success(context, 'Store deleted successfully');
     // Reload the list of shops. If another shop is left, the gate falls back
     // to it; if none is left, the gate shows Create Store.
     ref.invalidate(sellerProductsProvider);
@@ -360,9 +353,7 @@ class SellerStoreScreen extends ConsumerWidget {
             editStartsEmpty: store.contactEmail == null,
             onEdit: (v) {
               if (!_isEmail(v)) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter a valid email.')),
-                );
+                AppToast.error(context, 'Enter a valid email.');
                 return;
               }
               _save(context, () => notifier.updateField(contactEmail: v));

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/data/services/shop_publish_api_service.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_detail_widgets.dart';
@@ -29,12 +30,6 @@ class ShopDetailScreen extends ConsumerStatefulWidget {
 class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
   bool _busy = false;
 
-  void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _togglePublish(SellerShop shop) async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -48,10 +43,10 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
         // The change worked; the list will update on the next refresh.
       }
       if (!mounted) return;
-      _snack(result.message);
+      AppToast.success(context, result.message);
     } catch (e) {
       if (!mounted) return;
-      _snack(e.toString().replaceFirst('Exception: ', ''));
+      AppToast.error(context, e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -59,7 +54,7 @@ class _ShopDetailScreenState extends ConsumerState<ShopDetailScreen> {
 
   void _switchTo(SellerShop shop) {
     ref.read(selectedShopIdProvider.notifier).state = shop.id;
-    _snack('Now managing ${shop.name}');
+    AppToast.success(context, 'Now managing ${shop.name}');
     context.pop();
   }
 

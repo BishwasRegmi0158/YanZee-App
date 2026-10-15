@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/services/category_api_service.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/my_shop_provider.dart';
 
@@ -53,11 +54,7 @@ class _CreateCategoryScreenState extends ConsumerState<CreateCategoryScreen> {
     if (picked != null && mounted) setState(() => _image = File(picked.path));
   }
 
-  void _snack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _snack(String message) => AppToast.error(context, message);
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -89,7 +86,7 @@ class _CreateCategoryScreenState extends ConsumerState<CreateCategoryScreen> {
       );
 
       if (!mounted) return;
-      _snack('Category created');
+      AppToast.success(context, 'Category created successfully');
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
@@ -408,7 +405,7 @@ class _CategoryPreviewChip extends StatelessWidget {
           builder: (context, value, _) {
             final name = value.text.trim();
             final label = name.isEmpty ? 'Category name' : name;
-            
+
             return AnimatedOpacity(
               duration: const Duration(milliseconds: 150),
               opacity: isAvailable ? 1 : 0.5,

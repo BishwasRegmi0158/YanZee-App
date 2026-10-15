@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/shop_category.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_categories_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_detail_widgets.dart';
@@ -16,19 +17,13 @@ class CategoryDetailScreen extends ConsumerWidget {
 
   static final _dateFmt = DateFormat('dd MMM yyyy, hh:mm a');
 
-  void _snack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _toggle(
     BuildContext context,
     WidgetRef ref,
     ShopCategory c,
   ) async {
     final error = await ref.read(sellerCategoriesProvider.notifier).toggle(c);
-    if (error != null && context.mounted) _snack(context, error);
+    if (error != null && context.mounted) AppToast.error(context, error);
   }
 
   Future<void> _delete(
@@ -60,7 +55,11 @@ class CategoryDetailScreen extends ConsumerWidget {
 
     final error = await ref.read(sellerCategoriesProvider.notifier).delete(c);
     if (!context.mounted) return;
-    _snack(context, error ?? '"${c.name}" deleted');
+    AppToast.result(
+      context,
+      error: error,
+      success: '"${c.name}" deleted successfully',
+    );
     if (error == null) context.pop();
   }
 

@@ -9,6 +9,7 @@ import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/seller_models.dart';
 import 'package:yanzee_app/features/seller/widgets/product_form_widgets.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_brands_provider.dart';
@@ -328,11 +329,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     setState(() => _variants.removeAt(index).dispose());
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _showError(String message) => AppToast.error(context, message);
 
   // ------------------------------------------------------ collect + validate
 
@@ -529,13 +526,12 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result.message ??
-              (_isEditing ? 'Product updated' : 'Product published'),
-        ),
-      ),
+    AppToast.success(
+      context,
+      result.message ??
+          (_isEditing
+              ? 'Product updated successfully'
+              : 'Product published successfully'),
     );
     Navigator.of(context).pop();
   }

@@ -6,6 +6,7 @@ import 'package:yanzee_app/core/theme/app_colors.dart';
 import 'package:yanzee_app/core/theme/app_fonts.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/seller_models.dart';
 import 'package:yanzee_app/data/models/shop_category.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_brands_provider.dart';
@@ -68,37 +69,11 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
   }
 
   void _snack(String message, {bool failed = false}) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                failed ? Iconsax.close_circle : Iconsax.tick_circle,
-                color: failed ? Colors.redAccent : AppColors.gold,
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 13.5),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: AppColors.ink,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+    if (failed) {
+      AppToast.error(context, message);
+    } else {
+      AppToast.success(context, message);
+    }
   }
 
   Future<void> _confirmDelete(SellerProduct p) async {
@@ -774,6 +749,7 @@ class _ProductRow extends StatelessWidget {
               onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'edit', child: Text('Edit')),
+                PopupMenuDivider(height: 1),
                 PopupMenuItem(
                   value: 'delete',
                   child: Text('Delete', style: TextStyle(color: Colors.red)),

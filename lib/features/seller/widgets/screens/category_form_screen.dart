@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/shop_category.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_categories_provider.dart';
 
@@ -44,12 +45,6 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
     if (picked != null && mounted) setState(() => _image = File(picked.path));
   }
 
-  void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
@@ -78,10 +73,13 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
     if (!mounted) return;
     if (error != null) {
       setState(() => _saving = false);
-      _snack(error);
+      AppToast.error(context, error);
       return;
     }
-    _snack(_isEditing ? 'Category updated' : 'Category created');
+    AppToast.success(
+      context,
+      _isEditing ? 'Category updated successfully' : 'Category created successfully',
+    );
     Navigator.of(context).pop();
   }
 

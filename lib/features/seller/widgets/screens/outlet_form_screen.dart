@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/outlet.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_outlets_provider.dart';
 
@@ -35,12 +36,6 @@ class _OutletFormScreenState extends ConsumerState<OutletFormScreen> {
     _person.dispose();
     _phone.dispose();
     super.dispose();
-  }
-
-  void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   String? _required(String? v) =>
@@ -88,10 +83,13 @@ class _OutletFormScreenState extends ConsumerState<OutletFormScreen> {
     if (!mounted) return;
     if (error != null) {
       setState(() => _saving = false);
-      _snack(error);
+      AppToast.error(context, error);
       return;
     }
-    _snack(_isEditing ? 'Outlet updated' : 'Outlet created');
+    AppToast.success(
+      context,
+      _isEditing ? 'Outlet updated successfully' : 'Outlet created successfully',
+    );
     Navigator.of(context).pop();
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/data/services/shop_publish_api_service.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/my_shop_provider.dart';
@@ -22,12 +23,6 @@ class _SellerShopsScreenState extends ConsumerState<SellerShopsScreen> {
   String _query = '';
   final Set<String> _busy = {};
 
-  void _snack(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _togglePublish(SellerShop shop) async {
     if (_busy.contains(shop.id)) return;
     setState(() => _busy.add(shop.id));
@@ -42,10 +37,10 @@ class _SellerShopsScreenState extends ConsumerState<SellerShopsScreen> {
         // The change worked; the list will update on the next refresh.
       }
       if (!mounted) return;
-      _snack(result.message);
+      AppToast.success(context, result.message);
     } catch (e) {
       if (!mounted) return;
-      _snack(e.toString().replaceFirst('Exception: ', ''));
+      AppToast.error(context, e);
     } finally {
       if (mounted) setState(() => _busy.remove(shop.id));
     }

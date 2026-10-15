@@ -259,13 +259,14 @@ class _CategoryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Delete', style: TextStyle(color: scheme.error)),
-                  ),
-                ],
+               itemBuilder: (_) => [
+  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+  const PopupMenuDivider(height: 1),
+  PopupMenuItem(
+    value: 'delete',
+    child: Text('Delete', style: TextStyle(color: scheme.error)),
+  ),
+],
               ),
             ],
           ),
