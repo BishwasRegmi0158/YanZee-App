@@ -23,6 +23,13 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'YanZee',
       routerConfig: appRouter,
+      // Caps the phone's font-size setting once for the whole app, so text
+      // never gets too big or too small on any phone.
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        minScaleFactor: 0.9,
+        maxScaleFactor: 1.15,
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

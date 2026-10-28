@@ -57,6 +57,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
     super.dispose();
   }
 
+  /// Validation problems and failures show as a red pop-up.
   void _snack(String message) => AppToast.error(context, message);
 
   String? _blank(String s) {
@@ -67,7 +68,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
   Future<void> _pickItem(_Line line) async {
     List<StockItem> items;
     try {
-      items = await ref.read(sellerStockProvider.future);
+      items = await ref.read(allStockItemsProvider.future);
     } catch (e) {
       if (mounted) _snack(e.toString().replaceFirst('Exception: ', ''));
       return;
@@ -156,6 +157,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
 
       // Stock, history and the Products tab all show new numbers now.
       ref.invalidate(sellerStockProvider);
+      ref.invalidate(allStockItemsProvider);
       ref.invalidate(stockMovementsProvider);
       ref.invalidate(sellerProductsProvider);
 
@@ -171,8 +173,8 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Keeps the product list loaded for the picker.
-    ref.watch(sellerStockProvider);
+    // Keeps the full product list loaded for the item picker.
+    ref.watch(allStockItemsProvider);
     final outletsAsync = ref.watch(sellerOutletsProvider);
 
     return SellerFormTheme(
@@ -203,8 +205,9 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
             final outlets = all.where((o) => o.isActive).toList();
             if (outlets.isEmpty) return const _NoOutlet();
 
-            _outletId ??=
-                outlets.firstWhere((o) => o.isMain, orElse: () => outlets.first).id;
+            _outletId ??= outlets
+                .firstWhere((o) => o.isMain, orElse: () => outlets.first)
+                .id;
 
             return Form(
               key: _formKey,
@@ -291,8 +294,10 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
                               canRemove: _lines.length > 1,
                               enabled: !_saving,
                               onPickItem: () => _pickItem(_lines[i]),
-                              onPickDate: (manufacture) =>
-                                  _pickDate(_lines[i], manufacture: manufacture),
+                              onPickDate: (manufacture) => _pickDate(
+                                _lines[i],
+                                manufacture: manufacture,
+                              ),
                               onClearDate: (manufacture) => setState(() {
                                 if (manufacture) {
                                   _lines[i].mfg = null;

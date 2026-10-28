@@ -94,7 +94,10 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
       final error =
           await ref.read(sellerCustomersProvider.notifier).delete(c);
       if (!mounted) return;
-      _snack(error ?? '"${c.name}" deleted', failed: error != null);
+      _snack(
+        error ?? '"${c.name}" deleted successfully',
+        failed: error != null,
+      );
     }
   }
 
@@ -102,178 +105,198 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   Widget build(BuildContext context) {
     final customersAsync = ref.watch(sellerCustomersProvider);
     final query = ref.watch(customerSearchProvider);
-    final isNarrow = Responsive.isSmallPhone(context);
 
     return Scaffold(
       backgroundColor: _pageBg,
       body: SafeArea(
-        child: Column(
-          children: [
+        child: customersAsync.when(
+          skipLoadingOnReload: true,
+          loading: () => _page(const [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 16, 0),
-              child: _HeaderRow(
-                isNarrow: isNarrow,
-                onBack: () => Navigator.of(context).maybePop(),
-                onAdd: () => context.push('/seller/customers/add'),
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.gold),
               ),
             ),
-            const SizedBox(height: 14),
+          ]),
+          error: (e, _) => _page([
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: _searchCtrl,
-                onChanged: _onSearchChanged,
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  hintText: 'Search by name, phone or email',
-                  prefixIcon: const Icon(
-                    Iconsax.search_normal_1,
-                    size: 20,
-                    color: AppColors.textGray,
-                  ),
-                  suffixIcon: _searchCtrl.text.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: _clearSearch,
-                          icon: const Icon(Icons.close, size: 18),
-                        ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.ink),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: customersAsync.when(
-                skipLoadingOnReload: true,
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.gold),
-                ),
-                error: (e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Failed to load customers: ${e.toString().replaceFirst('Exception: ', '')}',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () =>
-                              ref.invalidate(sellerCustomersProvider),
-                          child: const Text('Retry'),
-                        ),
-                      ],
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Failed to load customers: ${e.toString().replaceFirst('Exception: ', '')}',
+                      textAlign: TextAlign.center,
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () => ref.invalidate(sellerCustomersProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
-                data: (s) => _buildList(s, query),
               ),
             ),
-          ],
+          ]),
+          data: (s) => _page(_listBody(s, query)),
         ),
       ),
     );
   }
 
-  Widget _buildList(CustomersState s, String query) {
-    final items = s.items;
+  /// Header + search + [body], all in one scrolling list.
+  Widget _page(List<Widget> body) {
+    final isNarrow = Responsive.isSmallPhone(context);
 
     return RefreshIndicator(
       onRefresh: () => ref.refresh(sellerCustomersProvider.future),
       child: ListView(
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.only(top: 12, bottom: 24),
         children: [
-          Text(
-            '${s.totalCount} customer${s.totalCount == 1 ? '' : 's'}'
-            '${query.isEmpty ? '' : ' found'}',
-            style: const TextStyle(fontSize: 12, color: AppColors.textGray),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
+            child: _HeaderRow(
+              isNarrow: isNarrow,
+              onBack: () => Navigator.of(context).maybePop(),
+              onAdd: () => context.push('/seller/customers/add'),
+            ),
           ),
-          const SizedBox(height: 8),
-          if (items.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              child: Column(
-                children: [
-                  Icon(Iconsax.user, size: 44, color: Colors.grey.shade400),
-                  const SizedBox(height: 10),
-                  Text(
-                    query.isEmpty
-                        ? 'No customers yet'
-                        : 'No customers match "$query"',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textGray),
-                  ),
-                ],
-              ),
-            )
-          else
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.ink.withOpacity(0.06)),
-              ),
-              child: Column(
-                children: [
-                  for (var i = 0; i < items.length; i++) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        indent: 14,
-                        endIndent: 14,
-                        color: Colors.grey.shade200,
-                      ),
-                    _CustomerRow(
-                      customer: items[i],
-                      onTap: () => context.push(
-                        '/seller/customers/edit',
-                        extra: items[i],
-                      ),
-                      onEdit: () => context.push(
-                        '/seller/customers/edit',
-                        extra: items[i],
-                      ),
-                      onDelete: () => _confirmDelete(items[i]),
-                    ),
-                  ],
-                ],
-              ),
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _searchField(),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: body,
             ),
-          if (s.loadingMore)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: AppColors.gold,
-                  ),
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _searchField() {
+    return TextField(
+      controller: _searchCtrl,
+      onChanged: _onSearchChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Search by name, phone or email',
+        prefixIcon: const Icon(
+          Iconsax.search_normal_1,
+          size: 20,
+          color: AppColors.textGray,
+        ),
+        suffixIcon: _searchCtrl.text.isEmpty
+            ? null
+            : IconButton(
+                onPressed: _clearSearch,
+                icon: const Icon(Icons.close, size: 18),
+              ),
+        filled: true,
+        fillColor: Colors.white,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.ink),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _listBody(CustomersState s, String query) {
+    final items = s.items;
+
+    return [
+      Text(
+        '${s.totalCount} customer${s.totalCount == 1 ? '' : 's'}'
+        '${query.isEmpty ? '' : ' found'}',
+        style: const TextStyle(fontSize: 12, color: AppColors.textGray),
+      ),
+      const SizedBox(height: 8),
+      if (items.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: Column(
+            children: [
+              Icon(Iconsax.user, size: 44, color: Colors.grey.shade400),
+              const SizedBox(height: 10),
+              Text(
+                query.isEmpty
+                    ? 'No customers yet'
+                    : 'No customers match "$query"',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textGray),
+              ),
+            ],
+          ),
+        )
+      else
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.ink.withOpacity(0.06)),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0)
+                  Divider(
+                    height: 1,
+                    indent: 14,
+                    endIndent: 14,
+                    color: Colors.grey.shade200,
+                  ),
+                _CustomerRow(
+                  customer: items[i],
+                  onTap: () => context.push(
+                    '/seller/customers/edit',
+                    extra: items[i],
+                  ),
+                  onEdit: () => context.push(
+                    '/seller/customers/edit',
+                    extra: items[i],
+                  ),
+                  onDelete: () => _confirmDelete(items[i]),
+                ),
+              ],
+            ],
+          ),
+        ),
+      if (s.loadingMore)
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.gold,
+              ),
+            ),
+          ),
+        ),
+    ];
   }
 }
 

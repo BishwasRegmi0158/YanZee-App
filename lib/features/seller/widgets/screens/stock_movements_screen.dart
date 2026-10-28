@@ -8,6 +8,28 @@ import 'package:yanzee_app/data/models/outlet.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_inventory_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_outlets_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_detail_widgets.dart';
+import 'package:yanzee_app/features/seller/widgets/seller_filter_chips.dart';
+
+/// Type chips. The second value is what the API expects in ?type=.
+const _typeOptions = <(String, String?)>[
+  ('All', null),
+  ('Stock in', 'STOCK_IN'),
+  ('Stock out', 'STOCK_OUT'),
+  ('Restored', 'STOCK_RESTORE'),
+  ('Transfer in', 'TRANSFER_IN'),
+  ('Transfer out', 'TRANSFER_OUT'),
+  ('Write-off', 'WRITE_OFF'),
+  ('Adjustment', 'ADJUSTMENT'),
+];
+
+/// Types that add stock. They get the green pill; the others get the grey one.
+const _stockAddingTypes = {'STOCK_IN', 'STOCK_RESTORE', 'TRANSFER_IN'};
+
+/// API value -> label, built from the chips so both always match.
+final _typeLabels = {
+  for (final (label, value) in _typeOptions)
+    if (value != null) value: label,
+};
 
 class StockMovementsScreen extends ConsumerStatefulWidget {
   const StockMovementsScreen({super.key});
@@ -18,140 +40,166 @@ class StockMovementsScreen extends ConsumerStatefulWidget {
 }
 
 class _StockMovementsScreenState extends ConsumerState<StockMovementsScreen> {
-  DateTimeRange? _range; // null = all dates
-
   static final _short = DateFormat('dd MMM yyyy');
 
+  void _setFilter(MovementFilter Function(MovementFilter f) change) {
+    final notifier = ref.read(movementFilterProvider.notifier);
+    notifier.state = change(notifier.state);
+  }
+
   Future<void> _pickRange() async {
+    final current = ref.read(movementFilterProvider).range;
     final now = DateTime.now();
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(now.year + 1),
-      initialDateRange: _range,
+      initialDateRange: current,
     );
     if (picked == null || !mounted) return;
-    setState(() {
-      _range = DateTimeRange(
-        start: DateTime(
-          picked.start.year,
-          picked.start.month,
-          picked.start.day,
-        ),
-        // Whole last day included.
-        end: DateTime(
-          picked.end.year,
-          picked.end.month,
-          picked.end.day,
-          23,
-          59,
-          59,
-        ),
-      );
-    });
+
+    final range = DateTimeRange(
+      start: DateTime(picked.start.year, picked.start.month, picked.start.day),
+      // Whole last day included.
+      end: DateTime(
+        picked.end.year,
+        picked.end.month,
+        picked.end.day,
+        23,
+        59,
+        59,
+      ),
+    );
+    _setFilter((f) => (range: range, type: f.type));
   }
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(stockMovementsProvider(_range));
+    final async = ref.watch(stockMovementsProvider);
     final outlets = ref.watch(sellerOutletsProvider).value ?? const <Outlet>[];
     final outletNames = {for (final o in outlets) o.id: o.name};
 
     return SellerFormTheme(
       child: Scaffold(
         appBar: AppBar(title: const Text('Stock history')),
-        body: Column(
-          children: [
+        body: async.when(
+          skipLoadingOnReload: true,
+          loading: () => _page(const [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickRange,
-                      icon: const Icon(Icons.date_range, size: 18),
-                      label: Text(
-                        _range == null
-                            ? 'All dates'
-                            : '${_short.format(_range!.start)} - ${_short.format(_range!.end)}',
-                        overflow: TextOverflow.ellipsis,
-                      ),
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ]),
+          error: (e, _) => _page([
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      e.toString().replaceFirst('Exception: ', ''),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  if (_range != null) ...[
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () => setState(() => _range = null),
-                      child: const Text('Clear'),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () => ref.invalidate(stockMovementsProvider),
+                      child: const Text('Retry'),
                     ),
                   ],
-                ],
-              ),
-            ),
-            Expanded(
-              child: async.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          e.toString().replaceFirst('Exception: ', ''),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () =>
-                              ref.invalidate(stockMovementsProvider),
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                data: (movements) => RefreshIndicator(
-                  onRefresh: () =>
-                      ref.refresh(stockMovementsProvider(_range).future),
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                    children: [
-                      if (movements.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 48),
-                          child: Center(
-                            child: Text(
-                              _range == null
-                                  ? 'No stock movements yet.'
-                                  : 'No stock movements in this period.',
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        )
-                      else
-                        for (var i = 0; i < movements.length; i++)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: SellerReveal(
-                              index: i < 6 ? i : 6,
-                              child: _MovementCard(
-                                movement: movements[i],
-                                outletName: outletNames[movements[i].outletId],
-                              ),
-                            ),
-                          ),
-                    ],
-                  ),
                 ),
               ),
             ),
-          ],
+          ]),
+          data: (movements) => _page(_listBody(movements, outletNames)),
         ),
       ),
     );
+  }
+
+  /// Date range + type chips + [body], all in one scrolling list.
+  Widget _page(List<Widget> body) {
+    final filter = ref.watch(movementFilterProvider);
+    final range = filter.range;
+
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(stockMovementsProvider.future),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _pickRange,
+                  icon: const Icon(Icons.date_range, size: 18),
+                  label: Text(
+                    range == null
+                        ? 'All dates'
+                        : '${_short.format(range.start)} - ${_short.format(range.end)}',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              if (range != null) ...[
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () =>
+                      _setFilter((f) => (range: null, type: f.type)),
+                  child: const Text('Clear'),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          SellerFilterChips(
+            options: _typeOptions,
+            selected: filter.type,
+            onSelected: (v) => _setFilter((f) => (range: f.range, type: v)),
+          ),
+          const SizedBox(height: 16),
+          ...body,
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _listBody(
+    List<StockMovement> movements,
+    Map<String, String> outletNames,
+  ) {
+    final active = ref.watch(movementFilterProvider) != kNoMovementFilter;
+
+    if (movements.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: Center(
+            child: Text(
+              active
+                  ? 'No stock movements match your filters.'
+                  : 'No stock movements yet.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      for (var i = 0; i < movements.length; i++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: SellerReveal(
+            index: i < 6 ? i : 6,
+            child: _MovementCard(
+              movement: movements[i],
+              outletName: outletNames[movements[i].outletId],
+            ),
+          ),
+        ),
+    ];
   }
 }
 
@@ -163,9 +211,12 @@ class _MovementCard extends StatelessWidget {
 
   static final _dateFmt = DateFormat('dd MMM yyyy, hh:mm a');
 
-  /// STOCK_IN -> Stock in
-  String _typeLabel(String t) {
-    final words = t
+  /// STOCK_RESTORE -> Restored (a type not in the list becomes "Some type").
+  String _typeLabel(String type) {
+    final known = _typeLabels[type.toUpperCase()];
+    if (known != null) return known;
+
+    final words = type
         .split('_')
         .where((w) => w.isNotEmpty)
         .map((w) => w.toLowerCase())
@@ -183,7 +234,7 @@ class _MovementCard extends StatelessWidget {
     final typeLabel = _typeLabel(m.type);
     final created =
         m.createdAt == null ? null : _dateFmt.format(m.createdAt!.toLocal());
-    final isIn = m.type.toUpperCase().contains('IN');
+    final isIn = _stockAddingTypes.contains(m.type.toUpperCase());
 
     return Material(
       color: scheme.surfaceContainerLowest,

@@ -48,7 +48,8 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
     final error = await ref.read(sellerOutletsProvider.notifier).toggle(o);
     if (!mounted) return;
     _snack(
-      error ?? '"${o.name}" ${o.isActive ? 'deactivated' : 'activated'}',
+      error ??
+          '"${o.name}" ${o.isActive ? 'deactivated' : 'activated'} successfully',
       failed: error != null,
     );
   }
@@ -76,17 +77,16 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
     if (confirmed == true && mounted) {
       final error = await ref.read(sellerOutletsProvider.notifier).delete(o);
       if (!mounted) return;
-      _snack(error ?? '"${o.name}" deleted', failed: error != null);
+      _snack(error ?? '"${o.name}" deleted successfully', failed: error != null);
     }
   }
 
   List<Outlet> _apply(List<Outlet> all) {
     final q = _query.trim().toLowerCase();
     final status = _statusFilter.value ?? 'all';
-    final sorted = [...all]
-      ..sort(
-        (a, b) =>
-            (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)),
+    final sorted = [...all]..sort(
+        (a, b) => (b.createdAt ?? DateTime(0))
+            .compareTo(a.createdAt ?? DateTime(0)),
       );
     return sorted.where((o) {
       if (status == 'active' && !o.isActive) return false;
@@ -102,185 +102,198 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
   @override
   Widget build(BuildContext context) {
     final outletsAsync = ref.watch(sellerOutletsProvider);
-    final isNarrow = Responsive.isSmallPhone(context);
 
     return Scaffold(
       backgroundColor: _pageBg,
       body: SafeArea(
-        child: Column(
-          children: [
+        child: outletsAsync.when(
+          skipLoadingOnReload: true,
+          loading: () => _page(const [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 16, 0),
-              child: _HeaderRow(
-                isNarrow: isNarrow,
-                onBack: () => Navigator.of(context).maybePop(),
-                onAdd: () => context.push('/seller/outlets/add'),
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.gold),
               ),
             ),
-            const SizedBox(height: 14),
+          ]),
+          error: (e, _) => _page([
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                onChanged: (v) => setState(() => _query = v),
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  hintText: 'Search outlets',
-                  prefixIcon: const Icon(
-                    Iconsax.search_normal_1,
-                    size: 20,
-                    color: AppColors.textGray,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.ink),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _statusDropdown(),
-            ),
-            Expanded(
-              child: outletsAsync.when(
-                skipLoadingOnReload: true,
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.gold),
-                ),
-                error: (e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Failed to load outlets: ${e.toString().replaceFirst('Exception: ', '')}',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () =>
-                              ref.invalidate(sellerOutletsProvider),
-                          child: const Text('Retry'),
-                        ),
-                      ],
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Failed to load outlets: ${e.toString().replaceFirst('Exception: ', '')}',
+                      textAlign: TextAlign.center,
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () => ref.invalidate(sellerOutletsProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
-                data: (outlets) => _buildList(outlets),
               ),
             ),
-          ],
+          ]),
+          data: (outlets) => _page(_listBody(outlets)),
         ),
       ),
     );
   }
 
-  Widget _buildList(List<Outlet> outlets) {
-    final filtered = _apply(outlets);
+  /// Header + search + filter + [body], all in one scrolling list.
+  Widget _page(List<Widget> body) {
+    final isNarrow = Responsive.isSmallPhone(context);
 
     return RefreshIndicator(
       onRefresh: () => ref.refresh(sellerOutletsProvider.future),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.only(top: 12, bottom: 24),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  filtered.length == outlets.length
-                      ? '${outlets.length} outlet${outlets.length == 1 ? '' : 's'}'
-                      : '${filtered.length} of ${outlets.length} outlets',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textGray,
-                  ),
-                ),
-              ),
-              if (_filtersActive || _query.isNotEmpty)
-                GestureDetector(
-                  onTap: _clearFilters,
-                  child: const Text(
-                    'Clear filters',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-            ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
+            child: _HeaderRow(
+              isNarrow: isNarrow,
+              onBack: () => Navigator.of(context).maybePop(),
+              onAdd: () => context.push('/seller/outlets/add'),
+            ),
           ),
-          const SizedBox(height: 8),
-          if (filtered.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              child: Column(
-                children: [
-                  Icon(Iconsax.location, size: 44, color: Colors.grey.shade400),
-                  const SizedBox(height: 10),
-                  Text(
-                    outlets.isEmpty && !_filtersActive
-                        ? 'No outlets yet'
-                        : 'No outlets match your filters',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textGray),
-                  ),
-                ],
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              onChanged: (v) => setState(() => _query = v),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search outlets',
+                prefixIcon: const Icon(
+                  Iconsax.search_normal_1,
+                  size: 20,
+                  color: AppColors.textGray,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.ink),
+                ),
               ),
-            )
-          else
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.ink.withOpacity(0.06)),
-              ),
-              child: Column(
-                children: [
-                  for (var i = 0; i < filtered.length; i++) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        indent: 14,
-                        endIndent: 14,
-                        color: Colors.grey.shade200,
-                      ),
-                    _OutletRow(
-                      outlet: filtered[i],
-                      onTap: () => context.push(
-                        '/seller/outlets/detail',
-                        extra: filtered[i],
-                      ),
-                      onEdit: () => context.push(
-                        '/seller/outlets/edit',
-                        extra: filtered[i],
-                      ),
-                      onToggle: () => _toggle(filtered[i]),
-                      onDelete: () => _confirmDelete(filtered[i]),
-                    ),
-                  ],
-                ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _statusDropdown(),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: body,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _listBody(List<Outlet> outlets) {
+    final filtered = _apply(outlets);
+
+    return [
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              filtered.length == outlets.length
+                  ? '${outlets.length} outlet${outlets.length == 1 ? '' : 's'}'
+                  : '${filtered.length} of ${outlets.length} outlets',
+              style: const TextStyle(fontSize: 12, color: AppColors.textGray),
+            ),
+          ),
+          if (_filtersActive || _query.isNotEmpty)
+            GestureDetector(
+              onTap: _clearFilters,
+              child: const Text(
+                'Clear filters',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
         ],
       ),
-    );
+      const SizedBox(height: 8),
+      if (filtered.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: Column(
+            children: [
+              Icon(Iconsax.location, size: 44, color: Colors.grey.shade400),
+              const SizedBox(height: 10),
+              Text(
+                outlets.isEmpty && !_filtersActive
+                    ? 'No outlets yet'
+                    : 'No outlets match your filters',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textGray),
+              ),
+            ],
+          ),
+        )
+      else
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.ink.withOpacity(0.06)),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < filtered.length; i++) ...[
+                if (i > 0)
+                  Divider(
+                    height: 1,
+                    indent: 14,
+                    endIndent: 14,
+                    color: Colors.grey.shade200,
+                  ),
+                _OutletRow(
+                  outlet: filtered[i],
+                  onTap: () => context.push(
+                    '/seller/outlets/detail',
+                    extra: filtered[i],
+                  ),
+                  onEdit: () => context.push(
+                    '/seller/outlets/edit',
+                    extra: filtered[i],
+                  ),
+                  onToggle: () => _toggle(filtered[i]),
+                  onDelete: () => _confirmDelete(filtered[i]),
+                ),
+              ],
+            ],
+          ),
+        ),
+    ];
   }
 
   //  filter dropdown
@@ -428,14 +441,12 @@ class _HeaderRow extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              backButton,
-              Expanded(child: title),
-            ],
-          ),
+          Row(children: [backButton, Expanded(child: title)]),
           const SizedBox(height: 12),
-          Padding(padding: const EdgeInsets.only(left: 8), child: addButton),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: addButton,
+          ),
         ],
       );
     }
@@ -473,10 +484,9 @@ class _OutletRow extends StatelessWidget {
     final active = outlet.isActive;
     final bg = active ? const Color(0xFFDDF5DD) : Colors.grey.shade200;
     final fg = active ? const Color(0xFF1E8E3E) : Colors.grey.shade700;
-    final contact = [
-      outlet.contactPerson,
-      outlet.contactPhone,
-    ].whereType<String>().join(' · ');
+    final contact = [outlet.contactPerson, outlet.contactPhone]
+        .whereType<String>()
+        .join(' · ');
 
     return InkWell(
       borderRadius: BorderRadius.circular(18),

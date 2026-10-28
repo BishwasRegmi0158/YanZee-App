@@ -28,12 +28,12 @@ class StockOutletQty {
   });
 
   factory StockOutletQty.fromJson(Map<String, dynamic> json) => StockOutletQty(
-        outletId: json['outletId']?.toString() ?? '',
-        outletName: json['outletName']?.toString() ?? '',
-        quantity: _i(json['quantity']),
-        batchCount: _i(json['batchCount']),
-        totalCost: _d(json['totalCost']),
-      );
+    outletId: json['outletId']?.toString() ?? '',
+    outletName: json['outletName']?.toString() ?? '',
+    quantity: _i(json['quantity']),
+    batchCount: _i(json['batchCount']),
+    totalCost: _d(json['totalCost']),
+  );
 }
 
 /// One row of GET /inventory/stock: a product, or one variant of a product.
@@ -62,7 +62,7 @@ class StockItem {
 
   /// Quantity in one outlet, or the total when [outletId] is null.
   int quantityAt(String? outletId) {
-    if (outletId == null) return quantity;
+    if (outletId == null || outlets.isEmpty) return quantity;
     var n = 0;
     for (final o in outlets) {
       if (o.outletId == outletId) n += o.quantity;
@@ -83,9 +83,9 @@ class StockItem {
       totalCost: _d(json['totalCost']),
       outlets: rawOutlets is List
           ? rawOutlets
-              .whereType<Map<String, dynamic>>()
-              .map(StockOutletQty.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(StockOutletQty.fromJson)
+                .toList()
           : const [],
     );
   }
@@ -118,17 +118,17 @@ class StockMovement {
   });
 
   factory StockMovement.fromJson(Map<String, dynamic> json) => StockMovement(
-        id: json['id']?.toString() ?? '',
-        type: json['type']?.toString() ?? 'STOCK_IN',
-        outletId: _s(json['outletId']),
-        referenceNumber: _s(json['referenceNumber']),
-        supplierName: _s(json['supplierName']),
-        note: _s(json['note']),
-        totalProducts: _i(json['totalProducts']),
-        totalQuantity: _i(json['totalQuantity']),
-        totalCost: _d(json['totalCost']),
-        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
-      );
+    id: json['id']?.toString() ?? '',
+    type: json['type']?.toString() ?? 'STOCK_IN',
+    outletId: _s(json['outletId']),
+    referenceNumber: _s(json['referenceNumber']),
+    supplierName: _s(json['supplierName']),
+    note: _s(json['note']),
+    totalProducts: _i(json['totalProducts']),
+    totalQuantity: _i(json['totalQuantity']),
+    totalCost: _d(json['totalCost']),
+    createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
+  );
 }
 
 /// One line of a stock-in request.
@@ -152,13 +152,12 @@ class StockInLine {
   });
 
   Map<String, dynamic> toJson() => {
-        'productId': productId,
-        'variantId': variantId,
-        'quantity': quantity,
-        'unitCost': unitCost,
-        'supplierLot': supplierLot,
-        'manufactureDate':
-            manufactureDate == null ? null : _ymd(manufactureDate!),
-        'expiryDate': expiryDate == null ? null : _ymd(expiryDate!),
-      };
+    'productId': productId,
+    'variantId': variantId,
+    'quantity': quantity,
+    'unitCost': unitCost,
+    'supplierLot': supplierLot,
+    'manufactureDate': manufactureDate == null ? null : _ymd(manufactureDate!),
+    'expiryDate': expiryDate == null ? null : _ymd(expiryDate!),
+  };
 }

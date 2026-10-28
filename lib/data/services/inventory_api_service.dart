@@ -8,6 +8,12 @@ import 'package:yanzee_app/data/models/inventory.dart';
 final inventoryApiServiceProvider = Provider((ref) => InventoryApiService());
 
 class InventoryApiService {
+  /// Query-parameter name of the outlet filter on GET /inventory/stock.
+  /// Your Postman call used lowercase "outletid". The rest of your API uses
+  /// camelCase (for example categoryId), so this uses "outletId". If the
+  /// outlet filter has no effect, change it here.
+  static const _outletParam = 'outletId';
+
   Uri _url(String path, [Map<String, String>? query]) =>
       Uri.parse('${ApiConfig.baseUrl}/inventory$path')
           .replace(queryParameters: query);
@@ -23,15 +29,32 @@ class InventoryApiService {
         if (json) 'Content-Type': 'application/json',
       };
 
-  /// GET /inventory/stock (every page).
-  Future<List<StockItem>> getStock(String storeId) =>
-      _getAll(storeId, '/stock', 'items', StockItem.fromJson);
+  /// GET /inventory/stock (every page of the filtered result).
+  Future<List<StockItem>> getStock(
+    String storeId, {
+    String? search,
+    String? outletId,
+    String? status,
+  }) =>
+      _getAll(
+        storeId,
+        '/stock',
+        'items',
+        StockItem.fromJson,
+        {
+          if (search != null && search.trim().isNotEmpty)
+            'search': search.trim(),
+          if (outletId != null && outletId.isNotEmpty) _outletParam: outletId,
+          if (status != null && status.isNotEmpty) 'status': status,
+        },
+      );
 
-  /// GET /inventory/movements (every page), optionally within a date range.
+  /// GET /inventory/movements (every page), filtered by date range and type.
   Future<List<StockMovement>> getMovements(
     String storeId, {
     DateTime? from,
     DateTime? to,
+    String? type,
   }) =>
       _getAll(
         storeId,
@@ -41,6 +64,7 @@ class InventoryApiService {
         {
           if (from != null) 'from': from.toUtc().toIso8601String(),
           if (to != null) 'to': to.toUtc().toIso8601String(),
+          if (type != null && type.isNotEmpty) 'type': type,
         },
       );
 

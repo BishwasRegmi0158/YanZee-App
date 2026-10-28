@@ -9,24 +9,23 @@ class Responsive {
   static const double _minScale = 0.78;
   static const double _maxScale = 1.05;
 
-  /// Global device scale factor based on screen width
+  /// Device scale factor. Uses the shorter side of the screen, so rotating a
+  /// phone to landscape does not change the size of the UI.
   static double scale(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return (width / _baseWidth).clamp(_minScale, _maxScale);
+    final shortest = MediaQuery.sizeOf(context).shortestSide;
+    return (shortest / _baseWidth).clamp(_minScale, _maxScale);
   }
 
-  /// Responsive Font Size
-  /// Caps system text scaling factor when capSystemScale is true
-  static double font(BuildContext context, double base, {bool capSystemScale = true}) {
-    final widthScaled = base * scale(context);
-
-    if (!capSystemScale) return widthScaled;
-
-    final systemTextScaler = MediaQuery.textScalerOf(context);
-    final clampedScaleFactor = systemTextScaler.scale(1.0).clamp(0.9, 1.15);
-
-    return TextScaler.linear(clampedScaleFactor).scale(widthScaled);
-  }
+  /// Responsive font size: scales with the screen only.
+  /// The user's system font size is applied once, by Flutter's Text widget,
+  /// and capped app-wide in MaterialApp.builder. [capSystemScale] is kept so
+  /// existing calls still compile; it no longer does anything.
+  static double font(
+    BuildContext context,
+    double base, {
+    bool capSystemScale = true,
+  }) =>
+      base * scale(context);
 
   /// Responsive Spacing & Padding
   static double space(BuildContext context, double base) {
