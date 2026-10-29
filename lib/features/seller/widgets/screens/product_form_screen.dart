@@ -90,10 +90,6 @@ class VariantRow {
   }
 }
 
-// features/seller/widgets/screens/product_form_screen.dart
-
-
-
 // ----------------------------------------------------------------- screen
 
 class ProductFormScreen extends ConsumerStatefulWidget {
@@ -323,10 +319,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   void _addVariant() => setState(() => _variants.add(VariantRow()));
 
-  void _removeVariant(int index) {
+  /// Removes a variant by the row itself (not by its position), so a quick
+  /// double tap on an old delete button can never go out of range.
+  void _removeVariant(VariantRow row) {
     // Saved variants have no delete endpoint here, only new rows can go.
-    if (_variants[index].id != null) return;
-    setState(() => _variants.removeAt(index).dispose());
+    if (row.id != null) return;
+    final i = _variants.indexOf(row);
+    if (i < 0) return; // already removed, ignore the extra tap
+    setState(() => _variants.removeAt(i).dispose());
   }
 
   void _showError(String message) => AppToast.error(context, message);
@@ -934,7 +934,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                onPressed: (_saving || saved) ? null : () => _removeVariant(index),
+                onPressed: (_saving || saved) ? null : () => _removeVariant(r),
                 icon: const Icon(Icons.delete_outline),
                 color: Colors.red,
                 tooltip: saved

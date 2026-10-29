@@ -17,6 +17,28 @@ import 'package:yanzee_app/features/seller/widgets/providers/seller_products_pro
 const kPageBg = Color(0xFFF7F5F2);
 const kFieldBg = Color(0xFFF5F4F1);
 
+/// White rounded card with a thin border. It is a Material (not a plain
+/// decorated Container) so ListTiles inside it can paint their splashes.
+Widget _cardShell({required Widget child}) {
+  return Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 14),
+    child: Material(
+      color: Colors.white,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: AppColors.ink.withOpacity(0.06)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: child,
+      ),
+    ),
+  );
+}
+
 class SectionCard extends StatelessWidget {
   const SectionCard({super.key, 
     required this.icon,
@@ -34,15 +56,7 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.ink.withOpacity(0.06)),
-      ),
+    return _cardShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -192,17 +206,7 @@ class _CollapsibleCardState extends State<CollapsibleCard> {
 
     if (widget.plain) return content;
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.ink.withOpacity(0.06)),
-      ),
-      child: content,
-    );
+    return _cardShell(child: content);
   }
 }
 

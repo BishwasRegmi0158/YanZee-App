@@ -20,13 +20,16 @@ class CategoryFormScreen extends ConsumerStatefulWidget {
 
 class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _name =
-      TextEditingController(text: widget.initial?.name ?? '');
-  late final TextEditingController _description =
-      TextEditingController(text: widget.initial?.description ?? '');
+  late final TextEditingController _name = TextEditingController(
+    text: widget.initial?.name ?? '',
+  );
+  late final TextEditingController _description = TextEditingController(
+    text: widget.initial?.description ?? '',
+  );
   late bool _isAvailable = widget.initial?.isAvailable ?? true;
   File? _image;
   bool _saving = false;
+  bool _imageError = false;
 
   bool get _isEditing => widget.initial != null;
 
@@ -42,11 +45,22 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
       source: ImageSource.gallery,
       imageQuality: 80,
     );
-    if (picked != null && mounted) setState(() => _image = File(picked.path));
+    if (picked != null && mounted) {
+      setState(() {
+        _image = File(picked.path);
+        _imageError = false;
+      });
+    }
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formOk = _formKey.currentState!.validate();
+    final existingUrl = widget.initial?.image;
+    final hasImage =
+        _image != null || (existingUrl != null && existingUrl.isNotEmpty);
+    if (!hasImage) setState(() => _imageError = true);
+    if (!formOk || !hasImage) return;
+
     FocusScope.of(context).unfocus();
     setState(() => _saving = true);
 
@@ -78,7 +92,9 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
     }
     AppToast.success(
       context,
-      _isEditing ? 'Category updated successfully' : 'Category created successfully',
+      _isEditing
+          ? 'Category updated successfully'
+          : 'Category created successfully',
     );
     Navigator.of(context).pop();
   }
@@ -109,6 +125,8 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
                           url: widget.initial?.image,
                           enabled: !_saving,
                           onTap: _pickImage,
+                          errorText:
+                              _imageError ? 'Category image is required' : null,
                         ),
                       ),
                     ),
@@ -122,10 +140,9 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
                           children: [
                             TextFormField(
                               controller: _name,
-                              validator: (v) =>
-                                  (v == null || v.trim().isEmpty)
-                                      ? 'This field is required'
-                                      : null,
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'This field is required'
+                                  : null,
                               keyboardType: TextInputType.text,
                               textCapitalization: TextCapitalization.words,
                               textInputAction: TextInputAction.next,
@@ -194,12 +211,14 @@ class _ImageTile extends StatelessWidget {
     required this.url,
     required this.enabled,
     required this.onTap,
+    this.errorText,
   });
 
   final File? file;
   final String? url;
   final bool enabled;
   final VoidCallback onTap;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -273,8 +292,9 @@ class _ImageTile extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             'Add image',
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: scheme.onSurfaceVariant),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
@@ -284,10 +304,20 @@ class _ImageTile extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Category image (optional)',
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: scheme.onSurfaceVariant),
+          'Category image',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
         ),
+        if (errorText != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              errorText!,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(color: scheme.error),
+            ),
+          ),
       ],
     );
   }

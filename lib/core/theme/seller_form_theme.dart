@@ -16,7 +16,7 @@ class SellerFormTheme extends StatelessWidget {
   static ThemeData _themeFrom(ThemeData base) {
     final isDark = base.brightness == Brightness.dark;
     final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF3F473F),
+      seedColor: const Color.fromARGB(255, 138, 143, 138),
       brightness: base.brightness,
     ).copyWith(
       primary: isDark ? Colors.white : Colors.black,
