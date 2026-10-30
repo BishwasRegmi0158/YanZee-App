@@ -22,6 +22,9 @@ class ProductImageEntry {
   const ProductImageEntry.local(File this.file) : url = null;
 }
 
+/// The images of each variant, by the variant's position in the list.
+typedef VariantImages = Map<int, List<ProductImageEntry>>;
+
 typedef SaveResult = ({bool saved, String? message});
 
 class SellerProductsNotifier extends AsyncNotifier<List<SellerProduct>> {
@@ -63,21 +66,44 @@ class SellerProductsNotifier extends AsyncNotifier<List<SellerProduct>> {
     return urls;
   }
 
+  /// Uploads the new image files of every variant and puts the final URLs
+  /// into the variants.
+  Future<List<SellerVariant>> _resolveVariantImages(
+    List<SellerVariant> variants,
+    VariantImages images,
+  ) async {
+    final result = <SellerVariant>[];
+    for (var i = 0; i < variants.length; i++) {
+      final entries = images[i];
+      if (entries == null) {
+        result.add(variants[i]);
+      } else {
+        result.add(variants[i].copyWith(imageUrls: await _resolveImages(entries)));
+      }
+    }
+    return result;
+  }
+
   bool _same(Map<String, dynamic> a, Map<String, dynamic> b) =>
       jsonEncode(a) == jsonEncode(b);
 
-  /// POST /products, then PATCH /seo when SEO details were filled in.
+  /// Uploads the images, POST /products, then PATCH /seo when SEO details
+  /// were filled in.
   Future<SaveResult> addProduct(
     SellerProduct draft, {
     List<ProductImageEntry> images = const [],
+    VariantImages variantImages = const {},
     File? seoImage,
   }) async {
     var id = '';
     String? seoUrl = draft.seoImage;
     try {
       final urls = await _resolveImages(images);
+      final variants = await _resolveVariantImages(draft.variants, variantImages);
       if (seoImage != null) seoUrl = await _api.uploadSeoImage(seoImage);
-      id = await _api.createProduct(draft.toCreateJson(imageUrls: urls));
+      id = await _api.createProduct(
+        draft.copyWith(variants: variants).toCreateJson(imageUrls: urls),
+      );
     } catch (e) {
       return (saved: false, message: _msg(e));
     }
@@ -101,41 +127,51 @@ class SellerProductsNotifier extends AsyncNotifier<List<SellerProduct>> {
     SellerProduct original,
     SellerProduct edited, {
     List<ProductImageEntry> images = const [],
+    VariantImages variantImages = const {},
     File? seoImage,
   }) async {
     final id = original.id;
     var urls = <String>[];
+    var variants = edited.variants;
     String? seoUrl = edited.seoImage;
 
     try {
       urls = await _resolveImages(images);
+      variants = await _resolveVariantImages(edited.variants, variantImages);
       if (seoImage != null) seoUrl = await _api.uploadSeoImage(seoImage);
     } catch (e) {
       return (saved: false, message: _msg(e));
     }
 
+    final ready = edited.copyWith(variants: variants);
     final steps = <(String, Future<void> Function())>[];
 
-    final general = edited.generalJson(imageUrls: urls);
+    final general = ready.generalJson(imageUrls: urls);
     if (!_same(general, original.generalJson())) {
       steps.add(('Details', () => _api.updateGeneral(id, general)));
     }
 
-    final inventory = edited.inventoryJson();
-    if (!_same(inventory, original.inventoryJson())) {
-      steps.add(('Pricing and stock', () => _api.updateInventory(id, inventory)));
+    // Prices, variants and variant images. No quantity: stock changes only
+    // through Stock in. The complete variant list is sent: a new variant has
+    // no id (the server creates it) and a saved variant that is missing from
+    // the list is deleted by the server.
+    final inventory = ready.inventoryUpdateJson();
+    if (!_same(inventory, original.inventoryUpdateJson())) {
+      steps.add(
+        ('Pricing and variants', () => _api.updateInventory(id, inventory)),
+      );
     }
 
-    if (edited.status != original.status) {
-      steps.add(('Status', () => _api.updateStatus(id, edited.status)));
+    if (ready.status != original.status) {
+      steps.add(('Status', () => _api.updateStatus(id, ready.status)));
     }
 
-    final custom = edited.customJson();
+    final custom = ready.customJson();
     if (!_same(custom, original.customJson())) {
       steps.add(('Tags and release date', () => _api.updateCustom(id, custom)));
     }
 
-    final seo = edited.seoJson(image: seoUrl);
+    final seo = ready.seoJson(image: seoUrl);
     if (seo.isNotEmpty && !_same(seo, original.seoJson())) {
       steps.add(('SEO', () => _api.updateSeo(id, seo)));
     }

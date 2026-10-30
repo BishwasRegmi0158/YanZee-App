@@ -56,4 +56,4 @@ class SellerReview {
     required this.comment,
     required this.date,
   });
-}
+} 

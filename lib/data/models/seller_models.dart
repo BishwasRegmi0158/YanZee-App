@@ -127,6 +127,7 @@ class SellerVariant {
   final String? sku;
   final String? hsCode;
   final String? altBarcode;
+  final List<String> imageUrls;
 
   const SellerVariant({
     this.id,
@@ -141,6 +142,7 @@ class SellerVariant {
     this.sku,
     this.hsCode,
     this.altBarcode,
+    this.imageUrls = const [],
   });
 
   factory SellerVariant.fromJson(Map<String, dynamic> j) => SellerVariant(
@@ -156,10 +158,29 @@ class SellerVariant {
         sku: _str(j['sku']),
         hsCode: _str(j['hsCode']),
         altBarcode: _str(j['altBarcode']),
+        imageUrls: _strList(j['imageUrls']),
+      );
+
+  SellerVariant copyWith({List<String>? imageUrls}) => SellerVariant(
+        id: id,
+        name: name,
+        size: size,
+        sellingPrice: sellingPrice,
+        quantity: quantity,
+        colorCodes: colorCodes,
+        crossedPrice: crossedPrice,
+        costPrice: costPrice,
+        weight: weight,
+        sku: sku,
+        hsCode: hsCode,
+        altBarcode: altBarcode,
+        imageUrls: imageUrls ?? this.imageUrls,
       );
 
   /// Optional fields are only sent when they have a value.
-  Map<String, dynamic> toJson() => {
+  /// [includeQuantity] is false when a saved product is updated: its stock is
+  /// changed from Inventory > Stock in, not from the product form.
+  Map<String, dynamic> toJson({bool includeQuantity = true}) => {
         if (id != null) 'id': id,
         'name': name,
         'size': size,
@@ -167,11 +188,12 @@ class SellerVariant {
         'sellingPrice': sellingPrice,
         if (crossedPrice != null) 'crossedPrice': crossedPrice,
         if (costPrice != null) 'costPrice': costPrice,
-        'quantity': quantity,
+        if (includeQuantity) 'quantity': quantity,
         if (weight != null) 'weight': weight,
         if (sku != null) 'sku': sku,
         if (hsCode != null) 'hsCode': hsCode,
         if (altBarcode != null) 'altBarcode': altBarcode,
+        if (imageUrls.isNotEmpty) 'imageUrls': imageUrls,
       };
 }
 
@@ -186,6 +208,10 @@ class SellerProduct {
   final ProductStatus status;
   final bool isAvailable;
   final bool hasVariants;
+
+  /// Only used when a new product is created: the outlet that receives the
+  /// opening stock. null = the backend uses the main outlet.
+  final String? outletId;
 
   final String? brandId;
   final String? brandName;
@@ -222,11 +248,12 @@ class SellerProduct {
     this.id = '',
     required this.name,
     this.slug = '',
-    this.channel = 'WEBSITE',
+    this.channel = 'ALL',
     this.audience = ProductAudience.unisex,
     this.status = ProductStatus.active,
     this.isAvailable = true,
     this.hasVariants = false,
+    this.outletId,
     this.brandId,
     this.brandName,
     this.categories = const [],
@@ -298,7 +325,7 @@ class SellerProduct {
       id: j['id']?.toString() ?? '',
       name: j['name']?.toString() ?? '',
       slug: j['slug']?.toString() ?? '',
-      channel: _str(j['channel']) ?? 'WEBSITE',
+      channel: _str(j['channel']) ?? 'ALL',
       audience: productAudienceFromApi(j['audience']?.toString()),
       status: productStatusFromApi(j['status']?.toString()),
       isAvailable: j['isAvailable'] != false,
@@ -347,8 +374,8 @@ class SellerProduct {
         'imageUrls': imageUrls ?? this.imageUrls,
       };
 
-  /// PATCH /products/:id/inventory
-  /// With variants: only the variants array (saved ones carry their id).
+  /// Used when a NEW product is created (POST /products).
+  /// With variants: only the variants array.
   /// Without variants: the product-level price and stock fields.
   Map<String, dynamic> inventoryJson() {
     if (variants.isNotEmpty) {
@@ -363,6 +390,32 @@ class SellerProduct {
       if (sku != null) 'sku': sku,
       if (hsCode != null) 'hsCode': hsCode,
       if (altBarcode != null) 'altBarcode': altBarcode,
+    };
+  }
+
+  /// PATCH /products/:id/inventory for a product that is already saved.
+  ///
+  /// There is no quantity here: stock changes only through Stock in.
+  /// With variants: the COMPLETE list is sent. Saved variants carry their id,
+  /// a variant added in the form has no id (the server creates it), and a
+  /// saved variant that is missing from the list is deleted by the server.
+  /// Without variants: the product-level price and detail fields.
+  Map<String, dynamic> inventoryUpdateJson() {
+    if (variants.isNotEmpty) {
+      return {
+        'variants':
+            variants.map((v) => v.toJson(includeQuantity: false)).toList(),
+      };
+    }
+    return {
+      'sellingPrice': sellingPrice,
+      if (crossedPrice != null) 'crossedPrice': crossedPrice,
+      if (costPrice != null) 'costPrice': costPrice,
+      if (weight != null) 'weight': weight,
+      if (sku != null) 'sku': sku,
+      if (hsCode != null) 'hsCode': hsCode,
+      if (altBarcode != null) 'altBarcode': altBarcode,
+      'isAvailable': isAvailable,
     };
   }
 
@@ -385,6 +438,7 @@ class SellerProduct {
 
   /// POST /products
   Map<String, dynamic> toCreateJson({required List<String> imageUrls}) => {
+        if (outletId != null) 'outletId': outletId,
         'channel': channel,
         'status': status.apiValue,
         ...generalJson(imageUrls: imageUrls),
@@ -395,7 +449,11 @@ class SellerProduct {
           'similarProductIds': similarProductIds,
       };
 
-  SellerProduct copyWith({ProductStatus? status}) => SellerProduct(
+  SellerProduct copyWith({
+    ProductStatus? status,
+    List<SellerVariant>? variants,
+  }) =>
+      SellerProduct(
         id: id,
         name: name,
         slug: slug,
@@ -404,6 +462,7 @@ class SellerProduct {
         status: status ?? this.status,
         isAvailable: isAvailable,
         hasVariants: hasVariants,
+        outletId: outletId,
         brandId: brandId,
         brandName: brandName,
         categories: categories,
@@ -425,7 +484,7 @@ class SellerProduct {
         seoTitle: seoTitle,
         seoDescription: seoDescription,
         seoImage: seoImage,
-        variants: variants,
+        variants: variants ?? this.variants,
         variantCount: variantCount,
         priceMin: priceMin,
         priceMax: priceMax,

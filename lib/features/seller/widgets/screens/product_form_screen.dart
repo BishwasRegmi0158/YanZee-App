@@ -14,6 +14,8 @@ import 'package:yanzee_app/data/models/seller_models.dart';
 import 'package:yanzee_app/features/seller/widgets/product_form_widgets.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_brands_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_categories_provider.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/seller_inventory_provider.dart';
+import 'package:yanzee_app/features/seller/widgets/providers/seller_outlets_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_products_provider.dart';
 
 // ---- helpers for this form ---------------------------------------------
@@ -65,6 +67,7 @@ class VariantRow {
     r.sku.text = v.sku ?? '';
     r.hs.text = v.hsCode ?? '';
     r.barcode.text = v.altBarcode ?? '';
+    r.images.addAll(v.imageUrls.map(ProductImageEntry.remote));
     return r;
   }
 
@@ -80,6 +83,9 @@ class VariantRow {
   final sku = TextEditingController();
   final hs = TextEditingController();
   final barcode = TextEditingController();
+
+  /// Uploaded URLs and new files of this variant's images.
+  final List<ProductImageEntry> images = [];
 
   void dispose() {
     for (final c in [
@@ -126,6 +132,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _categoryNotifier = ValueNotifier<List<String>>([]);
   final _audienceNotifier =
       ValueNotifier<ProductAudience?>(ProductAudience.unisex);
+
+  /// Outlet that receives the opening stock of a NEW product.
+  /// null = not chosen, the backend uses the main outlet.
+  final _outletNotifier = ValueNotifier<String?>(null);
 
   // other state
   ProductStatus _status = ProductStatus.active;
@@ -264,6 +274,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _brandNotifier.dispose();
     _categoryNotifier.dispose();
     _audienceNotifier.dispose();
+    _outletNotifier.dispose();
     _shortFocus.dispose();
     _longFocus.dispose();
     _scrollController.dispose();
@@ -277,6 +288,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     if (picked.isEmpty || !mounted) return;
     setState(() {
       _images.addAll(picked.map((x) => ProductImageEntry.local(File(x.path))));
+    });
+  }
+
+  Future<void> _pickVariantImages(VariantRow row) async {
+    final picked = await ImagePicker().pickMultiImage(imageQuality: 80);
+    if (picked.isEmpty || !mounted) return;
+    setState(() {
+      row.images.addAll(picked.map((x) => ProductImageEntry.local(File(x.path))));
     });
   }
 
@@ -319,11 +338,43 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   void _addVariant() => setState(() => _variants.add(VariantRow()));
 
-  /// Removes a variant by the row itself (not by its position), so a quick
-  /// double tap on an old delete button can never go out of range.
-  void _removeVariant(VariantRow row) {
-    // Saved variants have no delete endpoint here, only new rows can go.
-    if (row.id != null) return;
+  /// Removes a variant. A saved variant is deleted on the server when the
+  /// product is saved, because the saved list no longer contains it.
+  Future<void> _removeVariant(VariantRow row) async {
+    if (!_variants.contains(row)) return;
+
+    // Without any variant the product would switch to a plain product with
+    // no variant prices, so at least one variant has to stay.
+    final hadVariants = _isEditing && (_base?.variants.isNotEmpty ?? false);
+    if (hadVariants && _variants.length == 1) {
+      _showError('A product with variants needs at least one variant');
+      return;
+    }
+
+    if (row.id != null) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete variant'),
+          content: const Text(
+            'This variant is deleted from the product when you tap Save changes.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+    }
+
     final i = _variants.indexOf(row);
     if (i < 0) return; // already removed, ignore the extra tap
     setState(() => _variants.removeAt(i).dispose());
@@ -380,7 +431,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         _showError('$label needs a valid selling price');
         return null;
       }
-      if (qty == null || qty < 0) {
+      // Quantity is only asked when a NEW product is created. A saved
+      // product's stock is changed from Inventory > Stock in.
+      if (!_isEditing && (qty == null || qty < 0)) {
         _showError('$label needs a valid quantity');
         return null;
       }
@@ -412,11 +465,16 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           sellingPrice: price,
           crossedPrice: crossed,
           costPrice: optNum(r.cost),
-          quantity: qty,
+          quantity: qty ?? 0,
           weight: optNum(r.weight),
           sku: sku,
           hsCode: optStr(r.hs),
           altBarcode: optStr(r.barcode),
+          // Images already uploaded. New files are uploaded on save.
+          imageUrls: [
+            for (final e in r.images)
+              if (e.url != null) e.url!,
+          ],
         ),
       );
     }
@@ -433,11 +491,19 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         _showError('Enter a valid selling price');
         return null;
       }
-      final qty = int.tryParse(_qty.text.trim());
-      if (qty == null || qty < 0) {
-        _showError('Enter a valid quantity');
-        return null;
+
+      int? qty;
+      if (_isEditing) {
+        // Not editable here: stock is changed from Inventory > Stock in.
+        qty = _base?.quantity ?? 0;
+      } else {
+        qty = int.tryParse(_qty.text.trim());
+        if (qty == null || qty < 0) {
+          _showError('Enter a valid quantity');
+          return null;
+        }
       }
+
       final problem = numError(_crossed, 'Crossed price') ??
           numError(_cost, 'Cost price') ??
           numError(_weight, 'Weight');
@@ -469,11 +535,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       id: _base?.id ?? '',
       name: name,
       slug: _base?.slug ?? '',
-      channel: _base?.channel ?? 'WEBSITE',
+      channel: _base?.channel ?? 'ALL',
       audience: _audienceNotifier.value ?? ProductAudience.unisex,
       status: _status,
       isAvailable: _isAvailable,
       hasVariants: variants.isNotEmpty,
+      // Only a new product has a stock location. Empty = main outlet.
+      outletId: _isEditing ? null : _outletNotifier.value,
       brandId: brandId,
       categoryIds: [...categoryIds],
       productDescription: shortDesc,
@@ -503,6 +571,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final product = _collect();
     if (product == null) return;
 
+    // The images of each variant, by the variant's position.
+    final variantImages = <int, List<ProductImageEntry>>{
+      for (var i = 0; i < _variants.length; i++) i: [..._variants[i].images],
+    };
+
     final notifier = ref.read(sellerProductsProvider.notifier);
     setState(() => _saving = true);
 
@@ -511,11 +584,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             _base!,
             product,
             images: _images,
+            variantImages: variantImages,
             seoImage: _seoPicked,
           )
         : await notifier.addProduct(
             product,
             images: _images,
+            variantImages: variantImages,
             seoImage: _seoPicked,
           );
     if (!mounted) return;
@@ -525,6 +600,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       _showError(result.message ?? 'Could not save the product');
       return;
     }
+
+    // New products and new variants must appear in Inventory and in the
+    // Stock in product picker, and deleted variants must disappear.
+    ref.invalidate(allStockItemsProvider);
+    ref.invalidate(sellerStockProvider);
 
     AppToast.success(
       context,
@@ -593,6 +673,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     _mediaCard(),
                     _basicCard(),
                     _organizationCard(),
+                    if (!_isEditing) _stockLocationCard(),
                     if (_variants.isEmpty) _priceCard(),
                     _variantsCard(),
                     CollapsibleCard(
@@ -699,6 +780,27 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               ),
             ),
             TextButton(onPressed: _retryDetails, child: const Text('Retry')),
+          ],
+        ),
+      );
+
+  /// Shown instead of the quantity field when a saved product is edited.
+  Widget _stockNote() => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: kPageBg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          children: [
+            Icon(Iconsax.info_circle, size: 18, color: AppColors.textGray),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Stock is added from Inventory > Stock in.',
+                style: TextStyle(fontSize: 12.5, color: AppColors.textGray),
+              ),
+            ),
           ],
         ),
       );
@@ -822,6 +924,16 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     );
   }
 
+  /// Which outlet receives the opening stock of a new product.
+  Widget _stockLocationCard() {
+    return SectionCard(
+      icon: Iconsax.location,
+      title: 'Stock location',
+      subtitle: 'Optional. The opening stock goes to this outlet.',
+      child: _outletField(),
+    );
+  }
+
   Widget _priceCard() {
     return SectionCard(
       icon: Icons.payments_outlined,
@@ -835,10 +947,17 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             _field('Cost per item', _cost, hint: 'Optional', decimal: true),
           ),
           const SizedBox(height: 16),
-          _pair(
+          if (_isEditing) ...[
             _field('Crossed price', _crossed, hint: 'Optional', decimal: true),
-            _field('Quantity', _qty, hint: '0', required: true, integer: true),
-          ),
+            const SizedBox(height: 14),
+            _stockNote(),
+          ] else
+            _pair(
+              _field('Crossed price', _crossed,
+                  hint: 'Optional', decimal: true),
+              _field('Quantity', _qty,
+                  hint: '0', required: true, integer: true),
+            ),
           const SizedBox(height: 14),
           _marginTiles(),
           const SizedBox(height: 6),
@@ -892,7 +1011,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     return SectionCard(
       icon: Icons.layers_outlined,
       title: 'Variants',
-      subtitle: 'Optional. Each variant has its own price and stock.',
+      subtitle: _isEditing
+          ? 'Each variant has its own price and images. Stock is added from Inventory > Stock in. A variant you remove here is deleted when you save.'
+          : 'Optional. Each variant has its own price, stock and images.',
       trailing: TextButton.icon(
         onPressed: _saving ? null : _addVariant,
         icon: const Icon(Icons.add, size: 18),
@@ -928,18 +1049,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             children: [
               Expanded(
                 child: Text(
-                  'Variant ${index + 1}',
+                  _isEditing && !saved
+                      ? 'Variant ${index + 1} (new)'
+                      : 'Variant ${index + 1}',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                onPressed: (_saving || saved) ? null : () => _removeVariant(r),
+                onPressed: _saving ? null : () => _removeVariant(r),
                 icon: const Icon(Icons.delete_outline),
                 color: Colors.red,
-                tooltip: saved
-                    ? 'Saved variants cannot be removed here'
-                    : 'Remove variant',
+                tooltip: 'Remove variant',
               ),
             ],
           ),
@@ -960,11 +1081,28 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             }),
           ),
           const SizedBox(height: 14),
-          _pair(
+          _label('Images (optional)'),
+          r.images.isEmpty
+              ? AddMediaRow(
+                  onTap: _saving ? null : () => _pickVariantImages(r),
+                )
+              : ProductImagesRow(
+                  images: r.images,
+                  enabled: !_saving,
+                  onAdd: () => _pickVariantImages(r),
+                  onRemove: (i) => setState(() => r.images.removeAt(i)),
+                ),
+          const SizedBox(height: 14),
+          if (_isEditing)
             _field('Selling price', r.price,
-                hint: '0', required: true, decimal: true),
-            _field('Quantity', r.qty, hint: '0', required: true, integer: true),
-          ),
+                hint: '0', required: true, decimal: true)
+          else
+            _pair(
+              _field('Selling price', r.price,
+                  hint: '0', required: true, decimal: true),
+              _field('Quantity', r.qty,
+                  hint: '0', required: true, integer: true),
+            ),
           CollapsibleCard(
             plain: true,
             title: 'More details',
@@ -1024,7 +1162,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         _field('SEO description', _seoDesc,
             hint: 'Short summary for search engines', minLines: 2, maxLines: 3),
         const SizedBox(height: 16),
-        _label('SEO image'),
+        _label('SEO image (optional)'),
         SeoImageTile(
           picked: _seoPicked,
           url: _seoUrl,
@@ -1097,6 +1235,36 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           categories: categories,
           names: names,
           notifier: _categoryNotifier,
+        );
+      },
+    );
+  }
+
+  Widget _outletField() {
+    final async = ref.watch(sellerOutletsProvider);
+    return async.when(
+      skipLoadingOnReload: true,
+      loading: () => const FormDisabledField('Loading outlets...', loading: true),
+      error: (e, _) => FormErrorField(
+        'Could not load outlets: ${shortError(e)}',
+        () => ref.invalidate(sellerOutletsProvider),
+      ),
+      data: (all) {
+        final outlets = all.where((o) => o.isActive).toList();
+        if (outlets.isEmpty) {
+          return const FormDisabledField('No active outlet. The main outlet is used.');
+        }
+        return FormDropdown<String>(
+          notifier: _outletNotifier,
+          hint: 'Main outlet (default)',
+          items: [
+            for (final o in outlets)
+              DropdownItem<String>(
+                value: o.id,
+                height: 44,
+                child: formItemText(o.isMain ? '${o.name} (main)' : o.name),
+              ),
+          ],
         );
       },
     );
