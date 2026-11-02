@@ -3,33 +3,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/data/models/seller_models.dart';
 import 'package:yanzee_app/data/models/shop_category.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_products_provider.dart';
 
 // ===================================================================
-// Shared widgets and colours used by the product form
+// Shared widgets used by the product form and the product details page
 // ===================================================================
-
-const kPageBg = Color(0xFFF7F5F2);
-const kFieldBg = Color(0xFFF5F4F1);
 
 /// White rounded card with a thin border. It is a Material (not a plain
 /// decorated Container) so ListTiles inside it can paint their splashes.
-Widget _cardShell({required Widget child}) {
+Widget _cardShell(BuildContext context, {required Widget child}) {
+  final colors = context.colors;
   return Container(
     width: double.infinity,
     margin: const EdgeInsets.only(bottom: 14),
     child: Material(
-      color: Colors.white,
+      color: colors.surfaceContainerLowest,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: AppColors.ink.withOpacity(0.06)),
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
+        side: BorderSide(color: colors.outlineVariant),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -39,8 +37,33 @@ Widget _cardShell({required Widget child}) {
   );
 }
 
+TextStyle? _sectionTitle(BuildContext context) => context.text.titleLarge
+    ?.copyWith(fontSize: Responsive.font(context, 15.5));
+
+/// Small rounded square with an icon, shown at the left of a card title.
+class _IconTile extends StatelessWidget {
+  const _IconTile({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: colors.secondaryContainer,
+        borderRadius: BorderRadius.circular(AppTheme.rLg),
+      ),
+      child: Icon(icon, size: 18, color: colors.primary),
+    );
+  }
+}
+
 class SectionCard extends StatelessWidget {
-  const SectionCard({super.key, 
+  const SectionCard({
+    super.key,
     required this.icon,
     required this.title,
     required this.child,
@@ -56,40 +79,27 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return _cardShell(
+      context,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: kFieldBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 18, color: AppColors.ink),
-              ),
+              _IconTile(icon: icon),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontFamily: AppFonts.brand,
-                        fontSize: Responsive.font(context, 15.5),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Text(title, style: _sectionTitle(context)),
                     if (subtitle != null)
                       Text(
                         subtitle!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
-                          color: AppColors.textGray,
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                   ],
@@ -109,7 +119,8 @@ class SectionCard extends StatelessWidget {
 /// A card (or a plain row when [plain] is true) that opens and closes.
 /// The fields inside keep their values while it is closed.
 class CollapsibleCard extends StatefulWidget {
-  const CollapsibleCard({super.key, 
+  const CollapsibleCard({
+    super.key,
     required this.title,
     required this.child,
     this.icon,
@@ -132,23 +143,17 @@ class _CollapsibleCardState extends State<CollapsibleCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     final header = InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppTheme.rXl),
       onTap: () => setState(() => _open = !_open),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: widget.plain ? 8 : 0),
         child: Row(
           children: [
             if (widget.icon != null) ...[
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: kFieldBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(widget.icon, size: 18, color: AppColors.ink),
-              ),
+              _IconTile(icon: widget.icon!),
               const SizedBox(width: 12),
             ],
             Expanded(
@@ -159,19 +164,17 @@ class _CollapsibleCardState extends State<CollapsibleCard> {
                     widget.title,
                     style: widget.plain
                         ? const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700)
-                        : TextStyle(
-                            fontFamily: AppFonts.brand,
-                            fontSize: Responsive.font(context, 15.5),
-                            fontWeight: FontWeight.bold,
-                          ),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          )
+                        : _sectionTitle(context),
                   ),
                   if (widget.subtitle != null)
                     Text(
                       widget.subtitle!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
-                        color: AppColors.textGray,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                 ],
@@ -206,7 +209,7 @@ class _CollapsibleCardState extends State<CollapsibleCard> {
 
     if (widget.plain) return content;
 
-    return _cardShell(child: content);
+    return _cardShell(context, child: content);
   }
 }
 
@@ -217,14 +220,15 @@ class AddMediaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppTheme.rXl),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: kFieldBg,
-          borderRadius: BorderRadius.circular(14),
+          color: colors.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppTheme.rXl),
         ),
         child: Row(
           children: [
@@ -232,28 +236,31 @@ class AddMediaRow extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                color: colors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(AppTheme.rLg),
               ),
-              child: const Icon(Iconsax.gallery_add, size: 20),
+              child: Icon(Iconsax.gallery_add, size: 20, color: colors.primary),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Add Media',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                   Text(
                     'Add photos for this product',
-                    style: TextStyle(fontSize: 12, color: AppColors.textGray),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textGray),
+            Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
           ],
         ),
       ),
@@ -262,7 +269,8 @@ class AddMediaRow extends StatelessWidget {
 }
 
 class ChoiceBox extends StatelessWidget {
-  const ChoiceBox({super.key, 
+  const ChoiceBox({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,
@@ -274,17 +282,20 @@ class ChoiceBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppTheme.rXl),
       onTap: onTap,
       child: Container(
         height: 46,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: selected
+              ? colors.secondaryContainer
+              : colors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(AppTheme.rXl),
           border: Border.all(
-            color: selected ? AppColors.ink : Colors.grey.shade300,
+            color: selected ? colors.primary : colors.outline,
             width: selected ? 1.4 : 1,
           ),
         ),
@@ -296,7 +307,7 @@ class ChoiceBox extends StatelessWidget {
                   ? Icons.radio_button_checked
                   : Icons.radio_button_unchecked,
               size: 18,
-              color: selected ? AppColors.ink : Colors.grey,
+              color: selected ? colors.primary : colors.onSurfaceVariant,
             ),
             const SizedBox(width: 6),
             Flexible(
@@ -307,6 +318,9 @@ class ChoiceBox extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? colors.onSecondaryContainer
+                        : colors.onSurface,
                   ),
                 ),
               ),
@@ -318,6 +332,8 @@ class ChoiceBox extends StatelessWidget {
   }
 }
 
+/// Removable tag (categories, tags, similar products). Kept under its old
+/// name so no other file has to change.
 class BlackChip extends StatelessWidget {
   const BlackChip({super.key, required this.label, required this.onRemove});
 
@@ -326,10 +342,16 @@ class BlackChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
-      padding: EdgeInsets.only(left: 12, right: onRemove == null ? 12 : 6, top: 6, bottom: 6),
+      padding: EdgeInsets.only(
+        left: 12,
+        right: onRemove == null ? 12 : 6,
+        top: 6,
+        bottom: 6,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.ink,
+        color: colors.secondaryContainer,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -342,8 +364,8 @@ class BlackChip extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: colors.onSecondaryContainer,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                 ),
@@ -354,7 +376,11 @@ class BlackChip extends StatelessWidget {
             const SizedBox(width: 4),
             InkWell(
               onTap: onRemove,
-              child: const Icon(Icons.close, size: 16, color: Colors.white),
+              child: Icon(
+                Icons.close,
+                size: 16,
+                color: colors.onSecondaryContainer,
+              ),
             ),
           ],
         ],
@@ -371,19 +397,20 @@ class MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: kFieldBg,
-        borderRadius: BorderRadius.circular(12),
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 11.5, color: AppColors.textGray),
+            style: TextStyle(fontSize: 11.5, color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 2),
           Text(
@@ -410,6 +437,8 @@ String? normalizeHex(String raw) {
   return t;
 }
 
+/// Turns a stored hex code into a Color. An invalid code falls back to grey
+/// (this is product data, not a theme colour).
 Color hexToColor(String hex) {
   final n = normalizeHex(hex);
   if (n == null) return Colors.grey;
@@ -437,7 +466,7 @@ class VariantColorPicker extends StatelessWidget {
   void _remove(String hex) => onChanged([...selected]..remove(hex));
 
   Future<void> _openPicker(BuildContext context) async {
-    var temp = const Color(0xFF3366CC);
+    var temp = context.colors.primary;
     final picked = await showDialog<Color>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -491,11 +520,6 @@ class VariantColorPicker extends StatelessWidget {
           onPressed: () => _openPicker(context),
           icon: const Icon(Icons.palette_outlined, size: 18),
           label: const Text('Add colour'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.ink,
-            side: BorderSide(color: Colors.grey.shade300),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
         ),
       ],
     );
@@ -511,12 +535,13 @@ class ColorChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.only(left: 6, right: 6, top: 5, bottom: 5),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: colors.outline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -527,15 +552,18 @@ class ColorChip extends StatelessWidget {
             decoration: BoxDecoration(
               color: hexToColor(hex),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey.shade400),
+              border: Border.all(color: colors.outline),
             ),
           ),
           const SizedBox(width: 8),
-          Text(hex, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+          Text(
+            hex,
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(width: 6),
           InkWell(
             onTap: onRemove,
-            child: const Icon(Icons.close, size: 16, color: AppColors.textGray),
+            child: Icon(Icons.close, size: 16, color: colors.onSurfaceVariant),
           ),
         ],
       ),
@@ -545,35 +573,43 @@ class ColorChip extends StatelessWidget {
 
 // ---- dropdowns --------------------------------------------------------
 
-ButtonStyleData formButtonStyle() => ButtonStyleData(
-      height: 48,
-      padding: const EdgeInsets.only(left: 14, right: 8),
-      decoration: BoxDecoration(
-        color: kFieldBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-    );
+ButtonStyleData formButtonStyle(BuildContext context) {
+  final colors = context.colors;
+  return ButtonStyleData(
+    height: 48,
+    padding: const EdgeInsets.only(left: 14, right: 8),
+    decoration: BoxDecoration(
+      color: colors.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(AppTheme.rXl),
+      border: Border.all(color: colors.outline),
+    ),
+  );
+}
 
-IconStyleData formIconStyle() => const IconStyleData(
+IconStyleData formIconStyle(BuildContext context) => const IconStyleData(
       icon: Icon(Icons.keyboard_arrow_down_rounded),
       openMenuIcon: Icon(Icons.keyboard_arrow_up_rounded),
       iconSize: 22,
     );
 
-DropdownStyleData formDropStyle(double maxHeight) => DropdownStyleData(
-      maxHeight: maxHeight,
-      elevation: 6,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      offset: const Offset(0, -2),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      scrollbarTheme: ScrollbarThemeData(
-        radius: const Radius.circular(40),
-        thickness: WidgetStateProperty.all(4),
-      ),
-    );
+DropdownStyleData formDropStyle(BuildContext context, double maxHeight) {
+  final colors = context.colors;
+  return DropdownStyleData(
+    maxHeight: maxHeight,
+    elevation: 6,
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    offset: const Offset(0, -2),
+    decoration: BoxDecoration(
+      color: colors.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(AppTheme.rXl),
+      border: Border.all(color: colors.outlineVariant),
+    ),
+    scrollbarTheme: ScrollbarThemeData(
+      radius: const Radius.circular(40),
+      thickness: WidgetStateProperty.all(4),
+    ),
+  );
+}
 
 /// Menu height: about 38% of the screen, kept between 160 and 280.
 double formMenuHeight(BuildContext context) =>
@@ -594,32 +630,35 @@ class FormDisabledField extends StatelessWidget {
   final bool loading;
 
   @override
-  Widget build(BuildContext context) => Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: kFieldBg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                text,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, color: AppColors.textGray),
-              ),
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
             ),
-            if (loading)
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-          ],
-        ),
-      );
+          ),
+          if (loading)
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Red box with the error text and a Retry button.
@@ -630,29 +669,33 @@ class FormErrorField extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.only(left: 14, right: 4, top: 6, bottom: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFDECEA),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                message,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, color: Colors.red.shade800),
-              ),
+  Widget build(BuildContext context) {
+    final s = context.status;
+    return Container(
+      padding: const EdgeInsets.only(left: 14, right: 4, top: 6, bottom: 6),
+      decoration: BoxDecoration(
+        color: s.errorBannerBg,
+        border: Border.all(color: s.errorBannerBorder),
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              message,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: s.dangerFg),
             ),
-            TextButton(onPressed: onRetry, child: const Text('Retry')),
-          ],
-        ),
-      );
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
 }
 
-/// Single-choice dropdown (brand, audience).
+/// Single-choice dropdown (brand, audience, outlet).
 class FormDropdown<T> extends StatelessWidget {
   const FormDropdown({
     super.key,
@@ -674,14 +717,17 @@ class FormDropdown<T> extends StatelessWidget {
           hint,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 14, color: AppColors.textGray),
+          style: TextStyle(
+            fontSize: 14,
+            color: context.colors.onSurfaceVariant,
+          ),
         ),
         items: items,
         valueListenable: notifier,
         onChanged: (v) => notifier.value = v,
-        buttonStyleData: formButtonStyle(),
-        iconStyleData: formIconStyle(),
-        dropdownStyleData: formDropStyle(formMenuHeight(context)),
+        buttonStyleData: formButtonStyle(context),
+        iconStyleData: formIconStyle(context),
+        dropdownStyleData: formDropStyle(context, formMenuHeight(context)),
         menuItemStyleData: const MenuItemStyleData(
           padding: EdgeInsets.symmetric(horizontal: 14),
         ),
@@ -707,15 +753,17 @@ class CategoryMultiSelect extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DropdownButtonHideUnderline(
           child: DropdownButton2<String>(
             isExpanded: true,
-            hint: const Text(
+            hint: Text(
               'Select categories',
-              style: TextStyle(fontSize: 14, color: AppColors.textGray),
+              style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
             ),
             items: [
               for (final c in categories)
@@ -737,7 +785,9 @@ class CategoryMultiSelect extends StatelessWidget {
                                   ? Icons.check_box_rounded
                                   : Icons.check_box_outline_blank_rounded,
                               size: 20,
-                              color: on ? AppColors.ink : Colors.grey,
+                              color: on
+                                  ? colors.primary
+                                  : colors.onSurfaceVariant,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -747,8 +797,9 @@ class CategoryMultiSelect extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight:
-                                      on ? FontWeight.w600 : FontWeight.w400,
+                                  fontWeight: on
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
                                 ),
                               ),
                             ),
@@ -782,17 +833,19 @@ class CategoryMultiSelect extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         color: selected.isEmpty
-                            ? AppColors.textGray
-                            : AppColors.ink,
+                            ? colors.onSurfaceVariant
+                            : colors.onSurface,
                       ),
                     ),
                   ),
                 ),
             ],
-            buttonStyleData: formButtonStyle(),
-            iconStyleData: formIconStyle(),
-            dropdownStyleData: formDropStyle(formMenuHeight(context)),
-            menuItemStyleData: const MenuItemStyleData(padding: EdgeInsets.zero),
+            buttonStyleData: formButtonStyle(context),
+            iconStyleData: formIconStyle(context),
+            dropdownStyleData: formDropStyle(context, formMenuHeight(context)),
+            menuItemStyleData: const MenuItemStyleData(
+              padding: EdgeInsets.zero,
+            ),
           ),
         ),
         ValueListenableBuilder<List<String>>(
@@ -808,7 +861,8 @@ class CategoryMultiSelect extends StatelessWidget {
                   for (final id in selected)
                     BlackChip(
                       label: names[id] ?? 'Category',
-                      onRemove: () => notifier.value = [...selected]..remove(id),
+                      onRemove: () =>
+                          notifier.value = [...selected]..remove(id),
                     ),
                 ],
               ),
@@ -839,24 +893,26 @@ class ProductImagesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final width = MediaQuery.sizeOf(context).width;
     final size = ((width - 32 - 32 - 24) / 3).clamp(84.0, 120.0).toDouble();
+
     return SizedBox(
       height: size,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          for (var i = 0; i < images.length; i++) _tile(i, size),
+          for (var i = 0; i < images.length; i++) _tile(context, i, size),
           GestureDetector(
             onTap: enabled ? onAdd : null,
             child: Container(
               width: size,
               height: size,
               decoration: BoxDecoration(
-                color: kFieldBg,
-                borderRadius: BorderRadius.circular(14),
+                color: colors.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppTheme.rXl),
               ),
-              child: const Icon(Icons.add, color: AppColors.ink),
+              child: Icon(Icons.add, color: colors.primary),
             ),
           ),
         ],
@@ -864,15 +920,18 @@ class ProductImagesRow extends StatelessWidget {
     );
   }
 
-  Widget _tile(int index, double size) {
+  Widget _tile(BuildContext context, int index, double size) {
+    final colors = context.colors;
     final entry = images[index];
+    final overlay = colors.scrim.withValues(alpha: 0.6);
+
     return Container(
       width: size,
       height: size,
       margin: const EdgeInsets.only(right: 10),
       decoration: BoxDecoration(
-        color: kFieldBg,
-        borderRadius: BorderRadius.circular(14),
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -884,7 +943,7 @@ class ProductImagesRow extends StatelessWidget {
                   entry.url!,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) =>
-                      Container(color: Colors.grey.shade200),
+                      Container(color: colors.surfaceContainerHighest),
                 ),
           if (index == 0)
             Positioned(
@@ -893,12 +952,12 @@ class ProductImagesRow extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: overlay,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
+                child: Text(
                   'Cover',
-                  style: TextStyle(color: Colors.white, fontSize: 10),
+                  style: TextStyle(color: colors.onInverseSurface, fontSize: 10),
                 ),
               ),
             ),
@@ -910,10 +969,14 @@ class ProductImagesRow extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: overlay,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close, color: Colors.white, size: 14),
+                child: Icon(
+                  Icons.close,
+                  color: colors.onInverseSurface,
+                  size: 14,
+                ),
               ),
             ),
           ),
@@ -940,16 +1003,18 @@ class SeoImageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final hasImage = picked != null || (url?.isNotEmpty ?? false);
     final size = Responsive.isSmallPhone(context) ? 110.0 : 130.0;
+
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: kFieldBg,
-          borderRadius: BorderRadius.circular(14),
+          color: colors.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppTheme.rXl),
         ),
         clipBehavior: Clip.antiAlias,
         child: hasImage
@@ -962,20 +1027,20 @@ class SeoImageTile extends StatelessWidget {
                           url!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
-                              Container(color: Colors.grey.shade200),
+                              Container(color: colors.surfaceContainerHighest),
                         ),
                   Positioned(
                     left: 0,
                     right: 0,
                     bottom: 0,
                     child: Container(
-                      color: Colors.black.withOpacity(0.55),
+                      color: colors.scrim.withValues(alpha: 0.55),
                       padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: const Text(
+                      child: Text(
                         'Replace',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white,
+                          color: colors.onInverseSurface,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -984,12 +1049,12 @@ class SeoImageTile extends StatelessWidget {
                   ),
                 ],
               )
-            : const Column(
+            : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Iconsax.gallery_add, color: AppColors.textGray),
-                  SizedBox(height: 6),
-                  Text('Add image', style: TextStyle(fontSize: 12)),
+                  Icon(Iconsax.gallery_add, color: colors.onSurfaceVariant),
+                  const SizedBox(height: 6),
+                  const Text('Add image', style: TextStyle(fontSize: 12)),
                 ],
               ),
       ),
@@ -1014,16 +1079,18 @@ class ReleaseDateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final d = date;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppTheme.rXl),
       child: Container(
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: kFieldBg,
-          borderRadius: BorderRadius.circular(12),
+          color: colors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(AppTheme.rXl),
+          border: Border.all(color: colors.outline),
         ),
         child: Row(
           children: [
@@ -1032,7 +1099,7 @@ class ReleaseDateField extends StatelessWidget {
                 d == null ? 'Not set' : d.toIso8601String().substring(0, 10),
                 style: TextStyle(
                   fontSize: 14,
-                  color: d == null ? AppColors.textGray : AppColors.ink,
+                  color: d == null ? colors.onSurfaceVariant : colors.onSurface,
                 ),
               ),
             ),
@@ -1058,22 +1125,18 @@ Future<List<String>?> showSimilarProductsSheet(
   final result = await showModalBottomSheet<Set<String>>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setSheet) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Similar products',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  style: ctx.text.headlineSmall,
                 ),
               ),
             ),
@@ -1085,7 +1148,6 @@ Future<List<String>?> showSimilarProductsSheet(
                     CheckboxListTile(
                       value: chosen.contains(p.id),
                       title: Text(p.name),
-                      activeColor: AppColors.ink,
                       onChanged: (v) => setSheet(() {
                         if (v == true) {
                           chosen.add(p.id);
@@ -1101,16 +1163,9 @@ Future<List<String>?> showSimilarProductsSheet(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.ink,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
+                child: FilledButton(
                   onPressed: () => Navigator.of(ctx).pop(chosen),
-                  child: const Text(
-                    'Done',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  child: const Text('Done'),
                 ),
               ),
             ),

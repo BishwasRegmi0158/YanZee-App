@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
@@ -20,7 +22,7 @@ class SellerMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: const Icon(Iconsax.menu_1, color: Colors.black),
+      icon: Icon(Iconsax.menu_1, color: context.colors.onSurface),
       onPressed: () => sellerShellScaffoldKey.currentState?.openDrawer(),
     );
   }
@@ -34,10 +36,6 @@ class SellerDrawer extends ConsumerStatefulWidget {
 }
 
 class _SellerDrawerState extends ConsumerState<SellerDrawer> {
-  static const _panel = Color(0xFFD5DBD3);
-  static const _accent = Color(0xFF2E9E2E);
-  static const _text = Color(0xFF3F473F);
-
   bool _shopsExpanded = false;
 
   /// OWNER -> Owner, ORDER_MANAGER -> Order Manager
@@ -70,6 +68,7 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final store = ref.watch(sellerStoreProvider);
     final shops = ref.watch(myShopsProvider).value ?? const <SellerShop>[];
     final currentId = ref.watch(myShopProvider).value?.id;
@@ -91,8 +90,9 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: _panel,
-              borderRadius: BorderRadius.circular(28),
+              color: colors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(AppTheme.r2xl + 6),
+              border: Border.all(color: colors.outlineVariant),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,10 +102,10 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                   children: [
                     CircleAvatar(
                       radius: 26,
-                      backgroundColor: Colors.white,
+                      backgroundColor: colors.surfaceContainerHighest,
                       backgroundImage: logo,
                       child: logo == null
-                          ? const Icon(Iconsax.shop, color: _text)
+                          ? Icon(Iconsax.shop, color: colors.onSurface)
                           : null,
                     ),
                     const SizedBox(width: 12),
@@ -117,10 +117,9 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                             store.name.isEmpty ? 'Your store' : store.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: context.text.titleLarge?.copyWith(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
-                              color: _text,
                             ),
                           ),
                           if (subtitle.isNotEmpty)
@@ -130,7 +129,7 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12.5,
-                                color: _text.withValues(alpha: 0.7),
+                                color: colors.onSurfaceVariant,
                               ),
                             ),
                         ],
@@ -162,7 +161,9 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                               child: Icon(
                                 Iconsax.arrow_down_1,
                                 size: 18,
-                                color: _shopsExpanded ? _accent : _text,
+                                color: _shopsExpanded
+                                    ? colors.primary
+                                    : colors.onSurface,
                               ),
                             ),
                           ),
@@ -281,7 +282,7 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                   ),
                 ),
 
-                Divider(color: _text.withValues(alpha: 0.15), height: 1),
+                Divider(color: colors.outlineVariant, height: 1),
                 const SizedBox(height: 6),
                 _item(
                   Iconsax.logout,
@@ -290,7 +291,7 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                     await AuthService.logout();
                     if (c.mounted) GoRouter.of(c).go('/home');
                   }),
-                  color: const Color(0xFFE05A47),
+                  color: colors.error,
                 ),
               ],
             ),
@@ -308,16 +309,15 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
     Color? color,
     Widget? trailing,
   }) {
-    final tint = color ?? (highlighted ? _accent : _text);
+    final colors = context.colors;
+    final tint = color ?? (highlighted ? colors.primary : colors.onSurface);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
-        color: highlighted
-            ? Colors.white.withValues(alpha: 0.55)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        color: highlighted ? colors.secondaryContainer : Colors.transparent,
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppTheme.rXl),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),

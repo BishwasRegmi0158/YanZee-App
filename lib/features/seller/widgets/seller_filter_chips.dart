@@ -30,10 +30,17 @@ class SellerFilterChips extends StatelessWidget {
                 label: Text(label),
                 selected: selected == value,
                 showCheckmark: false,
+                side: BorderSide(
+                  color: selected == value
+                      ? scheme.primary
+                      : scheme.outlineVariant,
+                ),
                 labelStyle: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: selected == value ? scheme.onPrimary : scheme.onSurface,
+                  color: selected == value
+                      ? scheme.onSecondaryContainer
+                      : scheme.onSurfaceVariant,
                 ),
                 onSelected: (_) => onSelected(value),
               ),

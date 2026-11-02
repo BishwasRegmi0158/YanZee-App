@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/constants/categories.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/features/home/providers/product_provider.dart';
 import 'package:yanzee_app/features/home/screens/widgets/category_grid_item.dart';
 import 'package:yanzee_app/features/home/screens/widgets/category_pill.dart';
@@ -34,9 +35,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final newArrivals = ref.watch(newArrivalsProvider);
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: AppColors.homeBackground,
       body: SafeArea(
         top: true,
         bottom: false,
@@ -58,17 +59,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           height: 46,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5),
-                            borderRadius: BorderRadius.circular(12),
+                            color: colors.surfaceContainerLowest,
+                            borderRadius: BorderRadius.circular(AppTheme.rXl),
+                            border: Border.all(color: colors.outline),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
-                              Icon(Icons.search, color: AppColors.ink, size: 20),
-                              SizedBox(width: 8),
+                              Icon(
+                                Icons.search,
+                                color: colors.onSurfaceVariant,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
                               Text(
                                 'Search products, brands...',
                                 style: TextStyle(
-                                  color: AppColors.ink,
+                                  color: colors.onSurfaceVariant,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -80,19 +86,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(width: 10),
                     // TODO(dev-only): remove once the real "Become a Seller"
-                   
+                    // entry point exists.
                     GestureDetector(
                       onTap: () => context.go('/seller-dashboard'),
                       child: Container(
                         height: 46,
                         width: 46,
                         decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(12),
+                          color: colors.onSurface,
+                          borderRadius: BorderRadius.circular(AppTheme.rXl),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.storefront_outlined,
-                          color: Colors.white,
+                          color: colors.surface,
                           size: 20,
                         ),
                       ),
@@ -150,26 +156,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-            // ---------------- Categories grid (Just In / Beauty / Fashion ...) ----------------
+            // ---------------- Categories grid ----------------
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Categories',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Text('Categories', style: context.text.headlineSmall),
                     GestureDetector(
                       onTap: () => context.push('/home/categories'),
-                      child: const Text(
+                      child: Text(
                         'See all',
                         style: TextStyle(
-                          color: Color(0xFFE53935),
+                          color: colors.primary,
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),

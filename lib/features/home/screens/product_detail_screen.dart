@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/constants/categories.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_widgets.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/product.dart';
@@ -99,6 +101,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final product = widget.product;
     final isWishlisted = ref.watch(wishlistProvider).contains(product.id);
     final shopName = ref.watch(shopNameProvider(product.shopId)).value ?? '';
@@ -107,19 +110,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final description = product.description?.trim() ?? '';
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
           IconButton(
             icon: Icon(
               isWishlisted ? Icons.favorite : Icons.favorite_border,
-              color: isWishlisted ? Colors.red : Colors.black,
+              color: isWishlisted ? colors.primary : null,
             ),
             onPressed: () => _requireLogin(
               context,
@@ -136,10 +136,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             Container(
               width: double.infinity,
               height: 320,
-              color: const Color(0xFFF5F5F5),
+              color: colors.surfaceContainerLowest,
               child: images.isEmpty
-                  ? const Center(
-                      child: Icon(Icons.image_not_supported_outlined, size: 48),
+                  ? Center(
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        size: 48,
+                        color: colors.onSurfaceVariant,
+                      ),
                     )
                   : Stack(
                       children: [
@@ -154,10 +158,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             child: Image.network(
                               images[i],
                               fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Center(
+                              errorBuilder: (_, __, ___) => Center(
                                 child: Icon(
                                   Icons.image_not_supported_outlined,
                                   size: 48,
+                                  color: colors.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -181,8 +186,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: i == _imageIndex
-                                        ? Colors.black
-                                        : Colors.grey.shade400,
+                                        ? colors.primary
+                                        : colors.outline,
                                   ),
                                 ),
                               ),
@@ -191,8 +196,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       ],
                     ),
             ),
-            Padding(
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: colors.outlineVariant),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -200,9 +212,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _Chip(categoryLabelFor(product.category).toUpperCase()),
+                      StatusPill(
+                        label: categoryLabelFor(product.category).toUpperCase(),
+                      ),
                       if (product.audience.isNotEmpty)
-                        _Chip(audienceLabelFor(product.audience).toUpperCase()),
+                        StatusPill(
+                          label:
+                              audienceLabelFor(product.audience).toUpperCase(),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -212,7 +229,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         Icon(
                           Icons.storefront_outlined,
                           size: 14,
-                          color: Colors.grey.shade600,
+                          color: colors.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
                         Flexible(
@@ -221,7 +238,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade600,
+                              color: colors.onSurfaceVariant,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -229,13 +246,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       ],
                     ),
                   const SizedBox(height: 4),
-                  Text(
-                    product.name,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text(product.name, style: context.text.headlineLarge),
                   const SizedBox(height: 14),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -253,7 +264,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           formatPrice(product.originalPrice),
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.grey.shade500,
+                            color: colors.onSurfaceVariant,
                             decoration: TextDecoration.lineThrough,
                           ),
                         ),
@@ -264,13 +275,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE53935),
+                            color: colors.primary,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             '-${product.discountPercentage.toStringAsFixed(0)}%',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: colors.onPrimary,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
@@ -300,20 +311,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
                           'Only ${selected.stock} left',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFFE53935),
-                          ),
+                          style: TextStyle(fontSize: 12, color: colors.error),
                         ),
                       ),
                   ],
                   if (!product.inStock)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 16),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
                       child: Text(
                         'Out of stock',
                         style: TextStyle(
-                          color: Color(0xFFE53935),
+                          color: colors.error,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -332,36 +340,30 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       description,
                       style: TextStyle(
                         fontSize: 13,
-                        height: 1.4,
-                        color: Colors.grey.shade700,
+                        height: 1.5,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
-                  const SizedBox(height: 40),
                 ],
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      elevation: 0,
-                      side: BorderSide(color: Colors.black.withOpacity(0.8)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLowest,
+          border: Border(top: BorderSide(color: colors.outlineVariant)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
                     onPressed: (_isAdding || !product.inStock)
                         ? null
                         : () => _requireLogin(context, _handleAddToCart),
@@ -369,77 +371,28 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.black,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.shopping_bag_outlined),
-                    label: const Text(
-                      'Add to Cart',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
+                    label: const Text('Add to Cart'),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SizedBox(
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      disabledBackgroundColor: colors.surfaceContainerHighest,
+                      disabledForegroundColor: colors.onSurfaceVariant,
                     ),
                     onPressed: product.inStock
                         ? () => _requireLogin(context, _handleBuyNow)
                         : null,
-                    child: const Text(
-                      'Buy Now',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
+                    child: const Text('Buy Now'),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: Colors.grey.shade700,
-          letterSpacing: 0.5,
         ),
       ),
     );

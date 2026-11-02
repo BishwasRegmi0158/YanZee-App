@@ -5,14 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/customer.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_customers_provider.dart';
-
-const _pageBg = Color(0xFFF7F5F2);
 
 class CustomersScreen extends ConsumerStatefulWidget {
   const CustomersScreen({super.key});
@@ -83,7 +81,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: ctx.colors.error),
             child: const Text('Delete'),
           ),
         ],
@@ -91,8 +89,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     );
 
     if (confirmed == true && mounted) {
-      final error =
-          await ref.read(sellerCustomersProvider.notifier).delete(c);
+      final error = await ref.read(sellerCustomersProvider.notifier).delete(c);
       if (!mounted) return;
       _snack(
         error ?? '"${c.name}" deleted successfully',
@@ -107,16 +104,13 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     final query = ref.watch(customerSearchProvider);
 
     return Scaffold(
-      backgroundColor: _pageBg,
       body: SafeArea(
         child: customersAsync.when(
           skipLoadingOnReload: true,
           loading: () => _page(const [
             Padding(
               padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(
-                child: CircularProgressIndicator(color: AppColors.gold),
-              ),
+              child: Center(child: CircularProgressIndicator()),
             ),
           ]),
           error: (e, _) => _page([
@@ -191,45 +185,26 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: 'Search by name, phone or email',
-        prefixIcon: const Icon(
-          Iconsax.search_normal_1,
-          size: 20,
-          color: AppColors.textGray,
-        ),
+        prefixIcon: const Icon(Iconsax.search_normal_1, size: 20),
         suffixIcon: _searchCtrl.text.isEmpty
             ? null
             : IconButton(
                 onPressed: _clearSearch,
                 icon: const Icon(Icons.close, size: 18),
               ),
-        filled: true,
-        fillColor: Colors.white,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.ink),
-        ),
       ),
     );
   }
 
   List<Widget> _listBody(CustomersState s, String query) {
+    final colors = context.colors;
     final items = s.items;
 
     return [
       Text(
         '${s.totalCount} customer${s.totalCount == 1 ? '' : 's'}'
         '${query.isEmpty ? '' : ' found'}',
-        style: const TextStyle(fontSize: 12, color: AppColors.textGray),
+        style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
       ),
       const SizedBox(height: 8),
       if (items.isEmpty)
@@ -237,35 +212,30 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
           padding: const EdgeInsets.symmetric(vertical: 48),
           child: Column(
             children: [
-              Icon(Iconsax.user, size: 44, color: Colors.grey.shade400),
+              Icon(Iconsax.user, size: 44, color: colors.outline),
               const SizedBox(height: 10),
               Text(
                 query.isEmpty
                     ? 'No customers yet'
                     : 'No customers match "$query"',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textGray),
+                style: TextStyle(color: colors.onSurfaceVariant),
               ),
             ],
           ),
         )
       else
         Container(
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.ink.withOpacity(0.06)),
+            color: colors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppTheme.r2xl),
+            border: Border.all(color: colors.outlineVariant),
           ),
           child: Column(
             children: [
               for (var i = 0; i < items.length; i++) ...[
-                if (i > 0)
-                  Divider(
-                    height: 1,
-                    indent: 14,
-                    endIndent: 14,
-                    color: Colors.grey.shade200,
-                  ),
+                if (i > 0) const Divider(height: 1, indent: 14, endIndent: 14),
                 _CustomerRow(
                   customer: items[i],
                   onTap: () => context.push(
@@ -289,10 +259,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             child: SizedBox(
               width: 22,
               height: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: AppColors.gold,
-              ),
+              child: CircularProgressIndicator(strokeWidth: 2.5),
             ),
           ),
         ),
@@ -313,13 +280,15 @@ class _HeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     final backButton = IconButton(
       onPressed: onBack,
       tooltip: 'Back',
-      icon: const Icon(
+      icon: Icon(
         Icons.arrow_back_ios_new_rounded,
         size: 20,
-        color: AppColors.ink,
+        color: colors.onSurface,
       ),
     );
 
@@ -328,11 +297,8 @@ class _HeaderRow extends StatelessWidget {
       children: [
         Text(
           'Customers',
-          style: TextStyle(
-            fontFamily: AppFonts.brand,
+          style: context.text.headlineLarge?.copyWith(
             fontSize: Responsive.font(context, 24),
-            fontWeight: FontWeight.bold,
-            color: AppColors.ink,
           ),
         ),
         const SizedBox(height: 2),
@@ -341,21 +307,14 @@ class _HeaderRow extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: Responsive.font(context, 12),
-            color: AppColors.textGray,
+            color: colors.onSurfaceVariant,
           ),
         ),
       ],
     );
 
-    final addButton = ElevatedButton.icon(
+    final addButton = FilledButton.icon(
       onPressed: onAdd,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.ink,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
       icon: const Icon(Iconsax.add, size: 18),
       label: Text(
         'Add',
@@ -369,10 +328,7 @@ class _HeaderRow extends StatelessWidget {
         children: [
           Row(children: [backButton, Expanded(child: title)]),
           const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: addButton,
-          ),
+          Padding(padding: const EdgeInsets.only(left: 8), child: addButton),
         ],
       );
     }
@@ -412,12 +368,12 @@ class _CustomerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final created = customer.createdAt == null
         ? null
         : _dateFmt.format(customer.createdAt!.toLocal());
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
@@ -429,7 +385,7 @@ class _CustomerRow extends StatelessWidget {
               height: 48,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: colors.surfaceContainerHighest,
                 shape: BoxShape.circle,
               ),
               child: Text(
@@ -437,7 +393,7 @@ class _CustomerRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: Responsive.font(context, 17),
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: colors.onSurface,
                 ),
               ),
             ),
@@ -453,7 +409,6 @@ class _CustomerRow extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: Responsive.font(context, 14.5),
-                      color: AppColors.ink,
                     ),
                   ),
                   if (customer.phone != null) ...[
@@ -464,7 +419,7 @@ class _CustomerRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: Responsive.font(context, 12.5),
-                        color: AppColors.textGray,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -476,7 +431,7 @@ class _CustomerRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: Responsive.font(context, 12.5),
-                        color: AppColors.textGray,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -486,7 +441,7 @@ class _CustomerRow extends StatelessWidget {
                       'Added $created',
                       style: TextStyle(
                         fontSize: Responsive.font(context, 11.5),
-                        color: AppColors.textGray,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -496,16 +451,13 @@ class _CustomerRow extends StatelessWidget {
             PopupMenuButton<String>(
               tooltip: 'More',
               icon: const Icon(Icons.more_vert, size: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
               onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'edit', child: Text('Edit')),
-                PopupMenuDivider(height: 1),
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                const PopupMenuDivider(height: 1),
                 PopupMenuItem(
                   value: 'delete',
-                  child: Text('Delete', style: TextStyle(color: Colors.red)),
+                  child: Text('Delete', style: TextStyle(color: colors.error)),
                 ),
               ],
             ),

@@ -4,19 +4,22 @@ import 'package:http/http.dart' as http;
 import 'package:yanzee_app/core/api/api_client.dart';
 import 'package:yanzee_app/core/api/api_config.dart';
 import 'package:yanzee_app/data/models/inventory.dart';
+import 'package:yanzee_app/data/models/inventory_overview.dart';
+import 'package:yanzee_app/data/models/product_batches.dart';
 
 final inventoryApiServiceProvider = Provider((ref) => InventoryApiService());
 
 class InventoryApiService {
-  /// Query-parameter name of the outlet filter on GET /inventory/stock.
-  /// Your Postman call used lowercase "outletid". The rest of your API uses
+  /// Query-parameter name of the outlet filter (stock list and overview).
+  /// Your Postman calls used lowercase "outletid". The rest of your API uses
   /// camelCase (for example categoryId), so this uses "outletId". If the
   /// outlet filter has no effect, change it here.
   static const _outletParam = 'outletId';
 
   Uri _url(String path, [Map<String, String>? query]) =>
-      Uri.parse('${ApiConfig.baseUrl}/inventory$path')
-          .replace(queryParameters: query);
+      Uri.parse('${ApiConfig.baseUrl}/inventory$path').replace(
+        queryParameters: (query == null || query.isEmpty) ? null : query,
+      );
 
   Map<String, String> _headers(
     Map<String, String> h,
@@ -67,6 +70,46 @@ class InventoryApiService {
           if (type != null && type.isNotEmpty) 'type': type,
         },
       );
+
+  /// GET /inventory/overview, for one outlet or for all active outlets.
+  Future<InventoryOverview> getOverview(
+    String storeId, {
+    String? outletId,
+  }) async {
+    final res = await ApiClient.send(
+      (h) => http.get(
+        _url('/overview', {
+          if (outletId != null && outletId.isNotEmpty) _outletParam: outletId,
+        }),
+        headers: _headers(h, storeId),
+      ),
+    );
+    _ensureOk(res, 'Could not load the inventory overview');
+    return InventoryOverview.fromJson(_data(res));
+  }
+
+  /// GET /inventory/items/:productId/batches. With [variantId] only that
+  /// variant is returned. The API pages the batches of each variant.
+  Future<ProductBatches> getBatches(
+    String storeId,
+    String productId, {
+    String? variantId,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final res = await ApiClient.send(
+      (h) => http.get(
+        _url('/items/$productId/batches', {
+          'page': '$page',
+          'limit': '$limit',
+          if (variantId != null && variantId.isNotEmpty) 'variantId': variantId,
+        }),
+        headers: _headers(h, storeId),
+      ),
+    );
+    _ensureOk(res, 'Could not load the stock batches');
+    return ProductBatches.fromJson(_data(res));
+  }
 
   /// POST /inventory/stock-in. Empty optional header fields are left out.
   Future<void> stockIn(

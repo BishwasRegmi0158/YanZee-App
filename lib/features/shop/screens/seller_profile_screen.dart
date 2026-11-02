@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/data/models/seller_shop.dart';
 import 'package:yanzee_app/data/models/seller_store.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_reviews_provider.dart';
@@ -35,6 +35,7 @@ class SellerProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final store = ref.watch(sellerStoreProvider);
     final reviews = ref.watch(sellerReviewsProvider);
     final avg = averageRating(reviews);
@@ -43,112 +44,81 @@ class SellerProfileScreen extends ConsumerWidget {
     final email = store.contactEmail;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F5F2),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F5F2),
-        elevation: 0,
-        title: const Text(
-          'Seller profile',
-          style: TextStyle(
-            fontFamily: AppFonts.brand,
-            fontSize: 20,
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Seller profile')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Center(
             child: CircleAvatar(
               radius: 42,
-              backgroundColor: Colors.white,
+              backgroundColor: colors.surfaceContainerLowest,
               backgroundImage: logoProvider,
               child: logoProvider == null
-                  ? const Icon(Iconsax.shop, size: 36)
+                  ? Icon(
+                      Iconsax.shop,
+                      size: 36,
+                      color: colors.onSurfaceVariant,
+                    )
                   : null,
             ),
           ),
           const SizedBox(height: 12),
           Center(
-            child: Text(
-              store.name,
-              style: const TextStyle(
-                fontFamily: AppFonts.brand,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            child: Text(store.name, style: context.text.headlineMedium),
           ),
           const SizedBox(height: 4),
           Center(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Iconsax.star1, color: AppColors.gold, size: 16),
+                Icon(Iconsax.star1, color: context.status.warningFg, size: 16),
                 const SizedBox(width: 4),
                 Text(
                   '${avg.toStringAsFixed(1)} · ${reviews.length} reviews',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
-                    color: AppColors.textGray,
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
+          _SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _infoRow(Iconsax.category, storeCategoryLabel(store.category)),
+                _infoRow(
+                  context,
+                  Iconsax.category,
+                  storeCategoryLabel(store.category),
+                ),
                 const SizedBox(height: 8),
-                _infoRow(Iconsax.tick_circle, _statusText(store)),
+                _infoRow(context, Iconsax.tick_circle, _statusText(store)),
                 if (email != null) ...[
                   const SizedBox(height: 8),
-                  _infoRow(Iconsax.sms, email),
+                  _infoRow(context, Iconsax.sms, email),
                 ],
               ],
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Reviews',
-            style: TextStyle(
-              fontFamily: AppFonts.brand,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text('Reviews', style: context.text.headlineSmall),
           const SizedBox(height: 10),
           if (reviews.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
               child: Center(
                 child: Text(
                   'No reviews yet',
-                  style: TextStyle(color: AppColors.textGray),
+                  style: TextStyle(color: colors.onSurfaceVariant),
                 ),
               ),
             )
           else
             ...reviews.map(
-              (r) => Container(
+              (r) => _SurfaceCard(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -164,9 +134,9 @@ class SellerProfileScreen extends ConsumerWidget {
                         ),
                         Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.star,
-                              color: AppColors.gold,
+                              color: context.status.warningFg,
                               size: 14,
                             ),
                             const SizedBox(width: 3),
@@ -184,16 +154,13 @@ class SellerProfileScreen extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       dateFmt.format(r.date),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textGray,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      r.comment,
-                      style: const TextStyle(fontSize: 13),
-                    ),
+                    Text(r.comment, style: const TextStyle(fontSize: 13)),
                   ],
                 ),
               ),
@@ -203,16 +170,37 @@ class SellerProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _infoRow(IconData icon, String value) => Row(
+  Widget _infoRow(BuildContext context, IconData icon, String value) => Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.textGray),
+          Icon(icon, size: 16, color: context.colors.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 12.5),
-            ),
+            child: Text(value, style: const TextStyle(fontSize: 12.5)),
           ),
         ],
       );
+}
+
+/// White rounded card with the website's thin border.
+class _SurfaceCard extends StatelessWidget {
+  const _SurfaceCard({required this.child, this.margin = EdgeInsets.zero});
+
+  final Widget child;
+  final EdgeInsetsGeometry margin;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      width: double.infinity,
+      margin: margin,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: child,
+    );
+  }
 }

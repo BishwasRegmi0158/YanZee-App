@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
 import 'package:yanzee_app/core/utils/currency_format.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/data/models/dashboard_stats.dart';
@@ -34,7 +34,10 @@ class _RevenueLineChartState extends State<RevenueLineChart>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     );
-    _reveal = CurvedAnimation(parent: _revealController, curve: Curves.easeOutCubic);
+    _reveal = CurvedAnimation(
+      parent: _revealController,
+      curve: Curves.easeOutCubic,
+    );
     _revealController.forward(from: 0);
   }
 
@@ -76,10 +79,12 @@ class _RevenueLineChartState extends State<RevenueLineChart>
     if (flooredIndex < maxIndex && frac > 0) {
       final start = allSpots[flooredIndex];
       final end = allSpots[flooredIndex + 1];
-      visible.add(FlSpot(
-        start.x + (end.x - start.x) * frac,
-        start.y + (end.y - start.y) * frac,
-      ));
+      visible.add(
+        FlSpot(
+          start.x + (end.x - start.x) * frac,
+          start.y + (end.y - start.y) * frac,
+        ),
+      );
     }
 
     return visible;
@@ -90,12 +95,16 @@ class _RevenueLineChartState extends State<RevenueLineChart>
     final data = widget.data;
     if (data.isEmpty) return const SizedBox();
 
+    final colors = context.colors;
+
     final allSpots = [
       for (var i = 0; i < data.length; i++) FlSpot(i.toDouble(), data[i].value),
     ];
 
-    final maxY = data.map((d) => d.value).fold<double>(0, (a, b) => a > b ? a : b);
-    final minX = 0.0;
+    final maxY = data
+        .map((d) => d.value)
+        .fold<double>(0, (a, b) => a > b ? a : b);
+    const minX = 0.0;
     final maxX = (data.length - 1).toDouble();
 
     final selected = data[_selectedIndex];
@@ -111,7 +120,7 @@ class _RevenueLineChartState extends State<RevenueLineChart>
                 style: TextStyle(
                   fontSize: Responsive.font(context, 13, capSystemScale: false),
                   fontWeight: FontWeight.w600,
-                  color: AppColors.ink.withOpacity(0.6),
+                  color: colors.onSurfaceVariant,
                 ),
               ),
               TextSpan(
@@ -119,7 +128,7 @@ class _RevenueLineChartState extends State<RevenueLineChart>
                 style: TextStyle(
                   fontSize: Responsive.font(context, 15, capSystemScale: false),
                   fontWeight: FontWeight.bold,
-                  color: AppColors.ink,
+                  color: colors.onSurface,
                 ),
               ),
             ],
@@ -136,22 +145,23 @@ class _RevenueLineChartState extends State<RevenueLineChart>
 
               final lineBar = LineChartBarData(
                 isCurved: true,
-                color: AppColors.gold,
+                color: colors.primary,
                 barWidth: 2.5,
                 dotData: FlDotData(
                   show: true,
                   checkToShowDot: (spot, bar) =>
                       isDrawComplete && spot.x.toInt() == _selectedIndex,
-                  getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
-                    radius: 5,
-                    color: AppColors.gold,
-                    strokeWidth: 2,
-                    strokeColor: Colors.white,
-                  ),
+                  getDotPainter: (spot, percent, bar, index) =>
+                      FlDotCirclePainter(
+                        radius: 5,
+                        color: colors.primary,
+                        strokeWidth: 2,
+                        strokeColor: colors.surface,
+                      ),
                 ),
                 belowBarData: BarAreaData(
                   show: true,
-                  color: AppColors.gold.withOpacity(0.12),
+                  color: colors.primary.withValues(alpha: 0.1),
                 ),
                 spots: visibleSpots,
               );
@@ -162,32 +172,43 @@ class _RevenueLineChartState extends State<RevenueLineChart>
                   maxX: maxX,
                   minY: 0,
                   maxY: maxY == 0 ? 1 : maxY * 1.15,
-                  gridData: const FlGridData(show: true, drawVerticalLine: false),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) =>
+                        FlLine(color: colors.outlineVariant, strokeWidth: 1),
+                  ),
                   titlesData: FlTitlesData(
-                    leftTitles:
-                        const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                        const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
                           final i = value.toInt();
-                          if (i < 0 || i >= data.length) return const SizedBox();
+                          if (i < 0 || i >= data.length) {
+                            return const SizedBox();
+                          }
+                          final isSelected = i == _selectedIndex;
                           return Padding(
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
                               data[i].month,
                               style: TextStyle(
                                 fontSize: Responsive.font(context, 11),
-                                fontWeight: i == _selectedIndex
+                                fontWeight: isSelected
                                     ? FontWeight.w800
                                     : FontWeight.w600,
-                                color: i == _selectedIndex
-                                    ? AppColors.ink
-                                    : AppColors.ink.withOpacity(0.55),
+                                color: isSelected
+                                    ? colors.onSurface
+                                    : colors.onSurfaceVariant,
                               ),
                             ),
                           );
@@ -201,7 +222,7 @@ class _RevenueLineChartState extends State<RevenueLineChart>
                           verticalLines: [
                             VerticalLine(
                               x: _selectedIndex.toDouble(),
-                              color: AppColors.gold.withOpacity(0.35),
+                              color: colors.primary.withValues(alpha: 0.35),
                               strokeWidth: 1.5,
                               dashArray: [4, 4],
                             ),
@@ -221,27 +242,32 @@ class _RevenueLineChartState extends State<RevenueLineChart>
                     touchTooltipData: LineTouchTooltipData(
                       fitInsideHorizontally: true,
                       fitInsideVertically: true,
-                      getTooltipColor: (touchedSpot) => AppColors.ink,
+                      getTooltipColor: (touchedSpot) => colors.inverseSurface,
                       tooltipBorderRadius: BorderRadius.circular(10),
-                      tooltipPadding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      tooltipPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       getTooltipItems: (touchedSpots) {
                         return touchedSpots.map((spot) {
                           final i = spot.x.toInt();
-                          final month =
-                              (i >= 0 && i < data.length) ? data[i].month : '';
+                          final month = (i >= 0 && i < data.length)
+                              ? data[i].month
+                              : '';
                           return LineTooltipItem(
                             '$month\n',
-                            const TextStyle(
-                              color: AppColors.textGray,
+                            TextStyle(
+                              color: colors.onInverseSurface.withValues(
+                                alpha: 0.6,
+                              ),
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                             ),
                             children: [
                               TextSpan(
                                 text: 'Rs ${formatNepaliStyle(spot.y)}',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: colors.onInverseSurface,
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                 ),

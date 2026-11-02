@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yanzee_app/core/theme/app_widgets.dart';
 
 /// One "Label ........ value" line. Shows a dash when the value is empty.
 class SellerInfoRow extends StatelessWidget {
@@ -44,11 +45,7 @@ class SellerInfoRow extends StatelessWidget {
             ],
           ),
         ),
-        if (!last)
-          Divider(
-            height: 1,
-            color: scheme.outlineVariant.withValues(alpha: 0.5),
-          ),
+        if (!last) Divider(height: 1, color: scheme.outlineVariant),
       ],
     );
   }
@@ -67,21 +64,9 @@ class SellerStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final color = positive ? const Color(0xFF2E9E2E) : scheme.onSurfaceVariant;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-      ),
+    return StatusPill(
+      label: text,
+      tone: positive ? PillTone.green : PillTone.gray,
     );
   }
 }

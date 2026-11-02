@@ -4,8 +4,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
+import 'package:yanzee_app/core/theme/app_widgets.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/data/models/seller_models.dart';
@@ -69,14 +70,14 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     if (mounted) _load(); // show the changes the seller just saved
   }
 
-  (Color bg, Color fg) _statusColors(ProductStatus status) {
+  PillTone _statusTone(ProductStatus status) {
     switch (status) {
       case ProductStatus.active:
-        return (const Color(0xFFDDF5DD), const Color(0xFF1E8E3E));
+        return PillTone.green;
       case ProductStatus.draft:
-        return (Colors.grey.shade200, Colors.grey.shade700);
+        return PillTone.gray;
       case ProductStatus.archived:
-        return (const Color(0xFFFDE9D3), const Color(0xFFC2540C));
+        return PillTone.orange;
     }
   }
 
@@ -99,26 +100,15 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Scaffold(
-      backgroundColor: kPageBg,
       appBar: AppBar(
-        backgroundColor: kPageBg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'Product details',
-          style: TextStyle(
-            fontFamily: AppFonts.brand,
-            fontSize: Responsive.font(context, 18),
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Product details'),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
@@ -129,8 +119,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  color: AppColors.ink,
-                  backgroundColor: Colors.grey.shade300,
+                  backgroundColor: colors.surfaceContainerHighest,
                 ),
               ),
             ),
@@ -149,32 +138,21 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             _seoCard(),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Colors.grey.shade200)),
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _edit,
-              icon: const Icon(Iconsax.edit_2, size: 18, color: Colors.white),
-              label: const Text(
-                'Edit product',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.ink,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLowest,
+          border: Border(top: BorderSide(color: colors.outlineVariant)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _edit,
+                icon: const Icon(Iconsax.edit_2, size: 18),
+                label: const Text('Edit product'),
               ),
             ),
           ),
@@ -185,39 +163,48 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
 
   // ------------------------------------------------------------------ parts
 
-  Widget _errorBanner() => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFDECEA),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Could not load the full details: $_error',
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12.5, color: Colors.red.shade800),
-              ),
+  Widget _errorBanner() {
+    final s = context.status;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: s.errorBannerBg,
+        border: Border.all(color: s.errorBannerBorder),
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Could not load the full details: $_error',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12.5, color: s.dangerFg),
             ),
-            TextButton(onPressed: _load, child: const Text('Retry')),
-          ],
-        ),
-      );
+          ),
+          TextButton(onPressed: _load, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
 
   Widget _gallery() {
+    final colors = context.colors;
     final images = _p.imageUrls;
     final placeholder = Container(
-      color: Colors.grey.shade100,
-      child: const Center(
-        child: Icon(Iconsax.gallery_slash, size: 40, color: AppColors.textGray),
+      color: colors.surfaceContainerHighest,
+      child: Center(
+        child: Icon(
+          Iconsax.gallery_slash,
+          size: 40,
+          color: colors.onSurfaceVariant,
+        ),
       ),
     );
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AppTheme.r2xl),
       child: SizedBox(
         height: 260,
         width: double.infinity,
@@ -245,13 +232,13 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
+                          color: colors.scrim.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           '${_page + 1} / ${images.length}',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: colors.onInverseSurface,
                             fontSize: 12,
                           ),
                         ),
@@ -264,7 +251,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   }
 
   Widget _headerCard() {
-    final (bg, fg) = _statusColors(_p.status);
+    final colors = context.colors;
     final crossed = _p.crossedPrice;
     return _card(
       child: Column(
@@ -274,26 +261,26 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             spacing: 8,
             runSpacing: 6,
             children: [
-              _pill(_p.status.label, bg, fg),
+              StatusPill(label: _p.status.label, tone: _statusTone(_p.status)),
               if (!_p.isAvailable)
-                _pill('Hidden from customers', Colors.red.withOpacity(0.08),
-                    Colors.red.shade700),
+                const StatusPill(
+                  label: 'Hidden from customers',
+                  tone: PillTone.red,
+                ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
             _p.name,
-            style: TextStyle(
+            style: context.text.headlineMedium?.copyWith(
               fontSize: Responsive.font(context, 18),
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
             ),
           ),
           if ((_p.brandName ?? '').isNotEmpty) ...[
             const SizedBox(height: 2),
             Text(
               _p.brandName!,
-              style: const TextStyle(fontSize: 13, color: AppColors.textGray),
+              style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
             ),
           ],
           const SizedBox(height: 10),
@@ -306,7 +293,6 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                 style: TextStyle(
                   fontSize: Responsive.font(context, 17),
                   fontWeight: FontWeight.bold,
-                  color: AppColors.ink,
                 ),
               ),
               if (_p.variants.isEmpty && crossed != null && crossed > _p.price)
@@ -314,7 +300,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                   formatPrice(crossed),
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade500,
+                    color: colors.onSurfaceVariant,
                     decoration: TextDecoration.lineThrough,
                   ),
                 ),
@@ -325,13 +311,15 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             _p.variants.isNotEmpty
                 ? '${_p.stock} in stock across ${_p.variants.length} variant${_p.variants.length == 1 ? '' : 's'}'
                 : (_p.hasVariants
-                    ? '${_p.variantCount} variants'
-                    : (_p.quantity == 0 ? 'No stock' : '${_p.quantity} in stock')),
+                      ? '${_p.variantCount} variants'
+                      : (_p.quantity == 0
+                            ? 'No stock'
+                            : '${_p.quantity} in stock')),
             style: TextStyle(
               fontSize: 13,
               color: (!_p.hasVariants && _p.quantity == 0)
-                  ? Colors.red.shade600
-                  : AppColors.textGray,
+                  ? colors.error
+                  : colors.onSurfaceVariant,
             ),
           ),
         ],
@@ -340,6 +328,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   }
 
   Widget _descriptionCard() {
+    final colors = context.colors;
     return SectionCard(
       icon: Iconsax.document_text,
       title: 'Description',
@@ -356,10 +345,10 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
           if (_p.longDescription.isNotEmpty)
             Text(
               _p.longDescription,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13.5,
                 height: 1.45,
-                color: AppColors.textGray,
+                color: colors.onSurfaceVariant,
               ),
             ),
         ],
@@ -368,6 +357,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   }
 
   Widget _organizationCard() {
+    final colors = context.colors;
     return SectionCard(
       icon: Iconsax.category,
       title: 'Organization',
@@ -378,16 +368,17 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
           _kv('Audience', _p.audience.label),
           if (_p.categories.isNotEmpty) ...[
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Categories',
-              style: TextStyle(fontSize: 13, color: AppColors.textGray),
+              style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final c in _p.categories) BlackChip(label: c.name, onRemove: null),
+                for (final c in _p.categories)
+                  BlackChip(label: c.name, onRemove: null),
               ],
             ),
           ],
@@ -410,8 +401,10 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
       child: Column(
         children: [
           _kv('Selling price', formatPrice(_p.price)),
-          _kv('Crossed price',
-              _p.crossedPrice == null ? null : formatPrice(_p.crossedPrice!)),
+          _kv(
+            'Crossed price',
+            _p.crossedPrice == null ? null : formatPrice(_p.crossedPrice!),
+          ),
           _kv('Cost per item', cost == null ? null : formatPrice(cost)),
           _kv('Profit', profit),
           _kv('Margin', margin),
@@ -429,22 +422,23 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     return SectionCard(
       icon: Icons.layers_outlined,
       title: 'Variants',
-      subtitle: '${_p.variants.length} variant${_p.variants.length == 1 ? '' : 's'}',
-      child: Column(
-        children: [for (final v in _p.variants) _variantTile(v)],
-      ),
+      subtitle:
+          '${_p.variants.length} variant${_p.variants.length == 1 ? '' : 's'}',
+      child: Column(children: [for (final v in _p.variants) _variantTile(v)]),
     );
   }
 
   Widget _variantTile(SellerVariant v) {
+    final colors = context.colors;
     final crossed = v.crossedPrice;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: kPageBg,
-        borderRadius: BorderRadius.circular(14),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,7 +453,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppTheme.rLg),
                         child: Image.network(
                           url,
                           width: 56,
@@ -468,7 +462,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                           errorBuilder: (_, __, ___) => Container(
                             width: 56,
                             height: 56,
-                            color: Colors.grey.shade200,
+                            color: colors.surfaceContainerHighest,
                           ),
                         ),
                       ),
@@ -496,7 +490,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                   formatPrice(crossed),
                   style: TextStyle(
                     fontSize: 11.5,
-                    color: Colors.grey.shade500,
+                    color: colors.onSurfaceVariant,
                     decoration: TextDecoration.lineThrough,
                   ),
                 ),
@@ -508,7 +502,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             'Size ${v.size}  •  ${v.quantity == 0 ? 'No stock' : '${v.quantity} in stock'}',
             style: TextStyle(
               fontSize: 12.5,
-              color: v.quantity == 0 ? Colors.red.shade600 : AppColors.textGray,
+              color: v.quantity == 0 ? colors.error : colors.onSurfaceVariant,
             ),
           ),
           if (v.colorCodes.isNotEmpty) ...[
@@ -527,7 +521,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                         decoration: BoxDecoration(
                           color: hexToColor(hex),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey.shade400),
+                          border: Border.all(color: colors.outline),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -541,7 +535,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             const SizedBox(height: 6),
             Text(
               'SKU: ${v.sku}',
-              style: const TextStyle(fontSize: 12, color: AppColors.textGray),
+              style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             ),
           ],
         ],
@@ -557,8 +551,10 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_p.releaseDate != null)
-            _kv('Release date',
-                _p.releaseDate!.toIso8601String().substring(0, 10)),
+            _kv(
+              'Release date',
+              _p.releaseDate!.toIso8601String().substring(0, 10),
+            ),
           if (_p.tags.isNotEmpty) ...[
             const SizedBox(height: 6),
             Wrap(
@@ -589,33 +585,20 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
 
   // ---------------------------------------------------------------- helpers
 
-  Widget _card({required Widget child}) => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.ink.withOpacity(0.06)),
-        ),
-        child: child,
-      );
-
-  Widget _pill(String text, Color bg, Color fg) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w600,
-            color: fg,
-          ),
-        ),
-      );
+  Widget _card({required Widget child}) {
+    final colors = context.colors;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: child,
+    );
+  }
 
   /// A "label: value" row. Skipped when the value is empty.
   Widget _kv(String label, String? value) {
@@ -629,13 +612,19 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             width: 118,
             child: Text(
               label,
-              style: const TextStyle(fontSize: 13, color: AppColors.textGray),
+              style: TextStyle(
+                fontSize: 13,
+                color: context.colors.onSurfaceVariant,
+              ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

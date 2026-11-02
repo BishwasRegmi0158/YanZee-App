@@ -1,157 +1,85 @@
 import 'package:flutter/material.dart';
+import 'package:yanzee_app/core/theme/app_colors.dart';
+import 'package:yanzee_app/core/theme/app_fonts.dart';
 
+/// Compatibility shim. New screens should use Theme.of(context) instead.
 class AuthColors {
   AuthColors._();
-
-  static const pageBackground = Colors.white;
+  static const pageBackground = AppColors.yzBg;
+  static const screenBackground = AppColors.yzBg;
   static const cardBackground = Colors.white;
-  static const textDark = Color(0xFF1A1A1A);
-
-  static const tabsBackground = Color(0xFFF0EEEB);
-
-  static const iconMuted = Color(0xFF9E9E9E);
-  static const borderDefault = Color(0xFFE0DEDA);
-  static const borderFocused = Color(0xFF1A1A1A);
-
-  static const errorBackground = Color(0xFFFDECEC);
-  static const errorBorder = Color(0xFFF5C2C2);
-  static const errorText = Color(0xFFB3261E);
-
-  static const required = Color(0xFFD32F2F);
-  static const submitButton = Colors.black;
-
-
-static const screenBackground = Color(0xFFF7F8FA);
-static const primary = Color(0xFF3BB77E); // green button / links
-static const pillText = Color(0xFF2E3134);
-static const pillHint = Color(0xFF5F6368);
-static const pillIcon = Color(0xFF55595C);
-static const subtitleGray = Color(0xFF6B7075);
+  static const textDark = AppColors.zinc900;
+  static const tabsBackground = AppColors.zinc100;
+  static const iconMuted = AppColors.zinc400;
+  static const borderDefault = AppColors.yzBorder;
+  static const borderFocused = AppColors.brandRed600;
+  static const errorBackground = AppColors.red50;
+  static const errorBorder = AppColors.red200;
+  static const errorText = AppColors.red700;
+  static const required = AppColors.red600;
+  static const submitButton = AppColors.brandRed600;
+  static const primary = AppColors.brandRed600;
+  static const pillText = AppColors.zinc700;
+  static const pillHint = AppColors.zinc500;
+  static const pillIcon = AppColors.zinc500;
+  static const subtitleGray = AppColors.zinc500;
 }
 
 class AuthTextStyles {
   AuthTextStyles._();
 
   static const heading = TextStyle(
-    fontFamily: 'CormorantGaramond',
-    fontSize: 32,
-    fontWeight: FontWeight.bold,
-    color: AuthColors.textDark,
+    fontFamily: AppFonts.heading,
+    fontSize: 29,
+    height: 1.2,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
+    color: AppColors.zinc900,
   );
-
   static const subheading = TextStyle(
-    fontFamily: 'CormorantGaramond',
-    fontSize: 15,
+    fontFamily: AppFonts.heading,
+    fontSize: 14,
     fontStyle: FontStyle.italic,
-    color: Color(0xFF6B6B6B),
+    color: AppColors.zinc500,
   );
-
   static const tab = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    color: Color(0xFF8A8A8A),
-  );
-
+      fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.zinc500);
   static const tabActive = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w700,
-    color: AuthColors.textDark,
-  );
-
+      fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.zinc900);
   static const fieldLabel = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w600,
-    color: AuthColors.textDark,
-  );
-
-  static const inputText = TextStyle(fontSize: 14, color: AuthColors.textDark);
-
+      fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.zinc600);
+  static const inputText = TextStyle(fontSize: 14, color: AppColors.zinc900);
   static const forgotLink = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w600,
-    color: Color(0xFF2F6FED),
-  );
-
+      fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brandRed600);
   static const submitButton = TextStyle(
-    fontSize: 15,
-    fontWeight: FontWeight.w700,
-    color: Colors.white,
-  );
-
-  static const switchText = TextStyle(fontSize: 13, color: Color(0xFF6B6B6B));
-
+      fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white);
+  static const switchText = TextStyle(fontSize: 13, color: AppColors.zinc500);
   static const switchLink = TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w700,
-    color: AuthColors.textDark,
-  );
+      fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brandRed600);
 }
 
+// The global theme already styles borders, fill and radius.
 InputDecoration authInputDecoration({
   required String hint,
   Widget? prefixIcon,
   Widget? suffixIcon,
-}) {
-  OutlineInputBorder border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: color),
-      );
+}) =>
+    InputDecoration(
+      hintText: hint,
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+    );
 
-  return InputDecoration(
-    hintText: hint,
-    hintStyle: const TextStyle(color: Color(0xFFB0AEA9), fontSize: 14),
-    prefixIcon: prefixIcon,
-    suffixIcon: suffixIcon,
-    filled: true,
-    fillColor: Colors.white,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    enabledBorder: border(AuthColors.borderDefault),
-    focusedBorder: border(AuthColors.borderFocused),
-    errorBorder: border(AuthColors.errorBorder),
-    disabledBorder: border(const Color(0xFFEDEBE7)),
-    isDense: true,
-  );
-}
-
-class AppFonts {
-  AppFonts._();
-
-  static const String devanagari = 'NotoSerifDevanagari';
-  static const String brand = 'CormorantGaramond';
-}
-
-/// Wrap the TextField in a Container with [authPillShadow] for the soft shadow.
+// Pills are removed (the website has none). Same signature, so screens compile.
 InputDecoration authPillInputDecoration({
   required String hint,
   required IconData icon,
   Widget? suffixIcon,
-}) {
-  OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(40),
-        borderSide: BorderSide(color: color, width: width),
-      );
+}) =>
+    InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon, size: 20),
+      suffixIcon: suffixIcon,
+    );
 
-  return InputDecoration(
-    hintText: hint,
-    hintStyle: const TextStyle(color: AuthColors.pillHint, fontSize: 14),
-    prefixIcon: Icon(icon, size: 20, color: AuthColors.pillIcon),
-    suffixIcon: suffixIcon,
-    filled: true,
-    fillColor: Colors.white,
-    isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
-    border: border(Colors.transparent, 0),
-    enabledBorder: border(Colors.transparent, 0),
-    focusedBorder: border(AuthColors.primary, 1.2),
-    errorBorder: border(AuthColors.errorBorder, 1),
-    disabledBorder: border(Colors.transparent, 0),
-  );
-}
-
-const authPillShadow = [
-  BoxShadow(
-    color: Color(0x12000000),
-    blurRadius: 14,
-    offset: Offset(0, 4),
-  ),
-];
+const List<BoxShadow> authPillShadow = [];

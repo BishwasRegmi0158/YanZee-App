@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/data/models/inventory.dart';
@@ -11,11 +12,11 @@ import 'package:yanzee_app/data/models/outlet.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_inventory_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_outlets_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_detail_widgets.dart';
-import 'package:yanzee_app/features/seller/widgets/seller_filter_chips.dart';
+import 'package:yanzee_app/features/seller/widgets/seller_filter_dropdown.dart';
 
-/// Status chips. The second value is what the API expects in ?status=.
-const _statusOptions = <(String, String?)>[
-  ('All', null),
+/// Status dropdown. The second value is what the API expects in ?status=.
+const _statusOptions = <(String, String)>[
+  ('All statuses', 'all'),
   ('In stock', 'IN_STOCK'),
   ('Low stock', 'LOW_STOCK'),
   ('Out of stock', 'OUT_OF_STOCK'),
@@ -30,12 +31,25 @@ class InventoryScreen extends ConsumerStatefulWidget {
 
 class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   final _searchCtrl = TextEditingController();
+  final _outletFilter = ValueNotifier<String?>('all');
+  final _statusFilter = ValueNotifier<String?>('all');
   Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    final f = ref.read(stockFilterProvider);
+    _searchCtrl.text = f.search;
+    _outletFilter.value = f.outletId ?? 'all';
+    _statusFilter.value = f.status ?? 'all';
+  }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _searchCtrl.dispose();
+    _outletFilter.dispose();
+    _statusFilter.dispose();
     super.dispose();
   }
 
@@ -65,6 +79,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   void _clearAll() {
     _debounce?.cancel();
     _searchCtrl.clear();
+    _outletFilter.value = 'all';
+    _statusFilter.value = 'all';
     ref.read(stockFilterProvider.notifier).state = kNoStockFilter;
     setState(() {});
   }
@@ -78,6 +94,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         appBar: AppBar(
           title: const Text('Inventory'),
           actions: [
+            IconButton(
+              tooltip: 'Overview',
+              icon: const Icon(Icons.insights_outlined),
+              onPressed: () => context.push('/seller/inventory/overview'),
+            ),
             IconButton(
               tooltip: 'Stock history',
               icon: const Icon(Icons.history),
@@ -128,8 +149,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
   /// Search + filters + [body], all in one scrolling list.
   Widget _page(List<Widget> body) {
-    final filter = ref.watch(stockFilterProvider);
     final outlets = ref.watch(sellerOutletsProvider).value ?? const <Outlet>[];
+    final outletOptions = <(String, String)>[
+      ('All outlets', 'all'),
+      for (final o in outlets) (o.name, o.id),
+    ];
 
     return RefreshIndicator(
       onRefresh: () => ref.refresh(sellerStockProvider.future),
@@ -154,26 +178,44 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          SellerFilterChips(
-            options: _statusOptions,
-            selected: filter.status,
-            onSelected: (v) => _setFilter(
-              (f) => (search: f.search, outletId: f.outletId, status: v),
-            ),
-          ),
-          if (outlets.length > 1) ...[
-            const SizedBox(height: 8),
-            SellerFilterChips(
-              options: [
-                ('All outlets', null),
-                for (final o in outlets) (o.name, o.id),
-              ],
-              selected: filter.outletId,
-              onSelected: (v) => _setFilter(
-                (f) => (search: f.search, outletId: v, status: f.status),
+          // Outlet on the left, status on the right.
+          Row(
+            children: [
+              Expanded(
+                child: SellerFilterDropdown(
+                  options: outletOptions,
+                  notifier: _outletFilter,
+                  onChanged: (v) {
+                    _outletFilter.value = v ?? 'all';
+                    _setFilter(
+                      (f) => (
+                        search: f.search,
+                        outletId: (v == null || v == 'all') ? null : v,
+                        status: f.status,
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: SellerFilterDropdown(
+                  options: _statusOptions,
+                  notifier: _statusFilter,
+                  onChanged: (v) {
+                    _statusFilter.value = v ?? 'all';
+                    _setFilter(
+                      (f) => (
+                        search: f.search,
+                        outletId: f.outletId,
+                        status: (v == null || v == 'all') ? null : v,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           ...body,
         ],
@@ -189,7 +231,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     return [
       _CountRow(
-        text: '${items.length} item${items.length == 1 ? '' : 's'}'
+        text:
+            '${items.length} item${items.length == 1 ? '' : 's'}'
             ' · $units unit${units == 1 ? '' : 's'}',
         showClear: active,
         onClear: _clearAll,
@@ -204,6 +247,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   ? 'Nothing matches your filters'
                   : 'No products yet.\nAdd products first, then stock them in.',
               textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         )
@@ -213,7 +259,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             padding: const EdgeInsets.only(bottom: 12),
             child: SellerReveal(
               index: i < 6 ? i : 6,
-              child: _StockCard(item: items[i], outletId: outletId),
+              child: _StockCard(
+                item: items[i],
+                outletId: outletId,
+                onTap: () => context.push(
+                  '/seller/inventory/batches',
+                  extra: items[i],
+                ),
+              ),
             ),
           ),
     ];
@@ -239,8 +292,9 @@ class _CountRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
         if (showClear)
@@ -250,6 +304,7 @@ class _CountRow extends StatelessWidget {
               'Clear filters',
               style: theme.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w700,
+                color: theme.colorScheme.primary,
                 decoration: TextDecoration.underline,
               ),
             ),
@@ -260,10 +315,15 @@ class _CountRow extends StatelessWidget {
 }
 
 class _StockCard extends StatelessWidget {
-  const _StockCard({required this.item, required this.outletId});
+  const _StockCard({
+    required this.item,
+    required this.outletId,
+    required this.onTap,
+  });
 
   final StockItem item;
   final String? outletId;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -288,8 +348,8 @@ class _StockCard extends StatelessWidget {
     final cost = outletId == null
         ? item.totalCost
         : item.outlets
-            .where((o) => o.outletId == outletId)
-            .fold<double>(0, (sum, o) => sum + o.totalCost);
+              .where((o) => o.outletId == outletId)
+              .fold<double>(0, (sum, o) => sum + o.totalCost);
 
     final breakdown = outletId == null && item.outlets.isNotEmpty
         ? item.outlets.map((o) => '${o.outletName}: ${o.quantity}').join(' · ')
@@ -298,73 +358,86 @@ class _StockCard extends StatelessWidget {
     return Material(
       color: scheme.surfaceContainerLowest,
       elevation: 1,
-      shadowColor: scheme.shadow.withValues(alpha: 0.12),
+      shadowColor: scheme.shadow.withValues(alpha: 0.06),
       surfaceTintColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  if (item.sku != null) ...[
-                    const SizedBox(height: 2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      'SKU ${item.sku}',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  SellerStatusPill(text: label, positive: positive),
-                  if (breakdown != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      breakdown,
+                      item.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
+                    if (item.sku != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'SKU ${item.sku}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    SellerStatusPill(text: label, positive: positive),
+                    if (breakdown != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        breakdown,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    if (cost > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Stock value ${formatPrice(cost)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ],
-                  if (cost > 0) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Stock value ${formatPrice(cost)}',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$qty',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
-                  ],
+                  ),
+                  Text(
+                    qty == 1 ? 'unit' : 'units',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '$qty',
-                  style: theme.textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                Text(
-                  qty == 1 ? 'unit' : 'units',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: scheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

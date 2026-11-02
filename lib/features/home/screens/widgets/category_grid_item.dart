@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 
 class CategoryGridItem extends StatelessWidget {
   final String emoji;
@@ -14,16 +16,19 @@ class CategoryGridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Container(
             height: 43,
-            width: 43, 
+            width: 43,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(14),
+              color: colors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(AppTheme.rXl),
+              border: Border.all(color: colors.outlineVariant),
             ),
             alignment: Alignment.center,
             child: Text(emoji, style: const TextStyle(fontSize: 15)),
@@ -31,10 +36,9 @@ class CategoryGridItem extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.black87,
-            ), 
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 11, color: colors.onSurface),
           ),
         ],
       ),

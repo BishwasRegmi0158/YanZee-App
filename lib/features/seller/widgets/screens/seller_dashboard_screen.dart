@@ -1,9 +1,8 @@
-// features/seller/screens/seller_dashboard_screen.dart
+// features/seller/widgets/screens/seller_dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
 import 'package:yanzee_app/core/utils/currency_format.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/features/seller/widgets/chart_card.dart';
@@ -24,16 +23,14 @@ class SellerDashboardScreen extends ConsumerWidget {
     final statsAsync = ref.watch(sellerDashboardProvider);
     final store = ref.watch(sellerStoreProvider);
     final visitCount = ref.watch(sellerDashboardVisitProvider);
+    final status = context.status;
 
     final isNarrow = Responsive.isSmallPhone(context);
 
     return Scaffold(
-      backgroundColor: AppColors.homeBackground,
       body: SafeArea(
         child: statsAsync.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.gold),
-          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) =>
               Center(child: Text('Failed to load dashboard: $err')),
           data: (stats) => ListView(
@@ -51,7 +48,7 @@ class SellerDashboardScreen extends ConsumerWidget {
                   label: 'Total Revenue',
                   value: 'Rs ${formatNepaliStyle(stats.totalRevenue)}',
                   subtext: '+${stats.revenueMoMPercent}% MoM',
-                  subtextColor: Colors.green,
+                  subtextColor: status.successFg,
                 ),
                 right: StatCard(
                   label: 'Total Orders',
@@ -84,7 +81,6 @@ class SellerDashboardScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // Same issue here — was inline BarChart(...) before.
               ChartCard(
                 title: 'Monthly orders',
                 subtitle: 'Orders placed per month',
@@ -139,6 +135,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -151,7 +148,7 @@ class _Header extends StatelessWidget {
                 style: TextStyle(
                   fontSize: Responsive.font(context, 11, capSystemScale: true),
                   letterSpacing: 1.2,
-                  color: AppColors.gold,
+                  color: colors.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -162,15 +159,12 @@ class _Header extends StatelessWidget {
                 child: Text(
                   storeName,
                   maxLines: 1,
-                  style: TextStyle(
-                    fontFamily: AppFonts.brand,
+                  style: context.text.headlineLarge?.copyWith(
                     fontSize: Responsive.font(
                       context,
                       26,
                       capSystemScale: true,
                     ),
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.ink,
                   ),
                 ),
               ),

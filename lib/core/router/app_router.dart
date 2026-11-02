@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/core/widgets/main_shell.dart';
 import 'package:yanzee_app/data/models/brand.dart';
+import 'package:yanzee_app/data/models/inventory.dart';
 import 'package:yanzee_app/data/models/outlet.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/data/models/shop_category.dart';
@@ -28,10 +29,12 @@ import 'package:yanzee_app/features/seller/widgets/screens/category_detail_scree
 import 'package:yanzee_app/features/seller/widgets/screens/category_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/create_category_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/create_shop_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/inventory_overview_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/inventory_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/outlet_detail_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/outlet_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/outlets_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/product_batches_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/product_form_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_shops_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/stock_in_screen.dart';
@@ -214,7 +217,22 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const StockMovementsScreen(),
     ),
-
+    GoRoute(
+      path: '/seller/inventory/overview',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const InventoryOverviewScreen(),
+    ),
+    GoRoute(
+      path: '/seller/inventory/batches',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final item = state.extra as StockItem?;
+        if (item == null) {
+          return const Scaffold(body: Center(child: Text('Product not found')));
+        }
+        return ProductBatchesScreen(item: item);
+      },
+    ),
     // ---- customers ----
     GoRoute(
       path: '/seller/customers',

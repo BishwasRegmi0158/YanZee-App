@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
 
 class CategoryPill extends StatelessWidget {
   final String label;
@@ -14,6 +15,8 @@ class CategoryPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -21,16 +24,16 @@ class CategoryPill extends StatelessWidget {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.black : Colors.white,
+          color: isSelected ? colors.primary : colors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isSelected ? Colors.black : const Color(0xFFE0E0E0),
+            color: isSelected ? colors.primary : colors.outline,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
+            color: isSelected ? colors.onPrimary : colors.onSurface,
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),

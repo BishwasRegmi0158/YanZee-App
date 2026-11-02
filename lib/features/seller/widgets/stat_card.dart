@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 
 class StatCard extends StatelessWidget {
@@ -18,12 +19,14 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.ink.withOpacity(0.08)),
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,20 +41,16 @@ class StatCard extends StatelessWidget {
                 child: Container(
                   width: 6,
                   height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.gold,
+                  decoration: BoxDecoration(
+                    color: colors.primary,
                     shape: BoxShape.circle,
                   ),
                 ),
               ),
               const SizedBox(width: 6),
-              // Fix: capSystemScale: false stops this from being inflated
-              // by a device's larger accessibility text-scale setting
-              // (e.g. Huawei EMUI), which was the real reason "TOTAL
-              // REVENUE" and "AVG ORDER VALUE" were truncating on that
-              // phone but not the emulator. Letting it wrap to 2 lines
-              // instead of forcing 1 + ellipsis means the full label is
-              // always readable instead of getting cut off.
+              // capSystemScale: false stops the label from being inflated by
+              // a device's larger accessibility text scale, which was making
+              // "TOTAL REVENUE" truncate on some phones.
               Expanded(
                 child: Text(
                   label.toUpperCase(),
@@ -64,7 +63,7 @@ class StatCard extends StatelessWidget {
                       capSystemScale: false,
                     ),
                     height: 1.15,
-                    color: AppColors.ink.withOpacity(0.62),
+                    color: colors.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.3,
                   ),
@@ -80,11 +79,10 @@ class StatCard extends StatelessWidget {
               value,
               maxLines: 1,
               softWrap: false,
-              style: const TextStyle(
-                fontFamily: 'Arial',
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.ink,
+                color: colors.onSurface,
               ),
             ),
           ),
@@ -101,7 +99,7 @@ class StatCard extends StatelessWidget {
                   capSystemScale: false,
                 ),
                 fontWeight: FontWeight.w500,
-                color: subtextColor ?? AppColors.ink.withOpacity(0.55),
+                color: subtextColor ?? colors.onSurfaceVariant,
               ),
             ),
           ],

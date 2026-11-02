@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
 import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/shop_category.dart';
@@ -89,14 +90,18 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             ),
           ),
           data: (items) {
-            final sorted = [...items]..sort(
-                (a, b) => (b.createdAt ?? DateTime(0))
-                    .compareTo(a.createdAt ?? DateTime(0)),
+            final sorted = [...items]
+              ..sort(
+                (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
+                  a.createdAt ?? DateTime(0),
+                ),
               );
             final q = _query.trim().toLowerCase();
             final filtered = q.isEmpty
                 ? sorted
-                : sorted.where((c) => c.name.toLowerCase().contains(q)).toList();
+                : sorted
+                      .where((c) => c.name.toLowerCase().contains(q))
+                      .toList();
             final theme = Theme.of(context);
 
             return RefreshIndicator(
@@ -118,8 +123,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   const SizedBox(height: 16),
                   Text(
                     '${items.length} categor${items.length == 1 ? 'y' : 'ies'}',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   if (filtered.isEmpty)
@@ -131,6 +137,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                               ? 'No categories yet.\nTap "Add category" to create one.'
                               : 'No categories match "$_query"',
                           textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     )
@@ -194,9 +203,12 @@ class _CategoryCard extends StatelessWidget {
     return Material(
       color: scheme.surfaceContainerLowest,
       elevation: 1,
-      shadowColor: scheme.shadow.withValues(alpha: 0.12),
+      shadowColor: scheme.shadow.withValues(alpha: 0.06),
       surfaceTintColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -218,8 +230,9 @@ class _CategoryCard extends StatelessWidget {
                       category.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -229,18 +242,14 @@ class _CategoryCard extends StatelessWidget {
                       ].join(' · '),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      category.isAvailable ? 'Available' : 'Hidden',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: category.isAvailable
-                            ? const Color(0xFF2E9E2E)
-                            : scheme.onSurfaceVariant,
-                      ),
+                    SellerStatusPill(
+                      text: category.isAvailable ? 'Available' : 'Hidden',
+                      positive: category.isAvailable,
                     ),
                   ],
                 ),
@@ -252,15 +261,15 @@ class _CategoryCard extends StatelessWidget {
               PopupMenuButton<String>(
                 tooltip: 'More',
                 icon: const Icon(Icons.more_vert),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
                 onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'edit', child: Text('Edit')),
                   PopupMenuItem(
                     value: 'delete',
-                    child: Text('Delete', style: TextStyle(color: scheme.error)),
+                    child: Text(
+                      'Delete',
+                      style: TextStyle(color: scheme.error),
+                    ),
                   ),
                 ],
               ),

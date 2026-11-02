@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
 import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/brand.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_brands_provider.dart';
+import 'package:yanzee_app/features/seller/widgets/seller_detail_widgets.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_toggle.dart';
 
 class BrandsScreen extends ConsumerStatefulWidget {
@@ -186,9 +188,12 @@ class _BrandCard extends StatelessWidget {
     return Material(
       color: scheme.surfaceContainerLowest,
       elevation: 1,
-      shadowColor: scheme.shadow.withValues(alpha: 0.12),
+      shadowColor: scheme.shadow.withValues(alpha: 0.06),
       surfaceTintColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -223,14 +228,9 @@ class _BrandCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      brand.isAvailable ? 'Available' : 'Hidden',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: brand.isAvailable
-                            ? const Color(0xFF2E9E2E)
-                            : scheme.onSurfaceVariant,
-                      ),
+                    SellerStatusPill(
+                      text: brand.isAvailable ? 'Available' : 'Hidden',
+                      positive: brand.isAvailable,
                     ),
                   ],
                 ),
@@ -243,9 +243,6 @@ class _BrandCard extends StatelessWidget {
               PopupMenuButton<String>(
                 tooltip: 'More',
                 icon: const Icon(Icons.more_vert),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
                 onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'edit', child: Text('Edit')),
@@ -283,7 +280,7 @@ class _BrandLogo extends StatelessWidget {
     );
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppTheme.rXl),
       child: (url == null || url!.isEmpty)
           ? placeholder()
           : Image.network(

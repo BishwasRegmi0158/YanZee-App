@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:yanzee_app/core/theme/auth_theme.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 
 class AuthErrorBanner extends StatelessWidget {
   const AuthErrorBanner(this.message, {super.key});
@@ -8,36 +9,26 @@ class AuthErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.status;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AuthColors.errorBackground,
-        border: Border.all(color: AuthColors.errorBorder),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 14,
-            offset: Offset(0, 4),
-          ),
-        ],
+        color: s.errorBannerBg,
+        border: Border.all(color: s.errorBannerBorder),
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            size: 20,
-            color: AuthColors.errorText,
-          ),
+          Icon(Icons.error_outline_rounded, size: 20, color: s.dangerFg),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AuthColors.errorText,
+                color: s.dangerFg,
               ),
             ),
           ),

@@ -6,7 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/navigation/full_screen_nav.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
 import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
@@ -21,8 +22,6 @@ import 'package:yanzee_app/features/seller/widgets/seller_drawer.dart';
 
 class SellerStoreScreen extends ConsumerWidget {
   const SellerStoreScreen({super.key});
-
-  static const Color _red = Color(0xFFE05A47);
 
   /// Runs a save and shows the error (if any) as a pop-up.
   Future<void> _save(
@@ -67,7 +66,7 @@ class SellerStoreScreen extends ConsumerWidget {
           insetPadding: const EdgeInsets.all(16),
           child: InteractiveViewer(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppTheme.r2xl),
               child: Image.network(url, fit: BoxFit.contain),
             ),
           ),
@@ -127,18 +126,18 @@ class SellerStoreScreen extends ConsumerWidget {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
                 'Select category',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: ctx.text.headlineSmall,
               ),
             ),
             for (final c in kStoreCategories)
               ListTile(
                 title: Text(storeCategoryLabel(c)),
                 trailing: c == store.category
-                    ? const Icon(Icons.check, color: Colors.black)
+                    ? Icon(Icons.check, color: ctx.colors.primary)
                     : null,
                 onTap: () => Navigator.of(ctx).pop(c),
               ),
@@ -152,6 +151,7 @@ class SellerStoreScreen extends ConsumerWidget {
     _save(context, () => notifier.updateField(category: picked));
   }
 
+  // ignore: unused_element
   Future<void> _confirmLogout(BuildContext context) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -167,10 +167,8 @@ class SellerStoreScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              'Log out',
-              style: TextStyle(color: _red),
-            ),
+            style: TextButton.styleFrom(foregroundColor: ctx.colors.error),
+            child: const Text('Log out'),
           ),
         ],
       ),
@@ -211,7 +209,8 @@ class SellerStoreScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete', style: TextStyle(color: _red)),
+            style: TextButton.styleFrom(foregroundColor: ctx.colors.error),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -271,25 +270,15 @@ class SellerStoreScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final store = ref.watch(sellerStoreProvider);
     final notifier = ref.read(sellerStoreProvider.notifier);
     final logoProvider = _getLogoProvider(store);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F5F2),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F5F2),
-        elevation: 0,
         leading: const SellerMenuButton(),
-        title: const Text(
-          'Store',
-          style: TextStyle(
-            fontFamily: AppFonts.brand,
-            fontSize: 22,
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('Store'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -299,10 +288,14 @@ class SellerStoreScreen extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 42,
-                  backgroundColor: Colors.white,
+                  backgroundColor: colors.surfaceContainerLowest,
                   backgroundImage: logoProvider,
                   child: logoProvider == null
-                      ? const Icon(Iconsax.shop, size: 36)
+                      ? Icon(
+                          Iconsax.shop,
+                          size: 36,
+                          color: colors.onSurfaceVariant,
+                        )
                       : null,
                 ),
                 Positioned(
@@ -312,13 +305,17 @@ class SellerStoreScreen extends ConsumerWidget {
                     onTap: () => _showLogoOptions(context, ref, store),
                     child: Container(
                       padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Colors.black,
+                      decoration: BoxDecoration(
+                        color: colors.primary,
                         shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          width: 2,
+                        ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Iconsax.camera,
-                        color: Colors.white,
+                        color: colors.onPrimary,
                         size: 14,
                       ),
                     ),
@@ -375,7 +372,7 @@ class SellerStoreScreen extends ConsumerWidget {
                 fontSize: 11,
                 letterSpacing: 1.1,
                 fontWeight: FontWeight.w700,
-                color: Colors.grey.shade600,
+                color: colors.onSurfaceVariant,
               ),
             ),
           ),
@@ -388,48 +385,42 @@ class SellerStoreScreen extends ConsumerWidget {
 
   /// Full-width outlined destructive button.
   Widget _deleteButton(BuildContext context, WidgetRef ref, String shopName) {
+    final colors = context.colors;
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: OutlinedButton.icon(
         onPressed: () => _confirmDeleteShop(context, ref, shopName),
-        icon: const Icon(Iconsax.trash, size: 18, color: _red),
-        label: const Text(
+        icon: Icon(Iconsax.trash, size: 18, color: colors.error),
+        label: Text(
           'Delete store',
           style: TextStyle(
-            color: _red,
+            color: colors.error,
             fontWeight: FontWeight.w600,
             fontSize: 15,
           ),
         ),
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          side: const BorderSide(color: _red, width: 1.2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          side: BorderSide(color: colors.error, width: 1.2),
         ),
       ),
     );
   }
 
+  // ignore: unused_element
   Widget _logoutButton(BuildContext context) {
+    final colors = context.colors;
     return SizedBox(
       width: double.infinity,
       height: 48,
       child: OutlinedButton.icon(
         onPressed: () => _confirmLogout(context),
-        icon: const Icon(Iconsax.logout, size: 18, color: _red),
-        label: const Text(
+        icon: Icon(Iconsax.logout, size: 18, color: colors.error),
+        label: Text(
           'Log out',
-          style: TextStyle(color: _red, fontWeight: FontWeight.w600),
+          style: TextStyle(color: colors.error, fontWeight: FontWeight.w600),
         ),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: _red),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+        style: OutlinedButton.styleFrom(side: BorderSide(color: colors.error)),
       ),
     );
   }
@@ -448,13 +439,17 @@ class SellerStoreScreen extends ConsumerWidget {
     bool muted = false,
     bool editStartsEmpty = false,
   }) {
+    final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: colors.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.r2xl),
+          side: BorderSide(color: colors.outlineVariant),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
           onTap: readOnly
               ? null
               : (onTap ??
@@ -465,15 +460,11 @@ class SellerStoreScreen extends ConsumerWidget {
                       onSave: onEdit!,
                       maxLines: maxLines,
                     )),
-          child: Container(
+          child: Padding(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
             child: Row(
               children: [
-                Icon(icon, size: 20, color: Colors.black87),
+                Icon(icon, size: 20, color: colors.onSurface),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -481,9 +472,9 @@ class SellerStoreScreen extends ConsumerWidget {
                     children: [
                       Text(
                         label,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey,
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -492,16 +483,18 @@ class SellerStoreScreen extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: muted ? Colors.grey : Colors.black,
+                          color: muted
+                              ? colors.onSurfaceVariant
+                              : colors.onSurface,
                         ),
                       ),
                     ],
                   ),
                 ),
                 if (!readOnly)
-                  const Icon(
+                  Icon(
                     Iconsax.arrow_right_3,
-                    color: Colors.grey,
+                    color: colors.onSurfaceVariant,
                     size: 18,
                   ),
               ],
@@ -560,30 +553,20 @@ class _EditFieldFormState extends State<_EditFieldForm> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Edit ${widget.label}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
+        Text('Edit ${widget.label}', style: context.text.headlineSmall),
         const SizedBox(height: 14),
         TextField(
           controller: _controller,
           focusNode: _focusNode,
           maxLines: widget.maxLines,
-          decoration: InputDecoration(
-            hintText: 'Enter ${widget.label}',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+          decoration: InputDecoration(hintText: 'Enter ${widget.label}'),
         ),
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
+          child: FilledButton(
             onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
+            child: const Text('Save'),
           ),
         ),
       ],

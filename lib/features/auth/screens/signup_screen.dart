@@ -1,14 +1,13 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:yanzee_app/core/theme/auth_theme.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
 import 'package:yanzee_app/core/utils/app_snackbar.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/auth_visual_panel.dart';
-import 'package:yanzee_app/features/auth/screens/widgets/pill_text_form_field.dart';
+import 'package:yanzee_app/features/auth/screens/widgets/auth_widgets.dart';
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
 import 'package:yanzee_app/features/wishlist/provider/wishlist_provider.dart';
 import 'login_screen.dart';
@@ -115,7 +114,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AuthColors.screenBackground,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: LayoutBuilder(
@@ -133,9 +131,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               );
             }
 
-            final cardWidth = constraints.maxWidth > 1100
-                ? 1100.0
-                : constraints.maxWidth;
+            final cardWidth =
+                constraints.maxWidth > 1100 ? 1100.0 : constraints.maxWidth;
 
             return Center(
               child: SingleChildScrollView(
@@ -143,17 +140,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 1100),
                   child: Container(
-                    decoration: BoxDecoration(
-                      color: AuthColors.screenBackground,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.14),
-                          blurRadius: 55,
-                          offset: const Offset(0, 20),
-                        ),
-                      ],
-                    ),
+                    decoration: authCardDecoration(context),
+                    clipBehavior: Clip.antiAlias,
                     child: IntrinsicHeight(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -178,8 +166,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Widget _buildFormPanel(double panelWidth) {
     // Scales text slightly on small phones so nothing overflows.
-    final scale = (panelWidth / 390).clamp(0.85, 1.0);
-    final hPad = (panelWidth * 0.06).clamp(16.0, 28.0);
+    final double scale = (panelWidth / 390).clamp(0.85, 1.0).toDouble();
+    final double hPad = (panelWidth * 0.06).clamp(16.0, 28.0).toDouble();
+    final colors = context.colors;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 28),
@@ -194,48 +183,32 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: _buildBackButton(),
+                  child: AuthBackButton(onTap: _goBack),
                 ),
                 const SizedBox(height: 24),
 
-                Text(
-                  'Create Account',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 30 * scale,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    'Create a new account to get started and enjoy seamless access to our features.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13.5 * scale,
-                      height: 1.4,
-                      color: AuthColors.subtitleGray,
-                    ),
-                  ),
+                AuthHeader(
+                  title: 'Create Account',
+                  subtitle:
+                      'Create a new account to get started and enjoy seamless access to our features.',
+                  scale: scale,
                 ),
                 const SizedBox(height: 26),
 
-                // ---------- Full name ----------
-                PillTextFormField(
+                AuthTextField(
                   controller: _nameController,
-                  hint: 'Full name',
+                  label: 'Full name',
+                  hint: 'Enter your full name',
                   icon: Icons.person_rounded,
                   textInputAction: TextInputAction.next,
                   validator: FormValidators.name,
                 ),
                 const SizedBox(height: 16),
 
-                // ---------- Email ----------
-                PillTextFormField(
+                AuthTextField(
                   controller: _emailController,
-                  hint: 'Email address',
+                  label: 'Email address',
+                  hint: 'you@example.com',
                   icon: Icons.email_rounded,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
@@ -243,9 +216,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // ---------- Phone ----------
-                PillTextFormField(
+                AuthTextField(
                   controller: _phoneController,
+                  label: 'Phone number',
                   hint: '10-digit phone number',
                   icon: Icons.phone_rounded,
                   keyboardType: TextInputType.phone,
@@ -261,10 +234,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // ---------- Password ----------
-                PillTextFormField(
+                AuthTextField(
                   controller: _passwordController,
-                  hint: 'Password',
+                  label: 'Password',
+                  hint: 'Create a password',
                   icon: Icons.lock_rounded,
                   obscureText: !_showPassword,
                   textInputAction: TextInputAction.next,
@@ -274,7 +247,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           ? Icons.visibility_rounded
                           : Icons.visibility_off_rounded,
                       size: 20,
-                      color: AuthColors.pillIcon,
+                      color: colors.onSurfaceVariant,
                     ),
                     onPressed: () =>
                         setState(() => _showPassword = !_showPassword),
@@ -283,10 +256,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // ---------- Confirm password ----------
-                PillTextFormField(
+                AuthTextField(
                   controller: _confirmPasswordController,
-                  hint: 'Confirm password',
+                  label: 'Confirm password',
+                  hint: 'Re-enter your password',
                   icon: Icons.lock_rounded,
                   obscureText: !_showConfirmPassword,
                   textInputAction: TextInputAction.done,
@@ -296,7 +269,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           ? Icons.visibility_rounded
                           : Icons.visibility_off_rounded,
                       size: 20,
-                      color: AuthColors.pillIcon,
+                      color: colors.onSurfaceVariant,
                     ),
                     onPressed: () => setState(
                       () => _showConfirmPassword = !_showConfirmPassword,
@@ -306,95 +279,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
                 const SizedBox(height: 26),
 
-                // ---------- Submit ----------
-                Container(
-                  height: 52,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(40),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AuthColors.primary.withOpacity(0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleSubmit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AuthColors.primary,
-                      disabledBackgroundColor: AuthColors.primary.withOpacity(
-                        0.65,
-                      ),
-                      foregroundColor: Colors.white,
-                      shape: const StadiumBorder(),
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.4,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            'Create Account',
-                            style: TextStyle(
-                              fontSize: 15 * scale,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
+                AuthSubmitButton(
+                  label: 'Create Account',
+                  loading: _isLoading,
+                  onPressed: _handleSubmit,
                 ),
                 const SizedBox(height: 20),
 
-                Text.rich(
-                  textAlign: TextAlign.center,
-                  TextSpan(
-                    style: TextStyle(
-                      fontSize: 13 * scale,
-                      color: AuthColors.pillText,
-                    ),
-                    children: [
-                      const TextSpan(text: 'Already have an account?  '),
-                      TextSpan(
-                        text: 'Sign In here',
-                        style: const TextStyle(
-                          color: AuthColors.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        recognizer: TapGestureRecognizer()..onTap = _goToLogin,
-                      ),
-                    ],
-                  ),
+                AuthSwitchLine(
+                  prompt: 'Already have an account?',
+                  action: 'Sign in here',
+                  onTap: _goToLogin,
+                  scale: scale,
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackButton() {
-    return Material(
-      color: Colors.white,
-      shape: const CircleBorder(),
-      elevation: 3,
-      shadowColor: Colors.black26,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: _goBack,
-        child: const SizedBox(
-          width: 42,
-          height: 42,
-          child: Icon(
-            Icons.chevron_left_rounded,
-            size: 26,
-            color: Colors.black87,
           ),
         ),
       ),

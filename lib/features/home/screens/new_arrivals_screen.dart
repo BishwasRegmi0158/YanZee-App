@@ -11,12 +11,7 @@ class NewArrivalsScreen extends ConsumerWidget {
     final productsAsync = ref.watch(allNewArrivalsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('New Arrivals', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-      ),
+      appBar: AppBar(title: const Text('New Arrivals')),
       body: productsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -30,7 +25,8 @@ class NewArrivalsScreen extends ConsumerWidget {
               mainAxisExtent: 240,
             ),
             itemCount: products.length,
-            itemBuilder: (context, index) => ProductCard(product: products[index]),
+            itemBuilder: (context, index) =>
+                ProductCard(product: products[index]),
           ),
         ),
       ),

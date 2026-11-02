@@ -2,8 +2,9 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
+import 'package:yanzee_app/core/theme/app_widgets.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/core/widgets/app_toast.dart';
@@ -14,8 +15,6 @@ import 'package:yanzee_app/features/seller/widgets/providers/seller_categories_p
 import 'package:yanzee_app/features/seller/widgets/providers/seller_products_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/product_details_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/product_form_screen.dart';
-
-const _pageBg = Color(0xFFF7F5F2);
 
 class SellerProductsScreen extends ConsumerStatefulWidget {
   const SellerProductsScreen({super.key});
@@ -63,9 +62,9 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
   }
 
   void _openDetails(SellerProduct p) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ProductDetailsScreen(product: p)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ProductDetailsScreen(product: p)),
+    );
   }
 
   void _snack(String message, {bool failed = false}) {
@@ -91,7 +90,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: ctx.colors.error),
             child: const Text('Delete'),
           ),
         ],
@@ -103,28 +102,24 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           .read(sellerProductsProvider.notifier)
           .deleteProduct(p.id);
       if (!mounted) return;
-      _snack(error ?? '"${p.name}" deleted successfully', failed: error != null);
+      _snack(
+        error ?? '"${p.name}" deleted successfully',
+        failed: error != null,
+      );
     }
   }
 
   Future<void> _changeStatus(SellerProduct p) async {
     final picked = await showModalBottomSheet<ProductStatus>(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Text(
-                'Set status',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text('Set status', style: ctx.text.headlineSmall),
             ),
             for (final s in ProductStatus.values)
               ListTile(
@@ -149,13 +144,14 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
   }
 
   (Color bg, Color fg) _statusColors(ProductStatus status) {
+    final s = context.status;
     switch (status) {
       case ProductStatus.active:
-        return (const Color(0xFFDDF5DD), const Color(0xFF1E8E3E));
+        return (s.successBg, s.successFg);
       case ProductStatus.draft:
-        return (Colors.grey.shade200, Colors.grey.shade700);
+        return (s.neutralBg, s.neutralFg);
       case ProductStatus.archived:
-        return (const Color(0xFFFDE9D3), const Color(0xFFC2540C));
+        return (s.warningBg, s.warningFg);
     }
   }
 
@@ -178,16 +174,13 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
     ref.watch(sellerBrandsProvider);
 
     return Scaffold(
-      backgroundColor: _pageBg,
       body: SafeArea(
         child: productsAsync.when(
           skipLoadingOnReload: true,
           loading: () => _page(const [
             Padding(
               padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(
-                child: CircularProgressIndicator(color: AppColors.gold),
-              ),
+              child: Center(child: CircularProgressIndicator()),
             ),
           ]),
           error: (e, _) => _page([
@@ -244,29 +237,9 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
             child: TextField(
               onChanged: (v) => setState(() => _query = v),
               textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Search products',
-                prefixIcon: const Icon(
-                  Iconsax.search_normal_1,
-                  size: 20,
-                  color: AppColors.textGray,
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.ink),
-                ),
+                prefixIcon: Icon(Iconsax.search_normal_1, size: 20),
               ),
             ),
           ),
@@ -295,6 +268,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
   }
 
   List<Widget> _listBody(List<SellerProduct> products) {
+    final colors = context.colors;
     final filtered = _apply(products);
 
     return [
@@ -305,18 +279,18 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
               filtered.length == products.length
                   ? '${products.length} product${products.length == 1 ? '' : 's'}'
                   : '${filtered.length} of ${products.length} products',
-              style: const TextStyle(fontSize: 12, color: AppColors.textGray),
+              style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             ),
           ),
           if (_filtersActive || _query.isNotEmpty)
             GestureDetector(
               onTap: _clearFilters,
-              child: const Text(
+              child: Text(
                 'Clear filters',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: colors.primary,
                   decoration: TextDecoration.underline,
                 ),
               ),
@@ -329,35 +303,30 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           padding: const EdgeInsets.symmetric(vertical: 48),
           child: Column(
             children: [
-              Icon(Iconsax.box, size: 44, color: Colors.grey.shade400),
+              Icon(Iconsax.box, size: 44, color: colors.outline),
               const SizedBox(height: 10),
               Text(
                 products.isEmpty && !_filtersActive
                     ? 'No products yet'
                     : 'No products match your filters',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textGray),
+                style: TextStyle(color: colors.onSurfaceVariant),
               ),
             ],
           ),
         )
       else
         Container(
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.ink.withOpacity(0.06)),
+            color: colors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppTheme.r2xl),
+            border: Border.all(color: colors.outlineVariant),
           ),
           child: Column(
             children: [
               for (var i = 0; i < filtered.length; i++) ...[
-                if (i > 0)
-                  Divider(
-                    height: 1,
-                    indent: 14,
-                    endIndent: 14,
-                    color: Colors.grey.shade200,
-                  ),
+                if (i > 0) const Divider(height: 1, indent: 14, endIndent: 14),
                 _ProductRow(
                   product: filtered[i],
                   statusColors: _statusColors(filtered[i].status),
@@ -373,7 +342,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
     ];
   }
 
-  //  filter dropdowns
+  // ---- filter dropdowns ----
 
   Widget _statusDropdown() {
     final items = <DropdownItem<String>>[
@@ -427,28 +396,32 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
         ),
       );
 
-  Widget _filterPill(String text) => Container(
-    height: 42,
-    alignment: Alignment.centerLeft,
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.grey.shade200),
-    ),
-    child: Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(fontSize: 13, color: AppColors.textGray),
-    ),
-  );
+  Widget _filterPill(String text) {
+    final colors = context.colors;
+    return Container(
+      height: 42,
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
+        border: Border.all(color: colors.outline),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
+      ),
+    );
+  }
 
   Widget _filterDropdown({
     required List<DropdownItem<String>> items,
     required ValueNotifier<String?> notifier,
     required ValueChanged<String?> onChanged,
   }) {
+    final colors = context.colors;
     final maxH = (MediaQuery.sizeOf(context).height * 0.38).clamp(160.0, 280.0);
     return DropdownButtonHideUnderline(
       child: DropdownButton2<String>(
@@ -460,9 +433,9 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           height: 42,
           padding: const EdgeInsets.only(left: 12, right: 6),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
+            color: colors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppTheme.rXl),
+            border: Border.all(color: colors.outline),
           ),
         ),
         iconStyleData: const IconStyleData(
@@ -476,8 +449,9 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
           padding: const EdgeInsets.symmetric(vertical: 6),
           offset: const Offset(0, -2),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            color: colors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppTheme.rXl),
+            border: Border.all(color: colors.outlineVariant),
           ),
           scrollbarTheme: ScrollbarThemeData(
             radius: const Radius.circular(40),
@@ -510,11 +484,8 @@ class _HeaderRow extends StatelessWidget {
       children: [
         Text(
           'Products',
-          style: TextStyle(
-            fontFamily: AppFonts.brand,
+          style: context.text.headlineLarge?.copyWith(
             fontSize: Responsive.font(context, 24),
-            fontWeight: FontWeight.bold,
-            color: AppColors.ink,
           ),
         ),
         const SizedBox(height: 2),
@@ -523,21 +494,14 @@ class _HeaderRow extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: Responsive.font(context, 12),
-            color: AppColors.textGray,
+            color: context.colors.onSurfaceVariant,
           ),
         ),
       ],
     );
 
-    final addButton = ElevatedButton.icon(
+    final addButton = FilledButton.icon(
       onPressed: onAdd,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.ink,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
       icon: const Icon(Iconsax.add, size: 18),
       label: Text(
         'Add',
@@ -600,11 +564,11 @@ class _ProductRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final (bg, fg) = statusColors;
     final noStock = !product.hasVariants && product.quantity == 0;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
@@ -612,16 +576,16 @@ class _ProductRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppTheme.rXl),
               child: product.imageUrl.isNotEmpty
                   ? Image.network(
                       product.imageUrl,
                       width: 64,
                       height: 64,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholder(),
+                      errorBuilder: (_, __, ___) => _placeholder(context),
                     )
-                  : _placeholder(),
+                  : _placeholder(context),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -670,24 +634,7 @@ class _ProductRow extends StatelessWidget {
                         ),
                       ),
                       if (!product.isAvailable)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'Hidden',
-                            style: TextStyle(
-                              fontSize: Responsive.font(context, 10.5),
-                              fontWeight: FontWeight.w600,
-                              color: Colors.red.shade700,
-                            ),
-                          ),
-                        ),
+                        const StatusPill(label: 'Hidden', tone: PillTone.red),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -698,7 +645,6 @@ class _ProductRow extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: Responsive.font(context, 14.5),
-                      color: AppColors.ink,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -712,7 +658,6 @@ class _ProductRow extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: Responsive.font(context, 13.5),
-                          color: AppColors.ink,
                         ),
                       ),
                       if (!product.hasVariants &&
@@ -722,7 +667,7 @@ class _ProductRow extends StatelessWidget {
                           formatPrice(product.crossedPrice!),
                           style: TextStyle(
                             fontSize: Responsive.font(context, 11.5),
-                            color: Colors.grey.shade500,
+                            color: colors.onSurfaceVariant,
                             decoration: TextDecoration.lineThrough,
                           ),
                         ),
@@ -731,8 +676,8 @@ class _ProductRow extends StatelessWidget {
                         style: TextStyle(
                           fontSize: Responsive.font(context, 12),
                           color: noStock
-                              ? Colors.red.shade600
-                              : AppColors.textGray,
+                              ? colors.error
+                              : colors.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -745,7 +690,7 @@ class _ProductRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: Responsive.font(context, 11.5),
-                        color: AppColors.textGray,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -755,16 +700,13 @@ class _ProductRow extends StatelessWidget {
             PopupMenuButton<String>(
               tooltip: 'More',
               icon: const Icon(Icons.more_vert, size: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
               onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'edit', child: Text('Edit')),
-                PopupMenuDivider(height: 1),
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                const PopupMenuDivider(height: 1),
                 PopupMenuItem(
                   value: 'delete',
-                  child: Text('Delete', style: TextStyle(color: Colors.red)),
+                  child: Text('Delete', style: TextStyle(color: colors.error)),
                 ),
               ],
             ),
@@ -774,10 +716,13 @@ class _ProductRow extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() => Container(
-    width: 64,
-    height: 64,
-    color: Colors.grey.shade100,
-    child: const Icon(Iconsax.gallery_slash, color: AppColors.textGray),
-  );
+  Widget _placeholder(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      width: 64,
+      height: 64,
+      color: colors.surfaceContainerHighest,
+      child: Icon(Iconsax.gallery_slash, color: colors.onSurfaceVariant),
+    );
+  }
 }

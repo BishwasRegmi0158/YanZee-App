@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/data/models/dashboard_stats.dart';
 
@@ -41,6 +41,7 @@ class _MonthlyOrdersBarChartState extends State<MonthlyOrdersBarChart> {
     final data = widget.data;
     if (data.isEmpty) return const SizedBox();
 
+    final colors = context.colors;
     final selected = data[_selectedIndex];
     final count = selected.value.round();
 
@@ -55,7 +56,7 @@ class _MonthlyOrdersBarChartState extends State<MonthlyOrdersBarChart> {
                 style: TextStyle(
                   fontSize: Responsive.font(context, 13, capSystemScale: false),
                   fontWeight: FontWeight.w600,
-                  color: AppColors.ink.withOpacity(0.6),
+                  color: colors.onSurfaceVariant,
                 ),
               ),
               TextSpan(
@@ -63,7 +64,7 @@ class _MonthlyOrdersBarChartState extends State<MonthlyOrdersBarChart> {
                 style: TextStyle(
                   fontSize: Responsive.font(context, 15, capSystemScale: false),
                   fontWeight: FontWeight.bold,
-                  color: AppColors.ink,
+                  color: colors.onSurface,
                 ),
               ),
             ],
@@ -73,29 +74,42 @@ class _MonthlyOrdersBarChartState extends State<MonthlyOrdersBarChart> {
         Expanded(
           child: BarChart(
             BarChartData(
-              gridData: const FlGridData(show: true, drawVerticalLine: false),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (value) =>
+                    FlLine(color: colors.outlineVariant, strokeWidth: 1),
+              ),
               borderData: FlBorderData(show: false),
               titlesData: FlTitlesData(
-                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
                     getTitlesWidget: (value, meta) {
                       final i = value.toInt();
                       if (i < 0 || i >= data.length) return const SizedBox();
+                      final isSelected = i == _selectedIndex;
                       return Padding(
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(
                           data[i].month,
                           style: TextStyle(
                             fontSize: Responsive.font(context, 11),
-                            fontWeight:
-                                i == _selectedIndex ? FontWeight.w800 : FontWeight.w600,
-                            color: i == _selectedIndex
-                                ? AppColors.ink
-                                : AppColors.ink.withOpacity(0.55),
+                            fontWeight: isSelected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            color: isSelected
+                                ? colors.onSurface
+                                : colors.onSurfaceVariant,
                           ),
                         ),
                       );
@@ -109,25 +123,27 @@ class _MonthlyOrdersBarChartState extends State<MonthlyOrdersBarChart> {
                 touchTooltipData: BarTouchTooltipData(
                   fitInsideHorizontally: true,
                   fitInsideVertically: true,
-                  getTooltipColor: (group) => AppColors.ink,
+                  getTooltipColor: (group) => colors.inverseSurface,
                   tooltipBorderRadius: BorderRadius.circular(10),
-                  tooltipPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  tooltipPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     final month = data[groupIndex].month;
                     final total = rod.toY.round();
                     return BarTooltipItem(
                       '$month\n',
-                      const TextStyle(
-                        color: AppColors.textGray,
+                      TextStyle(
+                        color: colors.onInverseSurface.withValues(alpha: 0.6),
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
                       children: [
                         TextSpan(
                           text: '$total ${total == 1 ? 'order' : 'orders'}',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: colors.onInverseSurface,
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
@@ -152,7 +168,9 @@ class _MonthlyOrdersBarChartState extends State<MonthlyOrdersBarChart> {
                     barRods: [
                       BarChartRodData(
                         toY: data[i].value,
-                        color: i == _selectedIndex ? AppColors.gold : AppColors.ink,
+                        color: i == _selectedIndex
+                            ? colors.primary
+                            : colors.onSurface,
                         width: 14,
                         borderRadius: BorderRadius.circular(4),
                       ),

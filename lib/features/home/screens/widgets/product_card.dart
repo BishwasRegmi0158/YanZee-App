@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/core/widgets/add_to_cart_animator.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
@@ -26,7 +28,7 @@ class ProductCard extends ConsumerStatefulWidget {
 
 class _ProductCardState extends ConsumerState<ProductCard> {
   static const _animationDuration = Duration(milliseconds: 150);
-  static const _borderRadius = 12.0;
+  static const _borderRadius = AppTheme.rXl;
   static const _hoverScale = 1.03;
 
   final GlobalKey _imageKey = GlobalKey();
@@ -67,12 +69,13 @@ class _ProductCardState extends ConsumerState<ProductCard> {
     setState(() => _isAdding = false);
 
     if (added) {
+      final placeholder = context.colors.surfaceContainerHighest;
       FlyToTargetAnimator.fly(
         context: context,
         startKey: _imageKey,
         endKey: ref.read(cartIconKeyProvider),
         child: widget.product.imageUrl.isEmpty
-            ? Container(color: Colors.grey.shade200)
+            ? Container(color: placeholder)
             : Image.network(widget.product.imageUrl, fit: BoxFit.cover),
       );
     }
@@ -90,15 +93,16 @@ class _ProductCardState extends ConsumerState<ProductCard> {
   void _handleToggleWishlist(bool isWishlisted) {
     _requireLogin(context, () {
       if (!isWishlisted) {
+        final colors = context.colors;
         FlyToTargetAnimator.fly(
           context: context,
           startKey: _heartButtonKey,
           endKey: ref.read(wishlistIconKeyProvider),
           size: 34,
           child: Container(
-            color: Colors.white,
+            color: colors.surfaceContainerLowest,
             alignment: Alignment.center,
-            child: const Icon(Iconsax.heart5, color: Colors.red, size: 20),
+            child: Icon(Iconsax.heart5, color: colors.primary, size: 20),
           ),
         );
       }
@@ -128,7 +132,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
           child: AnimatedContainer(
             duration: _animationDuration,
             clipBehavior: Clip.antiAlias,
-            decoration: _cardDecoration(_isHovered),
+            decoration: _cardDecoration(context, _isHovered),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -153,13 +157,15 @@ class _ProductCardState extends ConsumerState<ProductCard> {
     );
   }
 
-  BoxDecoration _cardDecoration(bool isHovered) {
+  BoxDecoration _cardDecoration(BuildContext context, bool isHovered) {
+    final colors = context.colors;
     return BoxDecoration(
-      color: Colors.white,
+      color: colors.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(_borderRadius),
+      border: Border.all(color: colors.outlineVariant),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(isHovered ? 0.15 : 0.05),
+          color: colors.shadow.withValues(alpha: isHovered ? 0.15 : 0.05),
           blurRadius: isHovered ? 16 : 8,
           offset: Offset(0, isHovered ? 6 : 2),
         ),
@@ -189,25 +195,30 @@ class _ProductImage extends StatelessWidget {
   final VoidCallback onToggleWishlist;
   final VoidCallback onToggleCart;
 
-  Widget _placeholder() => Container(
-    color: Colors.grey.shade200,
-    child: const Icon(Iconsax.gallery_slash),
-  );
+  Widget _placeholder(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      color: colors.surfaceContainerHighest,
+      child: Icon(Iconsax.gallery_slash, color: colors.onSurfaceVariant),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Stack(
       fit: StackFit.expand,
       children: [
         KeyedSubtree(
           key: imageKey,
           child: product.imageUrl.isEmpty
-              ? _placeholder()
+              ? _placeholder(context)
               : Image.network(
                   product.imageUrl,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _placeholder(),
+                  errorBuilder: (_, __, ___) => _placeholder(context),
                 ),
         ),
         if (!product.inStock)
@@ -217,12 +228,12 @@ class _ProductImage extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.black87,
+                color: colors.inverseSurface,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text(
+              child: Text(
                 'Out of stock',
-                style: TextStyle(color: Colors.white, fontSize: 10),
+                style: TextStyle(color: colors.onInverseSurface, fontSize: 10),
               ),
             ),
           ),
@@ -232,8 +243,8 @@ class _ProductImage extends StatelessWidget {
           child: _IconToggleButton(
             key: heartButtonKey,
             icon: isWishlisted ? Iconsax.heart5 : Iconsax.heart,
-            iconColor: isWishlisted ? Colors.red : Colors.grey,
-            backgroundColor: Colors.white,
+            iconColor: isWishlisted ? colors.primary : colors.onSurfaceVariant,
+            backgroundColor: colors.surfaceContainerLowest,
             onTap: onToggleWishlist,
           ),
         ),
@@ -243,8 +254,8 @@ class _ProductImage extends StatelessWidget {
           child: isAdding
               ? Container(
                   padding: const EdgeInsets.all(7),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerLowest,
                     shape: BoxShape.circle,
                   ),
                   child: const SizedBox(
@@ -257,8 +268,8 @@ class _ProductImage extends StatelessWidget {
                   icon: isInCart
                       ? Iconsax.shopping_cart5
                       : Iconsax.shopping_cart,
-                  iconColor: isInCart ? Colors.red : Colors.grey,
-                  backgroundColor: Colors.white,
+                  iconColor: isInCart ? colors.primary : colors.onSurfaceVariant,
+                  backgroundColor: colors.surfaceContainerLowest,
                   onTap: onToggleCart,
                 ),
         ),
@@ -290,6 +301,7 @@ class _IconToggleButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: backgroundColor,
           shape: BoxShape.circle,
+          border: Border.all(color: context.colors.outlineVariant),
         ),
         child: Icon(icon, color: iconColor, size: 16),
       ),
@@ -304,6 +316,7 @@ class _ProductInfo extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     // One request per shop: Riverpod caches the family by shopId.
     final shopName = ref.watch(shopNameProvider(product.shopId)).value ?? '';
 
@@ -318,7 +331,7 @@ class _ProductInfo extends ConsumerWidget {
               shopName.toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant),
             ),
           ),
           const SizedBox(height: 2),
@@ -351,7 +364,7 @@ class _ProductInfo extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.grey.shade500,
+                      color: colors.onSurfaceVariant,
                       decoration: TextDecoration.lineThrough,
                     ),
                   ),

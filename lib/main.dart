@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yanzee_app/core/storage/token_storage.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 
 Future<void> main() async {
@@ -20,6 +21,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
+      theme: AppTheme.light(),
       debugShowCheckedModeBanner: false,
       title: 'YanZee',
       routerConfig: appRouter,

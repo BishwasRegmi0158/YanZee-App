@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:yanzee_app/core/provider/main_tab_provider.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/models/cart_models.dart';
@@ -11,8 +12,6 @@ import 'package:yanzee_app/features/auth/screens/widgets/login_prompt_sheet.dart
 import 'package:yanzee_app/features/cart/provider/cart_provider.dart';
 import 'package:yanzee_app/features/cart/widgets/cart_actions.dart';
 import 'package:yanzee_app/features/checkout/screens/checkout_screen.dart';
-
-const _accent = Color(0xFFE53935);
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -65,16 +64,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Cart',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Cart')),
       body: body,
     );
   }
@@ -87,29 +77,30 @@ class _CartBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final data = cart.data;
     final notifier = ref.read(cartProvider.notifier);
     final hasSelection = data.items.any((i) => i.isSelected);
 
     return Column(
       children: [
-        if (cart.isBusy)
-          const LinearProgressIndicator(minHeight: 2, color: Colors.black),
+        if (cart.isBusy) const LinearProgressIndicator(minHeight: 2),
         Container(
-          color: Colors.white,
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerLowest,
+            border: Border(bottom: BorderSide(color: colors.outlineVariant)),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: [
               Checkbox(
                 value: data.allSelected,
-                activeColor: Colors.black,
                 onChanged: (v) => notifier.setAllSelected(v == true),
               ),
               Text(
                 'SELECT ALL (${data.lineCount} ITEM(S))',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade700,
+                style: context.text.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
                   letterSpacing: 0.3,
                 ),
               ),
@@ -121,7 +112,7 @@ class _CartBody extends ConsumerWidget {
                 icon: const Icon(Icons.delete_outline, size: 18),
                 label: const Text('DELETE'),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.grey.shade700,
+                  foregroundColor: colors.onSurfaceVariant,
                   textStyle: const TextStyle(fontSize: 12),
                 ),
               ),
@@ -133,7 +124,7 @@ class _CartBody extends ConsumerWidget {
             onRefresh: notifier.refresh,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
+              padding: const EdgeInsets.fromLTRB(0, 12, 0, 16),
               itemCount: data.shops.length,
               itemBuilder: (context, index) =>
                   _ShopSection(shop: data.shops[index]),
@@ -168,7 +159,10 @@ class _CartBody extends ConsumerWidget {
               Navigator.pop(dialogContext);
               notifier.removeSelected();
             },
-            child: const Text('Remove', style: TextStyle(color: _accent)),
+            style: TextButton.styleFrom(
+              foregroundColor: dialogContext.colors.error,
+            ),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -183,11 +177,17 @@ class _ShopSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final notifier = ref.read(cartProvider.notifier);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      color: Colors.white,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.outlineVariant),
+      ),
       child: Column(
         children: [
           Padding(
@@ -196,13 +196,12 @@ class _ShopSection extends ConsumerWidget {
               children: [
                 Checkbox(
                   value: shop.allSelected,
-                  activeColor: Colors.black,
                   onChanged: (v) => notifier.setShopSelected(shop, v == true),
                 ),
                 Icon(
                   Icons.storefront_outlined,
                   size: 18,
-                  color: Colors.grey.shade700,
+                  color: colors.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
                 Flexible(
@@ -218,12 +217,12 @@ class _ShopSection extends ConsumerWidget {
                 Icon(
                   Icons.chevron_right,
                   size: 18,
-                  color: Colors.grey.shade500,
+                  color: colors.onSurfaceVariant,
                 ),
               ],
             ),
           ),
-          Divider(height: 1, color: Colors.grey.shade200),
+          const Divider(height: 1),
           for (final item in shop.items) _CartRow(item: item),
         ],
       ),
@@ -238,6 +237,7 @@ class _CartRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final notifier = ref.read(cartProvider.notifier);
     final image = item.image;
     final note = item.warning ??
@@ -252,20 +252,19 @@ class _CartRow extends ConsumerWidget {
             padding: const EdgeInsets.only(top: 22),
             child: Checkbox(
               value: item.isSelected,
-              activeColor: Colors.black,
               onChanged: (v) => notifier.setItemSelected(item, v == true),
             ),
           ),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(10),
             child: (image == null || image.isEmpty)
-                ? _thumbPlaceholder()
+                ? _thumbPlaceholder(context)
                 : Image.network(
                     image,
                     width: 72,
                     height: 72,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _thumbPlaceholder(),
+                    errorBuilder: (_, __, ___) => _thumbPlaceholder(context),
                   ),
           ),
           const SizedBox(width: 12),
@@ -285,7 +284,10 @@ class _CartRow extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Size: ${item.size}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Row(
@@ -293,10 +295,10 @@ class _CartRow extends ConsumerWidget {
                   children: [
                     Text(
                       formatPrice(item.effectivePrice),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: _accent,
+                        color: colors.primary,
                       ),
                     ),
                     if (item.hasDiscount) ...[
@@ -305,7 +307,7 @@ class _CartRow extends ConsumerWidget {
                         formatPrice(item.unitPrice),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade500,
+                          color: colors.onSurfaceVariant,
                           decoration: TextDecoration.lineThrough,
                         ),
                       ),
@@ -316,7 +318,7 @@ class _CartRow extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Text(
                     note,
-                    style: const TextStyle(fontSize: 12, color: _accent),
+                    style: TextStyle(fontSize: 12, color: colors.error),
                   ),
                 ],
                 const SizedBox(height: 8),
@@ -348,7 +350,7 @@ class _CartRow extends ConsumerWidget {
                       tooltip: 'Remove',
                       icon: Icon(
                         Icons.delete_outline,
-                        color: Colors.grey.shade600,
+                        color: colors.onSurfaceVariant,
                       ),
                       onPressed: () => notifier.removeItem(item),
                     ),
@@ -362,11 +364,14 @@ class _CartRow extends ConsumerWidget {
     );
   }
 
-  Widget _thumbPlaceholder() => Container(
+  Widget _thumbPlaceholder(BuildContext context) => Container(
         width: 72,
         height: 72,
-        color: Colors.grey.shade200,
-        child: const Icon(Icons.image_not_supported_outlined),
+        color: context.colors.surfaceContainerHighest,
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          color: context.colors.onSurfaceVariant,
+        ),
       );
 }
 
@@ -378,21 +383,27 @@ class _StepperButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final enabled = onTap != null;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: enabled ? const Color(0xFFEDEDF3) : const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(6),
+          color: enabled
+              ? colors.surfaceContainerHighest
+              : colors.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colors.outlineVariant),
         ),
         child: Icon(
           icon,
           size: 16,
-          color: enabled ? Colors.black87 : Colors.grey.shade400,
+          color: enabled
+              ? colors.onSurface
+              : colors.onSurfaceVariant.withValues(alpha: 0.4),
         ),
       ),
     );
@@ -425,84 +436,73 @@ class _CheckoutBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final count = data.selectedCount;
 
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$count item${count == 1 ? '' : 's'} selected',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-                  Text(
-                    formatPrice(data.grandTotal),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        border: Border(top: BorderSide(color: colors.outlineVariant)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$count item${count == 1 ? '' : 's'} selected',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                disabledBackgroundColor: Colors.grey.shade300,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 14,
+                    Text(
+                      formatPrice(data.grandTotal),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              onPressed: count == 0
-                  ? null
-                  : () {
-                      final items = <CheckoutItem>[];
-                      for (final shop in data.shops) {
-                        for (final item in shop.items) {
-                          if (!item.isSelected) continue;
-                          items.add(
-                            CheckoutItem(
-                              product: _asProduct(item, shop.shopId),
-                              quantity: item.quantity,
-                            ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  disabledBackgroundColor: colors.surfaceContainerHighest,
+                  disabledForegroundColor: colors.onSurfaceVariant,
+                ),
+                onPressed: count == 0
+                    ? null
+                    : () {
+                        final items = <CheckoutItem>[];
+                        for (final shop in data.shops) {
+                          for (final item in shop.items) {
+                            if (!item.isSelected) continue;
+                            items.add(
+                              CheckoutItem(
+                                product: _asProduct(item, shop.shopId),
+                                quantity: item.quantity,
+                              ),
+                            );
+                          }
+                        }
+                        if (items.isNotEmpty) {
+                          context.push(
+                            CheckoutScreen.routeName,
+                            extra: <String, dynamic>{'items': items},
                           );
                         }
-                      }
-                      if (items.isNotEmpty) {
-                        context.push(
-                          CheckoutScreen.routeName,
-                          extra: <String, dynamic>{'items': items},
-                        );
-                      }
-                    },
-              child: const Text(
-                'Checkout',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
+                      },
+                child: const Text('Checkout'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -517,13 +517,18 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.cloud_off_outlined, size: 56, color: Colors.grey.shade400),
+            Icon(
+              Icons.cloud_off_outlined,
+              size: 56,
+              color: colors.onSurfaceVariant.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 12),
             const Text(
               'Could not load your cart',
@@ -535,14 +540,10 @@ class _ErrorView extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-              onPressed: onRetry,
-              child: const Text('Try again', style: TextStyle(color: Colors.white)),
-            ),
+            FilledButton(onPressed: onRetry, child: const Text('Try again')),
           ],
         ),
       ),
@@ -557,6 +558,7 @@ class _EmptyCart extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -566,7 +568,7 @@ class _EmptyCart extends ConsumerWidget {
             Icon(
               Icons.shopping_bag_outlined,
               size: 64,
-              color: Colors.grey.shade300,
+              color: colors.onSurfaceVariant.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 16),
             Text(
@@ -579,15 +581,12 @@ class _EmptyCart extends ConsumerWidget {
                   ? 'Add products to your cart to see them here.'
                   : 'Your cart is saved to your account.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
               ),
               onPressed: () async {
                 final ok = await requireLogin(context);
@@ -596,13 +595,7 @@ class _EmptyCart extends ConsumerWidget {
                   ref.read(mainTabIndexProvider.notifier).state = kShopTabIndex;
                 }
               },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Text(
-                  loggedIn ? 'Browse products' : 'Log in',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
+              child: Text(loggedIn ? 'Browse products' : 'Log in'),
             ),
           ],
         ),

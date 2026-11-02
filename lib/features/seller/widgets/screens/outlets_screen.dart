@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
+import 'package:yanzee_app/core/theme/app_widgets.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/outlet.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_outlets_provider.dart';
-
-const _pageBg = Color(0xFFF7F5F2);
+import 'package:yanzee_app/features/seller/widgets/seller_detail_widgets.dart';
 
 class OutletsScreen extends ConsumerStatefulWidget {
   const OutletsScreen({super.key});
@@ -67,7 +67,7 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: ctx.colors.error),
             child: const Text('Delete'),
           ),
         ],
@@ -77,16 +77,21 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
     if (confirmed == true && mounted) {
       final error = await ref.read(sellerOutletsProvider.notifier).delete(o);
       if (!mounted) return;
-      _snack(error ?? '"${o.name}" deleted successfully', failed: error != null);
+      _snack(
+        error ?? '"${o.name}" deleted successfully',
+        failed: error != null,
+      );
     }
   }
 
   List<Outlet> _apply(List<Outlet> all) {
     final q = _query.trim().toLowerCase();
     final status = _statusFilter.value ?? 'all';
-    final sorted = [...all]..sort(
-        (a, b) => (b.createdAt ?? DateTime(0))
-            .compareTo(a.createdAt ?? DateTime(0)),
+    final sorted = [...all]
+      ..sort(
+        (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
+          a.createdAt ?? DateTime(0),
+        ),
       );
     return sorted.where((o) {
       if (status == 'active' && !o.isActive) return false;
@@ -104,16 +109,13 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
     final outletsAsync = ref.watch(sellerOutletsProvider);
 
     return Scaffold(
-      backgroundColor: _pageBg,
       body: SafeArea(
         child: outletsAsync.when(
           skipLoadingOnReload: true,
           loading: () => _page(const [
             Padding(
               padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(
-                child: CircularProgressIndicator(color: AppColors.gold),
-              ),
+              child: Center(child: CircularProgressIndicator()),
             ),
           ]),
           error: (e, _) => _page([
@@ -168,29 +170,9 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
             child: TextField(
               onChanged: (v) => setState(() => _query = v),
               textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Search outlets',
-                prefixIcon: const Icon(
-                  Iconsax.search_normal_1,
-                  size: 20,
-                  color: AppColors.textGray,
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.ink),
-                ),
+                prefixIcon: Icon(Iconsax.search_normal_1, size: 20),
               ),
             ),
           ),
@@ -213,6 +195,7 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
   }
 
   List<Widget> _listBody(List<Outlet> outlets) {
+    final colors = context.colors;
     final filtered = _apply(outlets);
 
     return [
@@ -223,18 +206,18 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
               filtered.length == outlets.length
                   ? '${outlets.length} outlet${outlets.length == 1 ? '' : 's'}'
                   : '${filtered.length} of ${outlets.length} outlets',
-              style: const TextStyle(fontSize: 12, color: AppColors.textGray),
+              style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             ),
           ),
           if (_filtersActive || _query.isNotEmpty)
             GestureDetector(
               onTap: _clearFilters,
-              child: const Text(
+              child: Text(
                 'Clear filters',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: colors.primary,
                   decoration: TextDecoration.underline,
                 ),
               ),
@@ -247,35 +230,30 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
           padding: const EdgeInsets.symmetric(vertical: 48),
           child: Column(
             children: [
-              Icon(Iconsax.location, size: 44, color: Colors.grey.shade400),
+              Icon(Iconsax.location, size: 44, color: colors.outline),
               const SizedBox(height: 10),
               Text(
                 outlets.isEmpty && !_filtersActive
                     ? 'No outlets yet'
                     : 'No outlets match your filters',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textGray),
+                style: TextStyle(color: colors.onSurfaceVariant),
               ),
             ],
           ),
         )
       else
         Container(
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.ink.withOpacity(0.06)),
+            color: colors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppTheme.r2xl),
+            border: Border.all(color: colors.outlineVariant),
           ),
           child: Column(
             children: [
               for (var i = 0; i < filtered.length; i++) ...[
-                if (i > 0)
-                  Divider(
-                    height: 1,
-                    indent: 14,
-                    endIndent: 14,
-                    color: Colors.grey.shade200,
-                  ),
+                if (i > 0) const Divider(height: 1, indent: 14, endIndent: 14),
                 _OutletRow(
                   outlet: filtered[i],
                   onTap: () => context.push(
@@ -296,7 +274,7 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
     ];
   }
 
-  //  filter dropdown
+  // ---- filter dropdown ----
 
   Widget _statusDropdown() {
     final items = <DropdownItem<String>>[
@@ -331,6 +309,7 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
     required ValueNotifier<String?> notifier,
     required ValueChanged<String?> onChanged,
   }) {
+    final colors = context.colors;
     final maxH = (MediaQuery.sizeOf(context).height * 0.38).clamp(160.0, 280.0);
     return DropdownButtonHideUnderline(
       child: DropdownButton2<String>(
@@ -342,9 +321,9 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
           height: 42,
           padding: const EdgeInsets.only(left: 12, right: 6),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
+            color: colors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppTheme.rXl),
+            border: Border.all(color: colors.outline),
           ),
         ),
         iconStyleData: const IconStyleData(
@@ -358,8 +337,9 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
           padding: const EdgeInsets.symmetric(vertical: 6),
           offset: const Offset(0, -2),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            color: colors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppTheme.rXl),
+            border: Border.all(color: colors.outlineVariant),
           ),
           scrollbarTheme: ScrollbarThemeData(
             radius: const Radius.circular(40),
@@ -387,13 +367,15 @@ class _HeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     final backButton = IconButton(
       onPressed: onBack,
       tooltip: 'Back',
-      icon: const Icon(
+      icon: Icon(
         Icons.arrow_back_ios_new_rounded,
         size: 20,
-        color: AppColors.ink,
+        color: colors.onSurface,
       ),
     );
 
@@ -402,11 +384,8 @@ class _HeaderRow extends StatelessWidget {
       children: [
         Text(
           'Outlets',
-          style: TextStyle(
-            fontFamily: AppFonts.brand,
+          style: context.text.headlineLarge?.copyWith(
             fontSize: Responsive.font(context, 24),
-            fontWeight: FontWeight.bold,
-            color: AppColors.ink,
           ),
         ),
         const SizedBox(height: 2),
@@ -415,21 +394,14 @@ class _HeaderRow extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: Responsive.font(context, 12),
-            color: AppColors.textGray,
+            color: colors.onSurfaceVariant,
           ),
         ),
       ],
     );
 
-    final addButton = ElevatedButton.icon(
+    final addButton = FilledButton.icon(
       onPressed: onAdd,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.ink,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
       icon: const Icon(Iconsax.add, size: 18),
       label: Text(
         'Add',
@@ -443,10 +415,7 @@ class _HeaderRow extends StatelessWidget {
         children: [
           Row(children: [backButton, Expanded(child: title)]),
           const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: addButton,
-          ),
+          Padding(padding: const EdgeInsets.only(left: 8), child: addButton),
         ],
       );
     }
@@ -481,15 +450,14 @@ class _OutletRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final active = outlet.isActive;
-    final bg = active ? const Color(0xFFDDF5DD) : Colors.grey.shade200;
-    final fg = active ? const Color(0xFF1E8E3E) : Colors.grey.shade700;
-    final contact = [outlet.contactPerson, outlet.contactPhone]
-        .whereType<String>()
-        .join(' · ');
+    final contact = [
+      outlet.contactPerson,
+      outlet.contactPhone,
+    ].whereType<String>().join(' · ');
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
@@ -500,10 +468,10 @@ class _OutletRow extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
+                color: colors.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppTheme.rXl),
               ),
-              child: const Icon(Iconsax.location, color: AppColors.textGray),
+              child: Icon(Iconsax.location, color: colors.onSurfaceVariant),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -515,57 +483,12 @@ class _OutletRow extends StatelessWidget {
                     runSpacing: 4,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: bg,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: fg,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              active ? 'Active' : 'Inactive',
-                              style: TextStyle(
-                                fontSize: Responsive.font(context, 10.5),
-                                fontWeight: FontWeight.w600,
-                                color: fg,
-                              ),
-                            ),
-                          ],
-                        ),
+                      SellerStatusPill(
+                        text: active ? 'Active' : 'Inactive',
+                        positive: active,
                       ),
                       if (outlet.isMain)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.gold.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'Main',
-                            style: TextStyle(
-                              fontSize: Responsive.font(context, 10.5),
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.gold,
-                            ),
-                          ),
-                        ),
+                        const StatusPill(label: 'Main', tone: PillTone.blue),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -576,7 +499,6 @@ class _OutletRow extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: Responsive.font(context, 14.5),
-                      color: AppColors.ink,
                     ),
                   ),
                   if (outlet.address != null) ...[
@@ -587,7 +509,7 @@ class _OutletRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: Responsive.font(context, 12),
-                        color: AppColors.textGray,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -599,7 +521,7 @@ class _OutletRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: Responsive.font(context, 11.5),
-                        color: AppColors.textGray,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -609,9 +531,6 @@ class _OutletRow extends StatelessWidget {
             PopupMenuButton<String>(
               tooltip: 'More',
               icon: const Icon(Icons.more_vert, size: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
               onSelected: (v) {
                 switch (v) {
                   case 'edit':
@@ -630,9 +549,9 @@ class _OutletRow extends StatelessWidget {
                   child: Text(active ? 'Deactivate' : 'Activate'),
                 ),
                 const PopupMenuDivider(height: 1),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'delete',
-                  child: Text('Delete', style: TextStyle(color: Colors.red)),
+                  child: Text('Delete', style: TextStyle(color: colors.error)),
                 ),
               ],
             ),

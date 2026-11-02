@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:yanzee_app/core/theme/app_colors.dart';
-import 'package:yanzee_app/core/theme/app_fonts.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/core/utils/responsive.dart';
 import 'package:yanzee_app/core/widgets/app_toast.dart';
@@ -89,7 +89,16 @@ class VariantRow {
 
   void dispose() {
     for (final c in [
-      name, size, price, crossed, cost, qty, weight, sku, hs, barcode,
+      name,
+      size,
+      price,
+      crossed,
+      cost,
+      qty,
+      weight,
+      sku,
+      hs,
+      barcode,
     ]) {
       c.dispose();
     }
@@ -130,8 +139,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   // dropdown values
   final _brandNotifier = ValueNotifier<String?>(null);
   final _categoryNotifier = ValueNotifier<List<String>>([]);
-  final _audienceNotifier =
-      ValueNotifier<ProductAudience?>(ProductAudience.unisex);
+  final _audienceNotifier = ValueNotifier<ProductAudience?>(
+    ProductAudience.unisex,
+  );
 
   /// Outlet that receives the opening stock of a NEW product.
   /// null = not chosen, the backend uses the main outlet.
@@ -263,8 +273,20 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   @override
   void dispose() {
     for (final c in [
-      _name, _shortDesc, _longDesc, _price, _crossed, _cost, _qty, _weight,
-      _sku, _hs, _barcode, _tags, _seoTitle, _seoDesc,
+      _name,
+      _shortDesc,
+      _longDesc,
+      _price,
+      _crossed,
+      _cost,
+      _qty,
+      _weight,
+      _sku,
+      _hs,
+      _barcode,
+      _tags,
+      _seoTitle,
+      _seoDesc,
     ]) {
       c.dispose();
     }
@@ -295,7 +317,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final picked = await ImagePicker().pickMultiImage(imageQuality: 80);
     if (picked.isEmpty || !mounted) return;
     setState(() {
-      row.images.addAll(picked.map((x) => ProductImageEntry.local(File(x.path))));
+      row.images.addAll(
+        picked.map((x) => ProductImageEntry.local(File(x.path))),
+      );
     });
   }
 
@@ -366,7 +390,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(foregroundColor: ctx.colors.error),
               child: const Text('Delete'),
             ),
           ],
@@ -437,7 +461,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         _showError('$label needs a valid quantity');
         return null;
       }
-      final problem = numError(r.crossed, '$label crossed price') ??
+      final problem =
+          numError(r.crossed, '$label crossed price') ??
           numError(r.cost, '$label cost price') ??
           numError(r.weight, '$label weight');
       if (problem != null) {
@@ -446,7 +471,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       }
       final crossed = optNum(r.crossed);
       if (crossed != null && crossed <= price) {
-        _showError('$label: crossed price must be higher than the selling price');
+        _showError(
+          '$label: crossed price must be higher than the selling price',
+        );
         return null;
       }
 
@@ -504,7 +531,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         }
       }
 
-      final problem = numError(_crossed, 'Crossed price') ??
+      final problem =
+          numError(_crossed, 'Crossed price') ??
           numError(_cost, 'Cost price') ??
           numError(_weight, 'Weight');
       if (problem != null) {
@@ -620,31 +648,19 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
-      backgroundColor: kPageBg,
       // The bottom bar is lifted by hand so it sits right above the keyboard.
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        backgroundColor: kPageBg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          _isEditing ? 'Edit Product' : 'Create Product',
-          style: TextStyle(
-            fontFamily: AppFonts.brand,
-            fontSize: Responsive.font(context, 18),
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text(_isEditing ? 'Edit Product' : 'Create Product'),
       ),
       body: Column(
         children: [
@@ -664,8 +680,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
-                            color: AppColors.ink,
-                            backgroundColor: Colors.grey.shade300,
+                            backgroundColor: colors.surfaceContainerHighest,
                           ),
                         ),
                       ),
@@ -695,8 +710,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: Colors.grey.shade200)),
+              color: colors.surfaceContainerLowest,
+              border: Border(top: BorderSide(color: colors.outlineVariant)),
             ),
             padding: EdgeInsets.fromLTRB(
               16,
@@ -708,48 +723,29 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.ink,
-                      side: BorderSide(color: Colors.grey.shade400),
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton(
+                  child: FilledButton(
                     onPressed: _canSave ? _submit : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.ink,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
                     child: _saving
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: colors.onPrimary,
                             ),
                           )
                         : Text(
                             _isEditing ? 'Save changes' : 'Add Product',
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
                           ),
                   ),
                 ),
@@ -763,47 +759,53 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   // ------------------------------------------------------------------ cards
 
-  Widget _detailsFailedBanner() => Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Could not load the full product details, so saving is disabled.',
-                style: TextStyle(fontSize: 12.5),
-              ),
+  Widget _detailsFailedBanner() {
+    final colors = context.colors;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
+        border: Border.all(color: colors.outline),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Could not load the full product details, so saving is disabled.',
+              style: TextStyle(fontSize: 12.5),
             ),
-            TextButton(onPressed: _retryDetails, child: const Text('Retry')),
-          ],
-        ),
-      );
+          ),
+          TextButton(onPressed: _retryDetails, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
 
   /// Shown instead of the quantity field when a saved product is edited.
-  Widget _stockNote() => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: kPageBg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Row(
-          children: [
-            Icon(Iconsax.info_circle, size: 18, color: AppColors.textGray),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Stock is added from Inventory > Stock in.',
-                style: TextStyle(fontSize: 12.5, color: AppColors.textGray),
-              ),
+  Widget _stockNote() {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
+      ),
+      child: Row(
+        children: [
+          Icon(Iconsax.info_circle, size: 18, color: colors.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Stock is added from Inventory > Stock in.',
+              style: TextStyle(fontSize: 12.5, color: colors.onSurfaceVariant),
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _mediaCard() {
     return SectionCard(
@@ -833,10 +835,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _field('Product title', _name,
-              hint: 'Enter product title',
-              required: true,
-              caps: TextCapitalization.words),
+          _field(
+            'Product title',
+            _name,
+            hint: 'Enter product title',
+            required: true,
+            caps: TextCapitalization.words,
+          ),
           const SizedBox(height: 16),
           _label('Status'),
           Row(
@@ -858,7 +863,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: _isAvailable,
-            activeColor: AppColors.ink,
             onChanged: (v) => setState(() => _isAvailable = v),
             title: const Text(
               'Available to customers',
@@ -942,8 +946,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _pair(
-            _field('Selling price', _price,
-                hint: '0', required: true, decimal: true),
+            _field(
+              'Selling price',
+              _price,
+              hint: '0',
+              required: true,
+              decimal: true,
+            ),
             _field('Cost per item', _cost, hint: 'Optional', decimal: true),
           ),
           const SizedBox(height: 16),
@@ -953,10 +962,19 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             _stockNote(),
           ] else
             _pair(
-              _field('Crossed price', _crossed,
-                  hint: 'Optional', decimal: true),
-              _field('Quantity', _qty,
-                  hint: '0', required: true, integer: true),
+              _field(
+                'Crossed price',
+                _crossed,
+                hint: 'Optional',
+                decimal: true,
+              ),
+              _field(
+                'Quantity',
+                _qty,
+                hint: '0',
+                required: true,
+                integer: true,
+              ),
             ),
           const SizedBox(height: 14),
           _marginTiles(),
@@ -968,10 +986,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             child: Column(
               children: [
                 _pair(
-                  _field('Weight (kg)', _weight,
-                      hint: 'Optional', decimal: true),
-                  _field('SKU', _sku,
-                      hint: 'Optional', caps: TextCapitalization.characters),
+                  _field(
+                    'Weight (kg)',
+                    _weight,
+                    hint: 'Optional',
+                    decimal: true,
+                  ),
+                  _field(
+                    'SKU',
+                    _sku,
+                    hint: 'Optional',
+                    caps: TextCapitalization.characters,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _pair(
@@ -1008,6 +1034,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   Widget _variantsCard() {
+    final colors = context.colors;
     return SectionCard(
       icon: Icons.layers_outlined,
       title: 'Variants',
@@ -1020,9 +1047,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         label: const Text('Add'),
       ),
       child: _variants.isEmpty
-          ? const Text(
+          ? Text(
               'No variants. Add one if this product comes in different sizes or colours.',
-              style: TextStyle(fontSize: 12.5, color: AppColors.textGray),
+              style: TextStyle(fontSize: 12.5, color: colors.onSurfaceVariant),
             )
           : Column(
               children: [
@@ -1033,14 +1060,16 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   Widget _variantCard(int index) {
+    final colors = context.colors;
     final r = _variants[index];
     final saved = r.id != null;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: kPageBg,
-        borderRadius: BorderRadius.circular(14),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(AppTheme.rXl),
+        border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1059,15 +1088,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 visualDensity: VisualDensity.compact,
                 onPressed: _saving ? null : () => _removeVariant(r),
                 icon: const Icon(Icons.delete_outline),
-                color: Colors.red,
+                color: colors.error,
                 tooltip: 'Remove variant',
               ),
             ],
           ),
-          _field('Name', r.name,
-              hint: 'Variant name',
-              required: true,
-              caps: TextCapitalization.words),
+          _field(
+            'Name',
+            r.name,
+            hint: 'Variant name',
+            required: true,
+            caps: TextCapitalization.words,
+          ),
           const SizedBox(height: 14),
           _field('Size', r.size, hint: 'Size', required: true),
           const SizedBox(height: 14),
@@ -1094,14 +1126,29 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 ),
           const SizedBox(height: 14),
           if (_isEditing)
-            _field('Selling price', r.price,
-                hint: '0', required: true, decimal: true)
+            _field(
+              'Selling price',
+              r.price,
+              hint: '0',
+              required: true,
+              decimal: true,
+            )
           else
             _pair(
-              _field('Selling price', r.price,
-                  hint: '0', required: true, decimal: true),
-              _field('Quantity', r.qty,
-                  hint: '0', required: true, integer: true),
+              _field(
+                'Selling price',
+                r.price,
+                hint: '0',
+                required: true,
+                decimal: true,
+              ),
+              _field(
+                'Quantity',
+                r.qty,
+                hint: '0',
+                required: true,
+                integer: true,
+              ),
             ),
           CollapsibleCard(
             plain: true,
@@ -1110,16 +1157,33 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             child: Column(
               children: [
                 _pair(
-                  _field('Crossed price', r.crossed,
-                      hint: 'Optional', decimal: true),
-                  _field('Cost price', r.cost, hint: 'Optional', decimal: true),
+                  _field(
+                    'Crossed price',
+                    r.crossed,
+                    hint: 'Optional',
+                    decimal: true,
+                  ),
+                  _field(
+                    'Cost price',
+                    r.cost,
+                    hint: 'Optional',
+                    decimal: true,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 _pair(
-                  _field('Weight (kg)', r.weight,
-                      hint: 'Optional', decimal: true),
-                  _field('SKU', r.sku,
-                      hint: 'Optional', caps: TextCapitalization.characters),
+                  _field(
+                    'Weight (kg)',
+                    r.weight,
+                    hint: 'Optional',
+                    decimal: true,
+                  ),
+                  _field(
+                    'SKU',
+                    r.sku,
+                    hint: 'Optional',
+                    caps: TextCapitalization.characters,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 _pair(
@@ -1159,8 +1223,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       children: [
         _field('SEO title', _seoTitle, hint: 'Shown in search results'),
         const SizedBox(height: 16),
-        _field('SEO description', _seoDesc,
-            hint: 'Short summary for search engines', minLines: 2, maxLines: 3),
+        _field(
+          'SEO description',
+          _seoDesc,
+          hint: 'Short summary for search engines',
+          minLines: 2,
+          maxLines: 3,
+        ),
         const SizedBox(height: 16),
         _label('SEO image (optional)'),
         SeoImageTile(
@@ -1179,18 +1248,25 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final async = ref.watch(sellerBrandsProvider);
     return async.when(
       skipLoadingOnReload: true,
-      loading: () => const FormDisabledField('Loading brands...', loading: true),
+      loading: () =>
+          const FormDisabledField('Loading brands...', loading: true),
       error: (e, _) => FormErrorField(
         'Could not load brands: ${shortError(e)}',
         () => ref.invalidate(sellerBrandsProvider),
       ),
       data: (brands) {
         if (brands.isEmpty) {
-          return const FormDisabledField('No brands yet. Create one from the Brands page.');
+          return const FormDisabledField(
+            'No brands yet. Create one from the Brands page.',
+          );
         }
         final items = <DropdownItem<String>>[
           for (final b in brands)
-            DropdownItem<String>(value: b.id, height: 44, child: formItemText(b.name)),
+            DropdownItem<String>(
+              value: b.id,
+              height: 44,
+              child: formItemText(b.name),
+            ),
         ];
         // A product can point at a brand that is no longer in the list.
         final current = _brandNotifier.value;
@@ -1216,7 +1292,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final async = ref.watch(sellerCategoriesProvider);
     return async.when(
       skipLoadingOnReload: true,
-      loading: () => const FormDisabledField('Loading categories...', loading: true),
+      loading: () =>
+          const FormDisabledField('Loading categories...', loading: true),
       error: (e, _) => FormErrorField(
         'Could not load categories: ${shortError(e)}',
         () => ref.invalidate(sellerCategoriesProvider),
@@ -1244,7 +1321,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final async = ref.watch(sellerOutletsProvider);
     return async.when(
       skipLoadingOnReload: true,
-      loading: () => const FormDisabledField('Loading outlets...', loading: true),
+      loading: () =>
+          const FormDisabledField('Loading outlets...', loading: true),
       error: (e, _) => FormErrorField(
         'Could not load outlets: ${shortError(e)}',
         () => ref.invalidate(sellerOutletsProvider),
@@ -1252,7 +1330,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       data: (all) {
         final outlets = all.where((o) => o.isActive).toList();
         if (outlets.isEmpty) {
-          return const FormDisabledField('No active outlet. The main outlet is used.');
+          return const FormDisabledField(
+            'No active outlet. The main outlet is used.',
+          );
         }
         return FormDropdown<String>(
           notifier: _outletNotifier,
@@ -1273,7 +1353,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   // ----------------------------------------------------------- other fields
 
   Widget _similarField() {
-    final all = ref.watch(sellerProductsProvider).value ?? const <SellerProduct>[];
+    final all =
+        ref.watch(sellerProductsProvider).value ?? const <SellerProduct>[];
     final byId = {for (final p in all) p.id: p};
     final selfId = _base?.id ?? '';
     final candidates = all.where((p) => p.id != selfId).toList();
@@ -1298,11 +1379,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ),
         OutlinedButton(
           onPressed: candidates.isEmpty ? null : () => _pickSimilar(candidates),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.ink,
-            side: BorderSide(color: Colors.grey.shade300),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
           child: const Text('Choose products'),
         ),
       ],
@@ -1313,37 +1389,40 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   /// Two fields side by side; stacked on very narrow screens.
   Widget _pair(Widget a, Widget b) => LayoutBuilder(
-        builder: (context, c) {
-          if (c.maxWidth < 300) {
-            return Column(children: [a, const SizedBox(height: 14), b]);
-          }
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: a),
-              const SizedBox(width: 12),
-              Expanded(child: b),
-            ],
-          );
-        },
+    builder: (context, c) {
+      if (c.maxWidth < 300) {
+        return Column(children: [a, const SizedBox(height: 14), b]);
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: a),
+          const SizedBox(width: 12),
+          Expanded(child: b),
+        ],
       );
+    },
+  );
 
   Widget _label(String text, {bool required = false}) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text.rich(
-          TextSpan(
-            text: text,
-            children: [
-              if (required)
-                const TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
-            ],
-          ),
-          style: TextStyle(
-            fontSize: Responsive.font(context, 13),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text.rich(
+      TextSpan(
+        text: text,
+        children: [
+          if (required)
+            TextSpan(
+              text: ' *',
+              style: TextStyle(color: context.colors.error),
+            ),
+        ],
+      ),
+      style: TextStyle(
+        fontSize: Responsive.font(context, 13),
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 
   Widget _field(
     String label,
@@ -1372,34 +1451,15 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           keyboardType: decimal
               ? const TextInputType.numberWithOptions(decimal: true)
               : integer
-                  ? TextInputType.number
-                  : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
-          textInputAction:
-              maxLines > 1 ? TextInputAction.newline : TextInputAction.next,
-          decoration: _decoration(hint),
+              ? TextInputType.number
+              : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
+          textInputAction: maxLines > 1
+              ? TextInputAction.newline
+              : TextInputAction.next,
+          // Border, fill and focus colour come from the global input theme.
+          decoration: InputDecoration(hintText: hint),
         ),
       ],
     );
   }
-
-  InputDecoration _decoration(String? hint) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(fontSize: 14, color: AppColors.textGray),
-        isDense: true,
-        filled: true,
-        fillColor: kFieldBg,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.ink, width: 1.2),
-        ),
-      );
 }

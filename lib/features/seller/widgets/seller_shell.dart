@@ -140,9 +140,6 @@ class _PillNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemSelected;
 
-  // Active pill color.
-  static const Color _activeColor = Colors.black;
-
   // Fixed footprint for every pill/icon slot so "Dashboard" and "Store"
   // render at identical size regardless of label length.
   static const double _pillWidth = 76;
@@ -152,13 +149,14 @@ class _PillNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    final inactiveColor = Colors.grey.shade500;
+    final colors = theme.colorScheme;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: theme.dividerColor, width: 0.5)),
+        color: colors.surfaceContainerLowest,
+        border: Border(
+          top: BorderSide(color: colors.outlineVariant, width: 0.5),
+        ),
       ),
       child: SizedBox(
         height: 64,
@@ -178,7 +176,7 @@ class _PillNavBar extends StatelessWidget {
                     height: isSelected ? _pillHeight : _iconSlotSize,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: isSelected ? _activeColor : Colors.transparent,
+                      color: isSelected ? colors.primary : Colors.transparent,
                       // Perfect stadium/pill shape.
                       borderRadius: BorderRadius.circular(_pillHeight / 2),
                     ),
@@ -189,7 +187,9 @@ class _PillNavBar extends StatelessWidget {
                         PhosphorIcon(
                           isSelected ? item.activeIcon : item.inactiveIcon,
                           size: 20,
-                          color: isSelected ? Colors.white : inactiveColor,
+                          color: isSelected
+                              ? colors.onPrimary
+                              : colors.onSurfaceVariant,
                         ),
                         if (isSelected) ...[
                           const SizedBox(height: 2),
@@ -199,7 +199,7 @@ class _PillNavBar extends StatelessWidget {
                             maxLines: 1,
                             softWrap: false,
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: Colors.white,
+                              color: colors.onPrimary,
                               fontWeight: FontWeight.w600,
                               fontSize: 11,
                             ),
