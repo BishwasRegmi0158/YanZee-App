@@ -39,6 +39,7 @@ import 'package:yanzee_app/features/seller/widgets/screens/product_form_screen.d
 import 'package:yanzee_app/features/seller/widgets/screens/seller_shops_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/stock_in_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/stock_movements_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/store_order_detail_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_gate.dart';
 import 'package:yanzee_app/features/shop/screens/seller_profile_screen.dart';
 import 'package:yanzee_app/features/shop/screens/shop_detail_screen.dart'
@@ -299,6 +300,18 @@ final appRouter = GoRouter(
       },
     ),
 
+    GoRoute(
+      path: '/seller/orders/detail',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = state.extra as String?;
+        if (id == null) {
+          return const Scaffold(body: Center(child: Text('Order not found')));
+        }
+        return StoreOrderDetailScreen(orderId: id);
+      },
+    ),
+    
     GoRoute(
       path: '/product/:id',
       parentNavigatorKey: _rootNavigatorKey,

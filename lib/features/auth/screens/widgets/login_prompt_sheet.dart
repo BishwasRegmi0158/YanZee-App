@@ -1,27 +1,22 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:yanzee_app/data/models/auth_state.dart';
-
-import 'package:yanzee_app/core/theme/auth_theme.dart';
-import 'package:yanzee_app/core/utils/responsive.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
+import 'package:yanzee_app/data/models/auth_state.dart';
 import 'package:yanzee_app/data/services/auth_service.dart';
 import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
 import 'package:yanzee_app/features/auth/screens/widgets/auth_error_banner.dart';
+import 'package:yanzee_app/features/auth/screens/widgets/auth_widgets.dart';
 
 Future<bool> requireLogin(BuildContext context) async {
   if (AuthState.instance.isLoggedIn) return true;
 
+  // Background and rounded top corners come from the global bottom sheet theme.
   final result = await showModalBottomSheet<bool>(
     context: context,
     useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: AuthColors.screenBackground,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-    ),
     builder: (context) => const LoginPromptSheet(),
   );
 
@@ -103,18 +98,9 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
     router.push(SignupScreen.routeName);
   }
 
-  Widget _pillBox(Widget child) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(40),
-        boxShadow: authPillShadow,
-      ),
-      child: child,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final viewInsets = MediaQuery.viewInsetsOf(context);
     final maxHeight = MediaQuery.sizeOf(context).height * 0.9;
 
@@ -136,30 +122,16 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD5D8DC),
+                      color: colors.outline,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
                 const SizedBox(height: 22),
-                Text(
-                  'Login required',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: Responsive.font(context, 24),
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sign in to view this section',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: Responsive.font(context, 13.5),
-                    height: 1.4,
-                    color: AuthColors.subtitleGray,
-                  ),
+                const AuthHeader(
+                  title: 'Login required',
+                  subtitle: 'Sign in to view this section',
+                  scale: 0.85,
                 ),
                 const SizedBox(height: 24),
 
@@ -168,121 +140,57 @@ class _LoginPromptSheetState extends State<LoginPromptSheet> {
                   const SizedBox(height: 16),
                 ],
 
-                _pillBox(
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AuthColors.pillText,
-                    ),
-                    onChanged: (_) {
-                      if (_error != null) setState(() => _error = null);
-                    },
-                    decoration: authPillInputDecoration(
-                      hint: 'Email address',
-                      icon: Icons.email_rounded,
-                    ),
-                  ),
+                AuthTextField(
+                  controller: _emailController,
+                  label: 'Email address',
+                  hint: 'you@example.com',
+                  icon: Icons.email_rounded,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
                 ),
                 const SizedBox(height: 16),
 
-                _pillBox(
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: !_showPassword,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _isLoading ? null : _handleLogin(),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AuthColors.pillText,
+                AuthTextField(
+                  controller: _passwordController,
+                  label: 'Password',
+                  hint: 'Enter your password',
+                  icon: Icons.lock_rounded,
+                  obscureText: !_showPassword,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) {
+                    if (!_isLoading) _handleLogin();
+                  },
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _showPassword
+                          ? Icons.visibility_rounded
+                          : Icons.visibility_off_rounded,
+                      size: 20,
+                      color: colors.onSurfaceVariant,
                     ),
-                    onChanged: (_) {
-                      if (_error != null) setState(() => _error = null);
-                    },
-                    decoration: authPillInputDecoration(
-                      hint: 'Password',
-                      icon: Icons.lock_rounded,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _showPassword
-                              ? Icons.visibility_rounded
-                              : Icons.visibility_off_rounded,
-                          size: 20,
-                          color: AuthColors.pillIcon,
-                        ),
-                        onPressed: () =>
-                            setState(() => _showPassword = !_showPassword),
-                      ),
-                    ),
+                    onPressed: () =>
+                        setState(() => _showPassword = !_showPassword),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                Container(
-                  height: 52,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(40),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AuthColors.primary.withOpacity(0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AuthColors.primary,
-                      disabledBackgroundColor: AuthColors.primary.withOpacity(
-                        0.65,
-                      ),
-                      foregroundColor: Colors.white,
-                      shape: const StadiumBorder(),
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.4,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'Login',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
+                AuthSubmitButton(
+                  label: 'Login',
+                  loading: _isLoading,
+                  onPressed: _handleLogin,
                 ),
                 const SizedBox(height: 18),
 
-                Text.rich(
-                  textAlign: TextAlign.center,
-                  TextSpan(
-                    style: TextStyle(
-                      fontSize: Responsive.font(context, 13),
-                      color: AuthColors.pillText,
-                    ),
-                    children: [
-                      const TextSpan(text: "Don't have an account?  "),
-                      TextSpan(
-                        text: 'Sign Up here',
-                        style: const TextStyle(
-                          color: AuthColors.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        recognizer: TapGestureRecognizer()..onTap = _goToSignup,
-                      ),
-                    ],
-                  ),
+                AuthSwitchLine(
+                  prompt: "Don't have an account?",
+                  action: 'Sign up here',
+                  onTap: _goToSignup,
                 ),
                 SizedBox(height: viewInsets.bottom > 0 ? 8 : 0),
               ],

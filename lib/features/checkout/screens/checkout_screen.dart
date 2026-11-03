@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
+import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/core/validation/form_validators.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/features/checkout/models/checkout_totals.dart';
 import 'package:yanzee_app/features/checkout/widgets/cost_summary.dart';
@@ -66,13 +70,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (_showPayment) {
               setState(() => _showPayment = false);
@@ -81,18 +85,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             }
           },
         ),
-        title: Text(
-          _showPayment ? 'Payment Method' : 'Checkout',
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        centerTitle: true,
+        title: Text(_showPayment ? 'Payment Method' : 'Checkout'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.close, color: Colors.black54),
+            icon: Icon(Icons.close, color: colors.onSurfaceVariant),
             onPressed: () => context.pop(),
           ),
         ],
@@ -132,7 +128,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 _label('Province / Region'),
                 DropdownButtonFormField<String>(
                   value: _province,
-                  decoration: _inputDecoration('Select province'),
+                  decoration: const InputDecoration(
+                    hintText: 'Select province',
+                  ),
                   items: _provinces
                       .map(
                         (province) => DropdownMenuItem(
@@ -159,6 +157,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _paymentBody() {
+    final colors = context.colors;
+    final status = context.status;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
       children: [
@@ -168,19 +169,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           title: 'Cash on Delivery',
           subtitle: 'Pay with cash when your order arrives',
           icon: Icons.payments_outlined,
-          color: const Color(0xFFEAF5EB),
+          background: status.successBg,
+          foreground: status.successFg,
         ),
         _paymentTile(
           title: 'Credit / Debit Card',
           subtitle: 'Visa, Mastercard and more',
           icon: Icons.credit_card_outlined,
-          color: const Color(0xFFEEF2F8),
+          background: status.infoBg,
+          foreground: status.infoFg,
         ),
         _paymentTile(
           title: 'eSewa Wallet',
           subtitle: 'Pay via your eSewa balance',
           icon: Icons.account_balance_wallet_outlined,
-          color: const Color(0xFFEAF7E4),
+          background: status.successBg,
+          foreground: status.successFg,
         ),
         const SizedBox(height: 28),
         CostSummary(totals: _totals),
@@ -190,10 +194,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             Text(
               'Total Payable',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 14),
             ),
             Text(
-              '\$${_totals.total.toStringAsFixed(0)}',
+              formatPrice(_totals.total),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
           ],
@@ -206,21 +210,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     required String title,
     required String subtitle,
     required IconData icon,
-    required Color color,
+    required Color background,
+    required Color foreground,
   }) {
+    final colors = context.colors;
     final selected = _paymentMethod == title;
+
     return InkWell(
       onTap: () => setState(() => _paymentMethod = title),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppTheme.r2xl),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
+          color: colors.surfaceContainerLowest,
           border: Border.all(
-            color: selected ? Colors.black : const Color(0xFFE2E2E2),
+            color: selected ? colors.primary : colors.outlineVariant,
             width: selected ? 1.4 : 1,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppTheme.r2xl),
         ),
         child: Row(
           children: [
@@ -229,10 +237,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               height: 46,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(14),
+                color: background,
+                borderRadius: BorderRadius.circular(AppTheme.rXl),
               ),
-              child: Icon(icon, color: Colors.black54),
+              child: Icon(icon, color: foreground),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -249,14 +257,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
             ),
             Icon(
               selected ? Icons.check_circle : Icons.chevron_right,
-              color: selected ? Colors.black : Colors.grey.shade400,
+              color: selected ? colors.primary : colors.onSurfaceVariant,
             ),
           ],
         ),
@@ -269,25 +280,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     required IconData icon,
     required Widget child,
   }) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE3E0DC)),
-        borderRadius: BorderRadius.circular(16),
+        color: colors.surfaceContainerLowest,
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 19, color: Colors.black),
+              Icon(icon, size: 19, color: colors.primary),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
+                style: context.text.titleLarge?.copyWith(fontSize: 15),
               ),
             ],
           ),
@@ -299,11 +309,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _orderItemsCard() {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE3E0DC)),
-        borderRadius: BorderRadius.circular(16),
+        color: colors.surfaceContainerLowest,
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,7 +326,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppTheme.rLg),
                   child: Image.network(
                     item.product.imageUrl,
                     width: 52,
@@ -323,8 +335,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     errorBuilder: (_, __, ___) => Container(
                       width: 52,
                       height: 52,
-                      color: const Color(0xFFF2F2F2),
-                      child: const Icon(Icons.image_not_supported_outlined),
+                      color: colors.surfaceContainerHighest,
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        color: colors.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
@@ -341,7 +356,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                 ),
                 Text(
-                  '\$${(item.product.price * item.quantity).toStringAsFixed(0)}',
+                  formatPrice(item.product.price * item.quantity),
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ],
@@ -364,75 +379,57 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _paymentBottomBar() {
     return _bottomBar(
-      label: 'Place order · \$${_totals.total.toStringAsFixed(0)}',
-      onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Order placed successfully.')),
-        );
-      },
+      label: 'Place order · ${formatPrice(_totals.total)}',
+      onPressed: () => AppToast.success(context, 'Order placed successfully.'),
     );
   }
 
   Widget _bottomBar({required String label, required VoidCallback onPressed}) {
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 12,
-              offset: const Offset(0, -3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'TOTAL',
-                  style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 11,
-                    letterSpacing: 1,
-                  ),
-                ),
-                Text(
-                  '\$${_totals.total.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: onPressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+    final colors = context.colors;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLowest,
+        border: Border(top: BorderSide(color: colors.outlineVariant)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          child: Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'TOTAL',
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                      fontSize: 11,
+                      letterSpacing: 1,
                     ),
                   ),
-                  child: Text(
-                    label,
+                  Text(
+                    formatPrice(_totals.total),
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
                     ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: onPressed,
+                    child: Text(label, overflow: TextOverflow.ellipsis),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -442,7 +439,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     padding: const EdgeInsets.only(top: 12, bottom: 7),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: context.colors.onSurfaceVariant,
+      ),
     ),
   );
 
@@ -456,27 +457,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       controller: controller,
       keyboardType: keyboardType,
       validator: validator ?? FormValidators.required,
-      decoration: _inputDecoration(hint),
+      // Border, fill and focus colour come from the global input theme.
+      decoration: InputDecoration(hintText: hint),
     );
   }
-
-  InputDecoration _inputDecoration(String hint) => InputDecoration(
-    hintText: hint,
-    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE1DED9)),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFE1DED9)),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Colors.black),
-    ),
-  );
 }
 
 class _UpperLabel extends StatelessWidget {
@@ -489,7 +473,7 @@ class _UpperLabel extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        color: Colors.grey.shade500,
+        color: context.colors.onSurfaceVariant,
         fontSize: 11,
         letterSpacing: 1.8,
         fontWeight: FontWeight.w700,

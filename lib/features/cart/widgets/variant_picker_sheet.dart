@@ -1,5 +1,7 @@
 // lib/features/cart/widgets/variant_picker_sheet.dart
 import 'package:flutter/material.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/data/models/product.dart';
 
@@ -10,6 +12,7 @@ class VariantSelection {
 }
 
 /// Bottom sheet: choose a size and a quantity. Returns null if dismissed.
+/// Background and rounded corners come from the global bottom sheet theme.
 Future<VariantSelection?> showVariantPickerSheet(
   BuildContext context, {
   required Product product,
@@ -19,10 +22,6 @@ Future<VariantSelection?> showVariantPickerSheet(
   return showModalBottomSheet<VariantSelection>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
     builder: (_) => _VariantPickerSheet(
       product: product,
       confirmLabel: confirmLabel,
@@ -46,6 +45,8 @@ class SizeChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -55,17 +56,19 @@ class SizeChips extends StatelessWidget {
           label: Text(v.size),
           selected: selected,
           showCheckmark: false,
-          selectedColor: Colors.black,
-          backgroundColor: Colors.white,
-          disabledColor: Colors.grey.shade100,
+          selectedColor: colors.secondaryContainer,
+          backgroundColor: colors.surfaceContainerLowest,
+          disabledColor: colors.surfaceContainerHighest,
           side: BorderSide(
-            color: selected ? Colors.black : Colors.grey.shade300,
+            color: selected ? colors.primary : colors.outlineVariant,
           ),
           labelStyle: TextStyle(
             fontWeight: FontWeight.w600,
             color: selected
-                ? Colors.white
-                : (v.inStock ? Colors.black87 : Colors.grey.shade400),
+                ? colors.onSecondaryContainer
+                : (v.inStock
+                      ? colors.onSurface
+                      : colors.onSurfaceVariant.withValues(alpha: 0.5)),
             decoration: v.inStock ? null : TextDecoration.lineThrough,
           ),
           onSelected: v.inStock ? (_) => onSelected(v) : null,
@@ -115,6 +118,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final product = widget.product;
     final selected = _selected;
     final maxQty = selected?.stock ?? 1;
@@ -133,7 +137,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: colors.outline,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -141,10 +145,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Select size',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
+                Text('Select size', style: context.text.headlineMedium),
                 InkWell(
                   borderRadius: BorderRadius.circular(20),
                   onTap: () => Navigator.of(context).pop(),
@@ -159,21 +160,22 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade200),
-                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: colors.outlineVariant),
+                borderRadius: BorderRadius.circular(AppTheme.rXl),
               ),
               child: Row(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppTheme.rLg),
                     child: product.imageUrl.isEmpty
-                        ? _thumbPlaceholder()
+                        ? _thumbPlaceholder(context)
                         : Image.network(
                             product.imageUrl,
                             width: 48,
                             height: 48,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _thumbPlaceholder(),
+                            errorBuilder: (_, __, ___) =>
+                                _thumbPlaceholder(context),
                           ),
                   ),
                   const SizedBox(width: 12),
@@ -204,7 +206,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                           formatPrice(product.originalPrice),
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey.shade500,
+                            color: colors.onSurfaceVariant,
                             decoration: TextDecoration.lineThrough,
                           ),
                         ),
@@ -224,7 +226,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   'Only ${selected.stock} left',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFE53935)),
+                  style: TextStyle(fontSize: 12, color: colors.error),
                 ),
               ),
             const SizedBox(height: 20),
@@ -235,7 +237,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
+                    color: colors.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Row(
@@ -269,14 +271,17 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
               ],
             ),
             const SizedBox(height: 18),
-            Divider(color: Colors.grey.shade200, height: 1),
+            const Divider(height: 1),
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Total',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
                 Text(
                   formatPrice(total),
@@ -291,30 +296,21 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
             SizedBox(
               width: double.infinity,
               height: 52,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  disabledBackgroundColor: Colors.grey.shade300,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  disabledBackgroundColor: colors.surfaceContainerHighest,
+                  disabledForegroundColor: colors.onSurfaceVariant,
                 ),
                 onPressed: selected == null
                     ? null
                     : () => Navigator.of(context).pop(
-                          VariantSelection(
-                            variant: selected,
-                            quantity: _quantity,
-                          ),
+                        VariantSelection(
+                          variant: selected,
+                          quantity: _quantity,
                         ),
+                      ),
                 child: Text(
                   selected == null ? 'Select a size' : widget.confirmLabel,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
                 ),
               ),
             ),
@@ -324,12 +320,19 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
     );
   }
 
-  Widget _thumbPlaceholder() => Container(
-        width: 48,
-        height: 48,
-        color: Colors.grey.shade100,
-        child: const Icon(Icons.image_not_supported_outlined, size: 20),
-      );
+  Widget _thumbPlaceholder(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      width: 48,
+      height: 48,
+      color: colors.surfaceContainerHighest,
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        size: 20,
+        color: colors.onSurfaceVariant,
+      ),
+    );
+  }
 }
 
 class _QtyButton extends StatelessWidget {
@@ -340,6 +343,7 @@ class _QtyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final enabled = onTap != null;
     return InkWell(
       onTap: onTap,
@@ -348,14 +352,17 @@ class _QtyButton extends StatelessWidget {
         width: 32,
         height: 32,
         alignment: Alignment.center,
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLowest,
           shape: BoxShape.circle,
+          border: Border.all(color: colors.outlineVariant),
         ),
         child: Icon(
           icon,
           size: 16,
-          color: enabled ? Colors.black87 : Colors.grey.shade400,
+          color: enabled
+              ? colors.onSurface
+              : colors.onSurfaceVariant.withValues(alpha: 0.4),
         ),
       ),
     );

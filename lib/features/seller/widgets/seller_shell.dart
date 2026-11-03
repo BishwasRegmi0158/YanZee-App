@@ -5,7 +5,7 @@ import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_dashboard_visit_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_tab_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_dashboard_screen.dart';
-import 'package:yanzee_app/features/seller/widgets/screens/seller_orders_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/store_orders_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_products_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/seller_store_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_drawer.dart';
@@ -51,7 +51,7 @@ class _SellerShellState extends ConsumerState<SellerShell> {
     return const [
       CustomNavBarScreen(screen: SellerDashboardScreen()),
       CustomNavBarScreen(screen: SellerProductsScreen()),
-      CustomNavBarScreen(screen: SellerOrdersScreen()),
+      CustomNavBarScreen(screen: StoreOrdersScreen()),
       CustomNavBarScreen(screen: SellerStoreScreen()),
     ];
   }

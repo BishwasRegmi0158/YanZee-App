@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
+import 'package:yanzee_app/core/theme/app_widgets.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
 import 'package:yanzee_app/core/utils/format_price.dart';
 import 'package:yanzee_app/core/utils/seller_range_calender.dart';
@@ -9,7 +12,6 @@ import 'package:yanzee_app/data/models/inventory.dart';
 import 'package:yanzee_app/data/models/outlet.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_inventory_provider.dart';
 import 'package:yanzee_app/features/seller/widgets/providers/seller_outlets_provider.dart';
-import 'package:yanzee_app/features/seller/widgets/seller_detail_widgets.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_filter_chips.dart';
 
 /// Type chips. The second value is what the API expects in ?type=.
@@ -151,6 +153,7 @@ class _StockMovementsScreenState extends ConsumerState<StockMovementsScreen> {
   }
 
   List<Widget> _listBody(List<StockMovement> movements) {
+    final colors = context.colors;
     final active = ref.watch(movementFilterProvider) != kNoMovementFilter;
 
     // Names for movement lines that arrive without a product name.
@@ -171,6 +174,7 @@ class _StockMovementsScreenState extends ConsumerState<StockMovementsScreen> {
                   ? 'No stock movements match your filters.'
                   : 'No stock movements yet.',
               textAlign: TextAlign.center,
+              style: TextStyle(color: colors.onSurfaceVariant),
             ),
           ),
         ),
@@ -250,8 +254,9 @@ class _MovementCardState extends State<_MovementCard> {
     final removes = _stockRemovingTypes.contains(type);
 
     final outlet = m.outletName ?? widget.outletName;
-    final created =
-        m.createdAt == null ? null : _dateFmt.format(m.createdAt!.toLocal());
+    final created = m.createdAt == null
+        ? null
+        : _dateFmt.format(m.createdAt!.toLocal());
 
     final meta = [
       if (m.supplierName != null) m.supplierName!,
@@ -271,9 +276,12 @@ class _MovementCardState extends State<_MovementCard> {
     return Material(
       color: scheme.surfaceContainerLowest,
       elevation: 1,
-      shadowColor: scheme.shadow.withValues(alpha: 0.12),
+      shadowColor: scheme.shadow.withValues(alpha: 0.06),
       surfaceTintColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.r2xl),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -286,19 +294,29 @@ class _MovementCardState extends State<_MovementCard> {
                     _title(m, typeLabel),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                SellerStatusPill(text: typeLabel, positive: adds),
+                StatusPill(
+                  label: typeLabel,
+                  tone: adds
+                      ? PillTone.green
+                      : (removes ? PillTone.red : PillTone.gray),
+                ),
               ],
             ),
             if (outlet != null) ...[
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Icon(Iconsax.location, size: 14, color: scheme.onSurfaceVariant),
+                  Icon(
+                    Iconsax.location,
+                    size: 14,
+                    color: scheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
@@ -320,16 +338,14 @@ class _MovementCardState extends State<_MovementCard> {
                 meta,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
             if (items.isNotEmpty) ...[
               const SizedBox(height: 10),
-              Divider(
-                height: 1,
-                color: scheme.outlineVariant.withValues(alpha: 0.5),
-              ),
+              Divider(height: 1, color: scheme.outlineVariant),
               for (var i = 0; i < visible.length; i++)
                 _ItemRow(
                   item: visible[i],
@@ -345,17 +361,16 @@ class _MovementCardState extends State<_MovementCard> {
                   alignment: Alignment.centerLeft,
                   child: TextButton(
                     onPressed: () => setState(() => _showAll = !_showAll),
-                    child: Text(
-                      _showAll ? 'Show fewer' : 'Show $hidden more',
-                    ),
+                    child: Text(_showAll ? 'Show fewer' : 'Show $hidden more'),
                   ),
                 ),
             ],
             const SizedBox(height: 6),
             Text(
               totals,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             if (m.note != null) ...[
               const SizedBox(height: 4),
@@ -363,16 +378,18 @@ class _MovementCardState extends State<_MovementCard> {
                 m.note!,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
             if (created != null) ...[
               const SizedBox(height: 6),
               Text(
                 created,
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
           ],
@@ -403,11 +420,12 @@ class _ItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final status = context.status;
 
     final sign = adds ? '+' : (removes ? '-' : '');
     final qtyColor = adds
-        ? const Color(0xFF1B7F3A)
-        : (removes ? Colors.red.shade700 : scheme.onSurface);
+        ? status.successFg
+        : (removes ? status.dangerFg : scheme.onSurface);
 
     final details = [
       if (item.sku != null) 'SKU ${item.sku}',
@@ -430,15 +448,17 @@ class _ItemRow extends StatelessWidget {
                       item.name ?? fallbackName ?? 'Product',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     if (details.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
                         details,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ],
@@ -458,19 +478,16 @@ class _ItemRow extends StatelessWidget {
                   if (item.unitCost > 0)
                     Text(
                       '@ ${formatPrice(item.unitCost)}',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                 ],
               ),
             ],
           ),
         ),
-        if (!last)
-          Divider(
-            height: 1,
-            color: scheme.outlineVariant.withValues(alpha: 0.5),
-          ),
+        if (!last) Divider(height: 1, color: scheme.outlineVariant),
       ],
     );
   }

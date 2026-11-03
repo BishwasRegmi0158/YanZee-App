@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 
 enum ToastType { success, error, warning, info }
 
@@ -98,23 +100,42 @@ class _ToastHandle {
   }
 }
 
+/// Colours and icon of one toast type, read from the theme so the pop-ups
+/// always match the rest of the app.
 class _ToastStyle {
-  const _ToastStyle(this.background, this.icon);
+  const _ToastStyle(this.background, this.foreground, this.icon);
 
   final Color background;
+  final Color foreground;
   final IconData icon;
 
-  // All backgrounds keep white text above the 4.5:1 contrast ratio.
-  static _ToastStyle of(ToastType type) => switch (type) {
-        ToastType.success =>
-          const _ToastStyle(Color(0xFF1B7F3A), Icons.check_circle_rounded),
-        ToastType.error =>
-          const _ToastStyle(Color(0xFFC62828), Icons.error_rounded),
-        ToastType.warning =>
-          const _ToastStyle(Color(0xFFB45309), Icons.warning_amber_rounded),
-        ToastType.info =>
-          const _ToastStyle(Color(0xFF263238), Icons.info_rounded),
-      };
+  // Every background keeps its text above the 4.5:1 contrast ratio.
+  static _ToastStyle of(BuildContext context, ToastType type) {
+    final colors = context.colors;
+    final status = context.status;
+    return switch (type) {
+      ToastType.success => _ToastStyle(
+          status.successFg,
+          colors.onPrimary,
+          Icons.check_circle_rounded,
+        ),
+      ToastType.error => _ToastStyle(
+          status.dangerFg,
+          colors.onPrimary,
+          Icons.error_rounded,
+        ),
+      ToastType.warning => _ToastStyle(
+          status.warningFg,
+          colors.onPrimary,
+          Icons.warning_amber_rounded,
+        ),
+      ToastType.info => _ToastStyle(
+          colors.inverseSurface,
+          colors.onInverseSurface,
+          Icons.info_rounded,
+        ),
+    };
+  }
 }
 
 class _ToastView extends StatefulWidget {
@@ -179,7 +200,7 @@ class _ToastViewState extends State<_ToastView>
 
   @override
   Widget build(BuildContext context) {
-    final style = _ToastStyle.of(widget.type);
+    final style = _ToastStyle.of(context, widget.type);
     final top = MediaQuery.paddingOf(context).top + 12;
 
     return Positioned(
@@ -206,21 +227,21 @@ class _ToastViewState extends State<_ToastView>
                   child: Material(
                     color: style.background,
                     elevation: 6,
-                    shadowColor: Colors.black45,
-                    borderRadius: BorderRadius.circular(14),
+                    shadowColor: context.colors.shadow.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(AppTheme.rXl),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(12, 12, 6, 12),
                       child: Row(
                         children: [
-                          Icon(style.icon, color: Colors.white, size: 22),
+                          Icon(style.icon, color: style.foreground, size: 22),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               widget.message,
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: style.foreground,
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w600,
                                 height: 1.3,
@@ -233,12 +254,14 @@ class _ToastViewState extends State<_ToastView>
                             child: InkResponse(
                               onTap: _close,
                               radius: 20,
-                              child: const Padding(
-                                padding: EdgeInsets.all(8),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
                                 child: Icon(
                                   Icons.close_rounded,
                                   size: 18,
-                                  color: Colors.white70,
+                                  color: style.foreground.withValues(
+                                    alpha: 0.7,
+                                  ),
                                 ),
                               ),
                             ),

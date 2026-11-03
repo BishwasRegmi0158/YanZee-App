@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 import 'package:yanzee_app/core/theme/seller_form_theme.dart';
 
 /// What the calendar sheet returns: a chosen range, or "clear the dates".
@@ -96,14 +98,24 @@ class _RangeCalendarSheetState extends State<_RangeCalendarSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final colors = context.colors;
 
-    const dayText = TextStyle(fontSize: 13);
+    final dayText = TextStyle(fontSize: 13, color: colors.onSurface);
+    final rangeEdgeText = TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w700,
+      color: colors.onPrimary,
+    );
+    final weekdayText = TextStyle(
+      fontSize: 11.5,
+      color: colors.onSurfaceVariant,
+    );
 
     return Material(
-      color: theme.scaffoldBackgroundColor,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      color: Theme.of(context).scaffoldBackgroundColor,
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(AppTheme.r2xl),
+      ),
       clipBehavior: Clip.antiAlias,
       child: SafeArea(
         top: false,
@@ -118,17 +130,13 @@ class _RangeCalendarSheetState extends State<_RangeCalendarSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: scheme.outlineVariant,
+                    color: colors.outline,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                'Select dates',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w800),
-              ),
+              Text('Select dates', style: context.text.headlineSmall),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -147,89 +155,85 @@ class _RangeCalendarSheetState extends State<_RangeCalendarSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
-              Material(
-                color: scheme.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: TableCalendar<void>(
-                    firstDay: _first,
-                    lastDay: _last,
-                    focusedDay: _focused,
-                    calendarFormat: CalendarFormat.month,
-                    availableCalendarFormats: const {
-                      CalendarFormat.month: 'Month',
-                    },
-                    rangeSelectionMode: RangeSelectionMode.toggledOn,
-                    rangeStartDay: _start,
-                    rangeEndDay: _end,
-                    startingDayOfWeek: StartingDayOfWeek.sunday,
-                    rowHeight: 38,
-                    daysOfWeekHeight: 28,
-                    onRangeSelected: (start, end, focused) {
-                      setState(() {
-                        _start = start;
-                        _end = end;
-                        _focused = focused;
-                      });
-                    },
-                    onPageChanged: (focused) => _focused = focused,
-                    headerStyle: const HeaderStyle(
-                      formatButtonVisible: false,
-                      titleCentered: true,
-                      titleTextStyle: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      headerPadding: EdgeInsets.symmetric(vertical: 4),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(AppTheme.r2xl),
+                  border: Border.all(color: colors.outlineVariant),
+                ),
+                child: TableCalendar<void>(
+                  firstDay: _first,
+                  lastDay: _last,
+                  focusedDay: _focused,
+                  calendarFormat: CalendarFormat.month,
+                  availableCalendarFormats: const {
+                    CalendarFormat.month: 'Month',
+                  },
+                  rangeSelectionMode: RangeSelectionMode.toggledOn,
+                  rangeStartDay: _start,
+                  rangeEndDay: _end,
+                  startingDayOfWeek: StartingDayOfWeek.sunday,
+                  rowHeight: 38,
+                  daysOfWeekHeight: 28,
+                  onRangeSelected: (start, end, focused) {
+                    setState(() {
+                      _start = start;
+                      _end = end;
+                      _focused = focused;
+                    });
+                  },
+                  onPageChanged: (focused) => _focused = focused,
+                  headerStyle: HeaderStyle(
+                    formatButtonVisible: false,
+                    titleCentered: true,
+                    titleTextStyle: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: colors.onSurface,
                     ),
-                    daysOfWeekStyle: DaysOfWeekStyle(
-                      weekdayStyle: TextStyle(
-                        fontSize: 11.5,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      weekendStyle: TextStyle(
-                        fontSize: 11.5,
-                        color: scheme.onSurfaceVariant,
-                      ),
+                    headerPadding: const EdgeInsets.symmetric(vertical: 4),
+                    leftChevronIcon: Icon(
+                      Icons.chevron_left,
+                      color: colors.onSurface,
                     ),
-                    calendarStyle: CalendarStyle(
-                      outsideDaysVisible: false,
-                      cellMargin: const EdgeInsets.all(3),
-                      defaultTextStyle: dayText,
-                      weekendTextStyle: dayText,
-                      withinRangeTextStyle: dayText,
-                      todayDecoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      todayTextStyle: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                      rangeStartDecoration: BoxDecoration(
-                        color: scheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      rangeEndDecoration: BoxDecoration(
-                        color: scheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      rangeStartTextStyle: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onPrimary,
-                      ),
-                      rangeEndTextStyle: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onPrimary,
-                      ),
-                      rangeHighlightColor:
-                          scheme.primary.withValues(alpha: 0.12),
+                    rightChevronIcon: Icon(
+                      Icons.chevron_right,
+                      color: colors.onSurface,
                     ),
+                  ),
+                  daysOfWeekStyle: DaysOfWeekStyle(
+                    weekdayStyle: weekdayText,
+                    weekendStyle: weekdayText,
+                  ),
+                  calendarStyle: CalendarStyle(
+                    outsideDaysVisible: false,
+                    cellMargin: const EdgeInsets.all(3),
+                    defaultTextStyle: dayText,
+                    weekendTextStyle: dayText,
+                    withinRangeTextStyle: dayText,
+                    disabledTextStyle: dayText.copyWith(
+                      color: colors.onSurfaceVariant.withValues(alpha: 0.4),
+                    ),
+                    todayDecoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    todayTextStyle: dayText.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                    rangeStartDecoration: BoxDecoration(
+                      color: colors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    rangeEndDecoration: BoxDecoration(
+                      color: colors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    rangeStartTextStyle: rangeEdgeText,
+                    rangeEndTextStyle: rangeEdgeText,
+                    rangeHighlightColor: colors.primary.withValues(alpha: 0.12),
                   ),
                 ),
               ),
@@ -237,8 +241,9 @@ class _RangeCalendarSheetState extends State<_RangeCalendarSheet> {
               Center(
                 child: Text(
                   _summary,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: context.text.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -248,9 +253,6 @@ class _RangeCalendarSheetState extends State<_RangeCalendarSheet> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context)
                           .pop(const RangeCalendarResult.clear()),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                      ),
                       child: const Text('Clear'),
                     ),
                   ),

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:yanzee_app/core/theme/app_status_colors.dart';
+import 'package:yanzee_app/core/theme/app_theme.dart';
 
 class HeroCarousel extends StatefulWidget {
   const HeroCarousel({super.key});
@@ -57,8 +59,13 @@ class _HeroCarouselState extends State<HeroCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    // The banner text always sits on a dark photo, so it uses the "on dark"
+    // colour of the theme (white) and a scrim gradient (near black).
+    final onImage = colors.onInverseSurface;
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppTheme.r2xl),
       child: SizedBox(
         height: 260,
         width: double.infinity,
@@ -86,8 +93,8 @@ class _HeroCarouselState extends State<HeroCarousel> {
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
                           colors: [
-                            Colors.black.withOpacity(0.85),
-                            Colors.black.withOpacity(0.0),
+                            colors.scrim.withValues(alpha: 0.85),
+                            colors.scrim.withValues(alpha: 0.0),
                           ],
                           stops: const [0.0, 0.6],
                         ),
@@ -106,13 +113,13 @@ class _HeroCarouselState extends State<HeroCarousel> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE53935),
+                              color: colors.primary,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text(
+                            child: Text(
                               'NEW ARRIVALS',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: colors.onPrimary,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -120,21 +127,19 @@ class _HeroCarouselState extends State<HeroCarousel> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Made by Nepali,\nMade in Nepal',
-                            style: TextStyle(
-                              color: Colors.white,
+                            style: context.text.headlineMedium?.copyWith(
+                              color: onImage,
                               fontSize: 24,
-                              fontWeight: FontWeight.w700,
                               height: 1.25,
-                              fontFamily: 'CormorantGaramond',
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Handcrafted heritage, modern style.',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
+                              color: onImage.withValues(alpha: 0.8),
                               fontSize: 12,
                             ),
                           ),
@@ -158,7 +163,9 @@ class _HeroCarouselState extends State<HeroCarousel> {
                     width: isActive ? 16 : 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: isActive ? Colors.white : Colors.white54,
+                      color: isActive
+                          ? onImage
+                          : onImage.withValues(alpha: 0.54),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   );

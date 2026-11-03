@@ -126,7 +126,7 @@ class SellerProfileScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          r!.customerName,
+                          r.customerName,
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 13.5,
