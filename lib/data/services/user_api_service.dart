@@ -29,8 +29,13 @@ class UserApiService {
       } catch (_) {}
       throw Exception(msg);
     }
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    return (body['data'] as Map<String, dynamic>)['profileImg'] as String;
+
+    try {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final img = (body['data'] as Map<String, dynamic>)['profileImg'];
+      if (img is String && img.isNotEmpty) return img;
+    } catch (_) {}
+    throw Exception('Photo uploaded, but the server reply was not understood.');
   }
 }
 

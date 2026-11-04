@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:yanzee_app/core/theme/app_status_colors.dart';
 import 'package:yanzee_app/core/theme/app_theme.dart';
@@ -85,13 +87,27 @@ class _StoreOrderDetailScreenState
     );
   }
 
+  /// Opens one of the edit screens, then reloads this order and the list.
+  Future<void> _openEdit(String choice, StoreOrderDetail order) async {
+    await context.push(
+      choice == 'summary'
+          ? '/seller/orders/edit-summary'
+          : '/seller/orders/edit-customer',
+      extra: order,
+    );
+    if (!mounted) return;
+    ref.invalidate(storeOrderDetailProvider(widget.orderId));
+    ref.invalidate(storeOrdersProvider);
+  }
+
   Future<void> _changeStatus(StoreOrderDetail order) async {
     final change = await showModalBottomSheet<StatusChange>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => SellerFormTheme(child: _StatusSheet(current: order.status)),
+      builder: (_) =>
+          SellerFormTheme(child: _StatusSheet(current: order.status)),
     );
     if (change == null || !mounted) return;
 
@@ -110,7 +126,9 @@ class _StoreOrderDetailScreenState
 
     setState(() => _busy = true);
     try {
-      final message = await ref.read(storeOrderApiServiceProvider).updateStatus(
+      final message = await ref
+          .read(storeOrderApiServiceProvider)
+          .updateStatus(
             storeId,
             order.id,
             status: change.status,
@@ -145,6 +163,26 @@ class _StoreOrderDetailScreenState
       child: Scaffold(
         appBar: AppBar(
           title: Text(order == null ? 'Order' : 'Order #${order.orderNumber}'),
+          actions: [
+            if (order != null && !_isFinal(order.status))
+              PopupMenuButton<String>(
+                tooltip: 'More',
+                icon: const Icon(Iconsax.more_2),
+                onSelected: (v) => _openEdit(v, order),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'summary',
+                    child: Text('Edit items & payment'),
+                  ),
+                  PopupMenuDivider(height: 1),
+                  PopupMenuItem(
+                    value: 'customer',
+                    child: Text('Edit customer'),
+                  ),
+                ],
+              ),
+            const SizedBox(width: 4),
+          ],
         ),
         bottomNavigationBar: (order != null && !_isFinal(order.status))
             ? SellerBottomBar(
@@ -204,8 +242,7 @@ class _StoreOrderDetailScreenState
 
   // ------------------------------------------------------------------ cards
 
-  String? _date(DateTime? d) =>
-      d == null ? null : _dateFmt.format(d.toLocal());
+  String? _date(DateTime? d) => d == null ? null : _dateFmt.format(d.toLocal());
 
   Widget _headerCard(StoreOrderDetail o) {
     return SellerSectionCard(
@@ -228,7 +265,11 @@ class _StoreOrderDetailScreenState
           SellerInfoRow(label: 'Created by', value: o.createdBy),
           SellerInfoRow(label: 'Payment', value: prettyEnum(o.paymentMethod)),
           SellerInfoRow(label: 'Created', value: _date(o.createdAt)),
-          SellerInfoRow(label: 'Updated', value: _date(o.updatedAt), last: true),
+          SellerInfoRow(
+            label: 'Updated',
+            value: _date(o.updatedAt),
+            last: true,
+          ),
         ],
       ),
     );
@@ -266,10 +307,7 @@ class _StoreOrderDetailScreenState
           if (t.itemDiscount > 0)
             _MoneyRow('Item discounts', '- ${formatPrice(t.itemDiscount)}'),
           if (t.orderDiscountAmount > 0)
-            _MoneyRow(
-              discountLabel,
-              '- ${formatPrice(t.orderDiscountAmount)}',
-            ),
+            _MoneyRow(discountLabel, '- ${formatPrice(t.orderDiscountAmount)}'),
           _MoneyRow('Delivery fee', formatPrice(t.deliveryFee)),
           const Divider(height: 20),
           _MoneyRow('Total', formatPrice(t.total), bold: true),
@@ -511,11 +549,7 @@ class _StatusSheetState extends State<_StatusSheet> {
       'The customer has received the order',
     ),
     (StoreOrderStatus.cancelled, 'Cancelled', 'Cancel this order'),
-    (
-      StoreOrderStatus.returned,
-      'Returned',
-      'The customer sent the items back',
-    ),
+    (StoreOrderStatus.returned, 'Returned', 'The customer sent the items back'),
   ];
 
   late String? _selected = switch (widget.current) {

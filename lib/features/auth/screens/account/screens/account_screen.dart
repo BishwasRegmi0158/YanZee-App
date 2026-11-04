@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yanzee_app/core/navigation/full_screen_nav.dart';
 import 'package:yanzee_app/core/theme/auth_theme.dart';
+import 'package:yanzee_app/core/widgets/app_toast.dart';
 import 'package:yanzee_app/core/widgets/image_action_sheet.dart';
 import 'package:yanzee_app/core/widgets/image_preview_screen.dart';
 import 'package:yanzee_app/data/models/auth_state.dart';
@@ -43,6 +45,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   bool _isUpdatingPhoto = false;
 
+  // Goes up after every successful photo change so the avatar reloads
+  // even when the server keeps the same image URL.
+  int _photoVersion = 0;
+
   @override
   void initState() {
     super.initState();
@@ -55,7 +61,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     super.dispose();
   }
 
-  void _onAuthChanged() => setState(() {});
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
+  }
 
   void _openOrderStages({int initialTab = 0}) {
     pushFullScreen(context, OrdersScreen(initialTabIndex: initialTab));
@@ -91,19 +99,28 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           : e.toString().replaceFirst('Exception: ', '');
     }
     if (!mounted) return;
-    setState(() => _isUpdatingPhoto = false);
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+
+    if (error == null) {
+      PaintingBinding.instance.imageCache
+        ..clear()
+        ..clearLiveImages();
     }
+    setState(() {
+      _isUpdatingPhoto = false;
+      if (error == null) _photoVersion++;
+    });
+
+    AppToast.result(
+      context,
+      error: error,
+      success: 'Profile photo updated',
+    );
   }
 
   Future<void> _deleteProfileImage() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Removing the photo is not available yet. Choose a new photo to replace it.',
-        ),
-      ),
+    AppToast.info(
+      context,
+      'Removing the photo is not available yet. Choose a new photo to replace it.',
     );
   }
 
@@ -131,18 +148,25 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final isLoggedIn = AuthState.instance.isLoggedIn;
     final user = AuthState.instance.user;
 
-    return Scaffold(
-      backgroundColor: AuthColors.pageBackground,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildHeader(isLoggedIn, user),
-            const SizedBox(height: 16),
-            _buildOrdersCard(),
-            const SizedBox(height: 16),
-            _buildQuickLinks(isLoggedIn),
-          ],
+    // Inter is applied to this screen only. The app-wide theme is untouched.
+    final base = Theme.of(context);
+    return Theme(
+      data: base.copyWith(
+        textTheme: GoogleFonts.interTextTheme(base.textTheme),
+      ),
+      child: Scaffold(
+        backgroundColor: AuthColors.pageBackground,
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _buildHeader(isLoggedIn, user),
+              const SizedBox(height: 16),
+              _buildOrdersCard(),
+              const SizedBox(height: 16),
+              _buildQuickLinks(isLoggedIn),
+            ],
+          ),
         ),
       ),
     );
@@ -150,6 +174,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
   Widget _buildHeader(bool isLoggedIn, UserProfile? user) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -163,6 +188,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 Text(
                   user!.name,
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
@@ -172,6 +199,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 const SizedBox(height: 4),
                 Text(
                   user.email,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF6B6B6B),
@@ -179,41 +209,51 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 ),
               ],
             )
-          : Row(
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
-                  child: Text(
-                    'Hello, Welcome to YanZee!',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: AuthColors.textDark,
-                    ),
+                const Text(
+                  'Hello, Welcome to YanZee!',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AuthColors.textDark,
                   ),
                 ),
-                OutlinedButton(
-                  onPressed: () => context.push(LoginScreen.routeName),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AuthColors.textDark,
-                    side: const BorderSide(color: AuthColors.borderDefault),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => context.push(LoginScreen.routeName),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AuthColors.textDark,
+                          side: const BorderSide(
+                            color: AuthColors.borderDefault,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Login'),
+                      ),
                     ),
-                  ),
-                  child: const Text('Login'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => context.push(SignupScreen.routeName),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AuthColors.submitButton,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => context.push(SignupScreen.routeName),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AuthColors.submitButton,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text('Sign Up'),
+                      ),
                     ),
-                    elevation: 0,
-                  ),
-                  child: const Text('Sign Up'),
+                  ],
                 ),
               ],
             ),
@@ -224,19 +264,24 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     final image = user?.image;
     final hasImage = image != null && image.isNotEmpty;
 
+    ImageProvider? provider;
+    if (hasImage) {
+      final ImageProvider source = image.startsWith('http')
+          ? NetworkImage(image)
+          : FileImage(File(image));
+      provider = ResizeImage(source, width: 300, height: 300);
+    }
+
     return InkWell(
       onTap: _isUpdatingPhoto ? null : () => _showAvatarOptions(hasImage, image),
       customBorder: const CircleBorder(),
       child: Stack(
         children: [
           CircleAvatar(
+            key: ValueKey(_photoVersion),
             radius: 50,
             backgroundColor: const Color(0xFFF0EEEA),
-            backgroundImage: hasImage
-                ? (image.startsWith('http')
-                    ? ResizeImage(NetworkImage(image), width: 300, height: 300)
-                    : ResizeImage(FileImage(File(image)), width: 300, height: 300) as ImageProvider)
-                : null,
+            backgroundImage: provider,
             child: _isUpdatingPhoto
                 ? const SizedBox(
                     width: 22,
@@ -304,29 +349,33 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             ],
           ),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(_orderStages.length, (i) {
               final (label, icon) = _orderStages[i];
-              return InkWell(
-                onTap: () => _openOrderStages(initialTab: i),
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 4,
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(icon, color: AuthColors.textDark),
-                      const SizedBox(height: 6),
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AuthColors.textDark,
+              return Expanded(
+                child: InkWell(
+                  onTap: () => _openOrderStages(initialTab: i),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 2,
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(icon, color: AuthColors.textDark),
+                        const SizedBox(height: 6),
+                        Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AuthColors.textDark,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );

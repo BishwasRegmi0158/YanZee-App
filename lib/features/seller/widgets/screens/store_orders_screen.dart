@@ -110,6 +110,13 @@ class _StoreOrdersScreenState extends ConsumerState<StoreOrdersScreen> {
     );
   }
 
+  /// Opens POS or New order, then reloads the list when the seller comes back.
+  Future<void> _open(String path) async {
+    await context.push(path);
+    if (!mounted) return;
+    ref.invalidate(storeOrdersProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(storeOrdersProvider);
@@ -169,6 +176,9 @@ class _StoreOrdersScreenState extends ConsumerState<StoreOrdersScreen> {
       ('POS', StoreOrderChannel.pos),
     ];
 
+    const compactButton = Size(0, 40);
+    const compactPadding = EdgeInsets.symmetric(horizontal: 16);
+
     return RefreshIndicator(
       onRefresh: () => ref.refresh(storeOrdersProvider.future),
       child: ListView(
@@ -178,22 +188,50 @@ class _StoreOrdersScreenState extends ConsumerState<StoreOrdersScreen> {
         padding: const EdgeInsets.only(top: 12, bottom: 90),
         children: [
           pad(
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  'Orders',
-                  style: context.text.headlineLarge?.copyWith(
-                    fontSize: Responsive.font(context, 24),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Orders',
+                        style: context.text.headlineLarge?.copyWith(
+                          fontSize: Responsive.font(context, 24),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Admin dashboard and POS orders',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: Responsive.font(context, 12),
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Orders from your admin dashboard and POS',
-                  style: TextStyle(
-                    fontSize: Responsive.font(context, 12),
-                    color: colors.onSurfaceVariant,
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () => _open('/seller/orders/pos'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: compactButton,
+                    padding: compactPadding,
                   ),
+                  child: const Text('POS'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: () => _open('/seller/orders/new'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: compactButton,
+                    padding: compactPadding,
+                  ),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('New'),
                 ),
               ],
             ),

@@ -7,6 +7,7 @@ import 'package:yanzee_app/data/models/inventory.dart';
 import 'package:yanzee_app/data/models/outlet.dart';
 import 'package:yanzee_app/data/models/product.dart';
 import 'package:yanzee_app/data/models/shop_category.dart';
+import 'package:yanzee_app/data/models/store_order.dart';
 import 'package:yanzee_app/features/auth/screens/login_screen.dart';
 import 'package:yanzee_app/features/auth/screens/signup_screen.dart';
 import 'package:yanzee_app/features/checkout/screens/checkout_screen.dart';
@@ -40,6 +41,9 @@ import 'package:yanzee_app/features/seller/widgets/screens/seller_shops_screen.d
 import 'package:yanzee_app/features/seller/widgets/screens/stock_in_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/stock_movements_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/screens/store_order_detail_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/store_order_edit_screens.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/store_order_form_screen.dart';
+import 'package:yanzee_app/features/seller/widgets/screens/store_pos_screen.dart';
 import 'package:yanzee_app/features/seller/widgets/seller_gate.dart';
 import 'package:yanzee_app/features/shop/screens/seller_profile_screen.dart';
 import 'package:yanzee_app/features/shop/screens/shop_detail_screen.dart'
@@ -311,7 +315,39 @@ final appRouter = GoRouter(
         return StoreOrderDetailScreen(orderId: id);
       },
     ),
-    
+    GoRoute(
+      path: '/seller/orders/new',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const StoreOrderFormScreen(),
+    ),
+    GoRoute(
+      path: '/seller/orders/pos',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const StorePosScreen(),
+    ),
+    GoRoute(
+      path: '/seller/orders/edit-summary',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final order = state.extra as StoreOrderDetail?;
+        if (order == null) {
+          return const Scaffold(body: Center(child: Text('Order not found')));
+        }
+        return StoreOrderEditSummaryScreen(order: order);
+      },
+    ),
+    GoRoute(
+      path: '/seller/orders/edit-customer',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final order = state.extra as StoreOrderDetail?;
+        if (order == null) {
+          return const Scaffold(body: Center(child: Text('Order not found')));
+        }
+        return StoreOrderEditCustomerScreen(order: order);
+      },
+    ),
+
     GoRoute(
       path: '/product/:id',
       parentNavigatorKey: _rootNavigatorKey,
