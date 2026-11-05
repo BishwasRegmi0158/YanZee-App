@@ -51,6 +51,7 @@ class StoreOrderChannel {
   StoreOrderChannel._();
   static const admin = 'ADMIN';
   static const pos = 'POS';
+  static const web = 'WEB';
 }
 
 class StorePaymentMethod {

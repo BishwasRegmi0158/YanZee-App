@@ -22,6 +22,16 @@ class OutletDetailScreen extends ConsumerWidget {
     if (error != null && context.mounted) AppToast.error(context, error);
   }
 
+  Future<void> _setMain(BuildContext context, WidgetRef ref, Outlet o) async {
+    final error = await ref.read(sellerOutletsProvider.notifier).setMain(o);
+    if (!context.mounted) return;
+    AppToast.result(
+      context,
+      error: error,
+      success: '"${o.name}" is now the main outlet',
+    );
+  }
+
   Future<void> _delete(BuildContext context, WidgetRef ref, Outlet o) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -163,6 +173,15 @@ class OutletDetailScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            if (!live.isMain) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () => _setMain(context, ref, live),
+                // If Iconsax.star is missing in your version, use Icons.star_outline.
+                icon: const Icon(Iconsax.star, size: 18),
+                label: const Text('Set as main outlet'),
+              ),
+            ],
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () => _delete(context, ref, live),

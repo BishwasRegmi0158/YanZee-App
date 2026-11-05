@@ -76,6 +76,20 @@ class SellerOutletsNotifier extends AsyncNotifier<List<Outlet>> {
     return null;
   }
 
+  /// Makes [outlet] the main outlet. Reloads the list so the "Main" pill
+  /// moves to the new outlet. Returns null on success, or an error message.
+  Future<String?> setMain(Outlet outlet) async {
+    final storeId = _storeId;
+    if (storeId == null || storeId.isEmpty) return 'No store loaded.';
+    try {
+      await _api.changeMain(storeId, outlet.id);
+    } catch (e) {
+      return _msg(e);
+    }
+    await _reload(storeId);
+    return null;
+  }
+
   /// Flips the switch at once, puts it back if the server refuses.
   Future<String?> toggle(Outlet outlet) async {
     final storeId = _storeId;

@@ -40,10 +40,43 @@ class StoreOrderApiService {
       };
 
   /// GET /orders?page=&limit=&search=&status=&channel=&from=&to=
+  ///
+  /// The server's channel filter only accepts ALL, POS or WEB, so it cannot
+  /// return ADMIN orders. For ADMIN we ask for every channel and keep the
+  /// ADMIN orders here in the app.
   Future<StoreOrderPage> getOrders(
     String storeId, {
     int page = 1,
     int limit = 20,
+    String? search,
+    String? status,
+    String? channel,
+    DateTimeRange? range,
+  }) async {
+    if (channel == StoreOrderChannel.admin) {
+      return _getAdminOrders(
+        storeId,
+        search: search,
+        status: status,
+        range: range,
+      );
+    }
+    return _fetchPage(
+      storeId,
+      page: page,
+      limit: limit,
+      search: search,
+      status: status,
+      channel: channel,
+      range: range,
+    );
+  }
+
+  /// One request to GET /orders, exactly what the server returns.
+  Future<StoreOrderPage> _fetchPage(
+    String storeId, {
+    required int page,
+    required int limit,
     String? search,
     String? status,
     String? channel,
@@ -77,7 +110,48 @@ class StoreOrderApiService {
       orders: orders,
       page: p is Map ? (p['page'] as num?)?.toInt() ?? page : page,
       totalPages: p is Map ? (p['totalPages'] as num?)?.toInt() ?? 1 : 1,
-      total: p is Map ? (p['total'] as num?)?.toInt() ?? orders.length : orders.length,
+      total: p is Map
+          ? (p['total'] as num?)?.toInt() ?? orders.length
+          : orders.length,
+    );
+  }
+
+  /// Loads every page (without a channel filter) and keeps the ADMIN orders.
+  /// Returns them as one page, so the list does not try to load more.
+  Future<StoreOrderPage> _getAdminOrders(
+    String storeId, {
+    String? search,
+    String? status,
+    DateTimeRange? range,
+  }) async {
+    const pageSize = 100;
+    const maxPages = 50; // safety stop
+    final admin = <StoreOrderRow>[];
+    var page = 1;
+    var totalPages = 1;
+
+    do {
+      final p = await _fetchPage(
+        storeId,
+        page: page,
+        limit: pageSize,
+        search: search,
+        status: status,
+        channel: null, // the server treats a missing channel as ALL
+        range: range,
+      );
+      admin.addAll(
+        p.orders.where((o) => o.channel.toUpperCase() == StoreOrderChannel.admin),
+      );
+      totalPages = p.totalPages;
+      page++;
+    } while (page <= totalPages && page <= maxPages);
+
+    return StoreOrderPage(
+      orders: admin,
+      page: 1,
+      totalPages: 1,
+      total: admin.length,
     );
   }
 

@@ -104,6 +104,18 @@ class OutletApiService {
     _ensureOk(res, 'Could not update outlet');
   }
 
+  /// PATCH /outlets/change-main. Makes [outletId] the main outlet.
+  Future<void> changeMain(String storeId, String outletId) async {
+    final res = await ApiClient.send(
+      (h) => http.patch(
+        _url('/change-main'),
+        headers: _headers(h, storeId, json: true),
+        body: jsonEncode({'outletId': outletId}),
+      ),
+    );
+    _ensureOk(res, 'Could not change the main outlet');
+  }
+
   /// PATCH /outlets/:id/toggle-status. Returns the new isActive value.
   Future<bool> toggleStatus(String storeId, String id) async {
     final res = await ApiClient.send(

@@ -124,10 +124,11 @@ class StoreChannelPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StorePill(
-      text: channel == StoreOrderChannel.pos ? 'POS' : 'Admin',
-      tone: PillTone.gray,
-      dot: false,
-    );
+    final text = switch (channel.toUpperCase()) {
+      StoreOrderChannel.pos => 'POS',
+      StoreOrderChannel.web => 'Web',
+      _ => 'Admin',
+    };
+    return StorePill(text: text, tone: PillTone.gray, dot: false);
   }
 }

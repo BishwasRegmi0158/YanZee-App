@@ -54,6 +54,15 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
     );
   }
 
+  Future<void> _setMain(Outlet o) async {
+    final error = await ref.read(sellerOutletsProvider.notifier).setMain(o);
+    if (!mounted) return;
+    _snack(
+      error ?? '"${o.name}" is now the main outlet',
+      failed: error != null,
+    );
+  }
+
   Future<void> _confirmDelete(Outlet o) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -265,6 +274,7 @@ class _OutletsScreenState extends ConsumerState<OutletsScreen> {
                     extra: filtered[i],
                   ),
                   onToggle: () => _toggle(filtered[i]),
+                  onSetMain: () => _setMain(filtered[i]),
                   onDelete: () => _confirmDelete(filtered[i]),
                 ),
               ],
@@ -438,6 +448,7 @@ class _OutletRow extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onToggle;
+  final VoidCallback onSetMain;
   final VoidCallback onDelete;
 
   const _OutletRow({
@@ -445,6 +456,7 @@ class _OutletRow extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onToggle,
+    required this.onSetMain,
     required this.onDelete,
   });
 
@@ -535,6 +547,8 @@ class _OutletRow extends StatelessWidget {
                 switch (v) {
                   case 'edit':
                     onEdit();
+                  case 'main':
+                    onSetMain();
                   case 'toggle':
                     onToggle();
                   default:
@@ -543,6 +557,13 @@ class _OutletRow extends StatelessWidget {
               },
               itemBuilder: (_) => [
                 const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                if (!outlet.isMain) ...[
+                  const PopupMenuDivider(height: 1),
+                  const PopupMenuItem(
+                    value: 'main',
+                    child: Text('Set as main'),
+                  ),
+                ],
                 const PopupMenuDivider(height: 1),
                 PopupMenuItem(
                   value: 'toggle',

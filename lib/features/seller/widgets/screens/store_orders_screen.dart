@@ -123,8 +123,9 @@ class _StoreOrdersScreenState extends ConsumerState<StoreOrdersScreen> {
 
     return Scaffold(
       body: SafeArea(
+        // No skipLoadingOnReload: the spinner shows whenever a filter or the
+        // search changes and the list is loading again.
         child: async.when(
-          skipLoadingOnReload: true,
           loading: () => _page(const [
             Padding(
               padding: EdgeInsets.symmetric(vertical: 48),
@@ -174,6 +175,7 @@ class _StoreOrdersScreenState extends ConsumerState<StoreOrdersScreen> {
       ('All channels', 'all'),
       ('Admin', StoreOrderChannel.admin),
       ('POS', StoreOrderChannel.pos),
+      ('Web', StoreOrderChannel.web),
     ];
 
     const compactButton = Size(0, 40);

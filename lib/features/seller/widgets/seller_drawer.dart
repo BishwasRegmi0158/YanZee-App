@@ -66,6 +66,13 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
     if (shellContext != null && shellContext.mounted) action(shellContext);
   }
 
+  /// Closes the drawer and switches the shell to the bottom-bar tab at [index].
+  /// Tabs: 0 Dashboard, 1 Products, 2 Orders, 3 Store.
+  void _openTab(BuildContext drawerContext, int index) {
+    Navigator.of(drawerContext).pop(); // close the drawer
+    ref.read(sellerTabIndexProvider.notifier).state = index;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -214,6 +221,19 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                           ),
                         ],
 
+                        // Opens the Orders tab (list, POS and New order live there).
+                        _item(
+                          Iconsax.receipt_2,
+                          'Orders',
+                          () => _openTab(context, 2),
+                        ),
+                        // Opens the Products tab (edit / delete / add live there).
+                        _item(
+                          Iconsax.box,
+                          'Products',
+                          () => _openTab(context, 1),
+                        ),
+
                         _item(
                           Iconsax.location,
                           'Outlets',
@@ -264,11 +284,6 @@ class _SellerDrawerState extends ConsumerState<SellerDrawer> {
                           ),
                         ),
 
-                        // Opens the Products tab (edit / delete / add live there).
-                        _item(Iconsax.box, 'Products', () {
-                          Navigator.of(context).pop(); // close the drawer
-                          ref.read(sellerTabIndexProvider.notifier).state = 1;
-                        }),
                         _item(
                           Iconsax.eye,
                           'Preview as customer',
